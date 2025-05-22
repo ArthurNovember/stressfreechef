@@ -1,0 +1,241 @@
+.shoppingList {
+  color: rgb(255, 255, 255);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  flex: 1;
+  max-height: 100%; /* nebo kolik potřebuješ */
+
+  min-height: 0; /* klíčové pro fungování scrollování s flexboxem */
+}
+
+.shoppingList li {
+  word-wrap: break-word;
+  margin-top: 8px;
+  margin-left: 20px;
+  flex-wrap: nowrap;
+  background-color: rgb(67, 63, 63);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  border-radius: 5px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.addItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 20px;
+  width: 600px;
+}
+
+.celek {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px; /* mezera mezi sloupci */
+}
+
+.imgtext img {
+  width: 25%;
+}
+
+.imgtext h2 {
+  background-color: black;
+  width: 25%;
+  margin: auto;
+  padding-bottom: 10px;
+  padding-top: 10px;
+}
+
+.imgtext {
+  margin-top: 50px;
+}
+
+.addItem input {
+  width: 600px;
+  height: 40px;
+}
+
+.addItem input[type="submit"] {
+  background-color: rgb(102, 19, 19);
+  border: transparent;
+  width: 100%;
+  border-radius: 5px;
+}
+
+.addItem input[type="submit"]:hover {
+  cursor: pointer;
+  border: solid white 1px;
+}
+
+.shoppingList ol {
+  list-style-position: inside;
+  padding-left: 0; /* žádné vnější odsazení */
+}
+.itemText {
+  flex: 1;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  margin-left: 10px;
+}
+
+.deleteItem {
+  align-self: stretch; /* ↕️ tlačítko vyroste na výšku rodiče */
+  flex-shrink: 0; /* ⛔️ nezmenšuj se horizontálně */
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.showShop {
+  margin-right: 5px;
+}
+
+.srdce {
+  background-color: transparent;
+  color: grey;
+}
+
+.srdce.srdce:hover {
+  background-color: transparent;
+  border: transparent;
+}
+
+.showShops {
+  background-color: rgb(27, 26, 26);
+  border-radius: 0px;
+  width: 250px;
+}
+
+.showShops:hover {
+  background-color: rgb(39, 38, 38);
+}
+
+.shopCheckboxList {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background-color: black;
+  width: 250px;
+  z-index: 100;
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  top: 100%;
+  left: 0;
+}
+
+.shopCheckboxList li {
+  margin: auto;
+  width: 93%;
+  margin-top: 5px;
+
+  flex-grow: 0;
+}
+
+.buttonAndShops {
+  position: relative; /* velmi důležité! */
+  display: inline-block;
+}
+
+.add {
+  width: 100%;
+}
+
+.showShopsInput {
+  background-color: rgb(27, 26, 26);
+  border-radius: 10px;
+  width: 250px;
+  margin-left: 20px;
+  border-bottom-right-radius: 5px;
+  border-bottom-left-radius: 5px;
+  height: 100%;
+}
+
+.showShopsInput:hover {
+  background-color: rgb(39, 38, 38);
+}
+
+.buttonAndShopsInput {
+  position: relative; /* velmi důležité! */
+  display: inline-block;
+}
+
+.shopCheckboxListInput {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background-color: black;
+  width: 250px;
+  z-index: 100;
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  top: 100%;
+  left: 0;
+  margin-left: 20px;
+}
+
+.shopCheckboxListInput li {
+  word-wrap: break-word;
+  margin-top: 8px;
+  margin-left: 10px;
+  margin-right: 10px;
+  flex-wrap: nowrap;
+  background-color: rgb(90, 60, 60);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  border-radius: 5px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.nadpisADropdown {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+.shopCheckboxListInput input {
+  width: auto;
+  height: auto;
+}
+
+.filterAndShoppingList {
+  width: 60%;
+  margin-right: 20px;
+}
+
+.filterShops {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 100px;
+}
+
+.filterAndSort {
+  display: flex;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shoppingList li label {
+  display: flex;
+  align-items: center;
+  flex: 1; /* ať se roztáhne v rámci li */
+}
+
+.numbering {
+  font-weight: bold;
+  color: rgb(151, 49, 75);
+}

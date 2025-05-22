@@ -1,0 +1,124 @@
+.itemContainer {
+  background-color: rgb(58, 57, 57);
+  min-height: 300px;
+  max-width: 12s50px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  border: 7px solid rgb(43, 43, 43);
+  margin-top: 120px;
+  border-radius: 10px;
+}
+
+.itemContainer h2 {
+  background-color: rgb(21, 21, 21);
+  padding-top: 10px;
+  padding-bottom: 10px;
+  margin-top: 0px;
+  border-radius: 3px;
+}
+
+.itemContainer li {
+  background-color: rgb(38, 38, 38);
+  padding-top: 10px;
+  padding-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 5px;
+}
+
+.writeFavorite {
+  width: 97%;
+  height: 30px;
+  border: solid rgb(114, 114, 114) 0.1px;
+  background-color: rgb(67, 67, 67);
+  border-radius: 5px;
+}
+
+.addButton {
+  max-width: 250px;
+  margin-right: 10px;
+  margin-left: 10px;
+}
+
+.itemName {
+  margin-left: 10px;
+}
+
+.FavoriteCelek h1 {
+  font-size: 32px;
+  width: 97.5%;
+  height: 30px;
+  margin: auto;
+  padding-top: 8px;
+  padding-bottom: 13px;
+  border-radius: 10px;
+  border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
+}
+
+.topAdd {
+  background-color: rgb(25, 25, 25);
+  width: 60%;
+  height: 100px;
+  padding-top: 15px;
+  margin-top: 0px;
+  margin: auto;
+  border-radius: 10px;
+  border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
+}
+
+.TopAddShop {
+  background-color: rgb(47, 47, 47);
+  width: 60%;
+  height: 100px;
+  padding-top: 15px;
+  margin-top: 0px;
+  margin: auto;
+  border-radius: 0px;
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
+}
+
+.writeFavoriteShop {
+  width: 97%;
+  height: 30px;
+  border: solid rgb(114, 114, 114) 0.1px;
+  background-color: rgb(67, 67, 67);
+  border-radius: 5px;
+}
+
+.TopAddShop h2 {
+  font-size: 22px;
+  width: 97.5%;
+  height: 30px;
+  margin: auto;
+  padding-top: 8px;
+  padding-bottom: 15px;
+  border-radius: 10px;
+  border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
+}
+
+.addButtonTop {
+  width: 100%;
+  margin-top: 15px;
+  background-color: rgb(88, 7, 7);
+}
+
+.FavoriteCelek ul {
+  display: flex;
+  flex-direction: column;
+}
+
+.favoriteSelectAndSort {
+  display: flex;
+  justify-content: space-between;
+}
+
+.filterShopsFavorite {
+  display: flex;
+  align-items: center;
+}

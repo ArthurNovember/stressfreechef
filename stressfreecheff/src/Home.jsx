@@ -1,0 +1,114 @@
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+
+const Home = ({
+  displayRecipes,
+  openModal,
+  selectedRecipe,
+  recomendedRecipes,
+  bestSortRecipes,
+  favoriteRecipes,
+  shuffleRecipes,
+  addItem,
+  setNewItem,
+  NewItem,
+}) => {
+  return (
+    <main>
+      <div className="main">
+        <h1>Stress Free Cheff</h1>
+        <input type="text" placeholder=" Search recipes..." />
+        <button>
+          {" "}
+          <i className="fas fa-search"></i> Search
+        </button>
+        <br />
+        <br />
+        <br />
+        <section className="variants">
+          <ul className="HomeUl">
+            <li>
+              <a href="#recomended" onClick={recomendedRecipes}>
+                RECOMENDED
+              </a>
+            </li>
+            <li>
+              <a href="#newest" onClick={bestSortRecipes}>
+                NEWEST
+              </a>
+            </li>
+            <li>
+              <a href="#favorite" onClick={favoriteRecipes}>
+                FAVORITE
+              </a>
+            </li>
+            <li>
+              <a href="#random" onClick={shuffleRecipes}>
+                RANDOM
+              </a>
+            </li>
+          </ul>
+        </section>
+
+        <div className="recipeContainer">
+          {displayRecipes.map((recipe) => (
+            <div className="recipeCard" key={recipe.id}>
+              <a href="#forNow">
+                <img onClick={() => openModal(recipe)} src={recipe.imgSrc} />
+              </a>
+              <h3>{recipe.name}</h3>
+              <p>Rating: {recipe.rating}⭐</p>
+              <p className={recipe.difficulty}>
+                Difficulty: {recipe.difficulty}
+              </p>
+              <p>Time: {recipe.time}⏱️</p>
+            </div>
+          ))}
+        </div>
+        <div className="selectedRecipeContainer">
+          {selectedRecipe && (
+            <div>
+              <div id="forNow">
+                <div className="nameAndPicture">
+                  <h2>{selectedRecipe.name}</h2>
+                  <img src={selectedRecipe.imgSrc} />
+                </div>
+
+                <div className="displayIngredience">
+                  <ol>
+                    {selectedRecipe.ingredience.map((ingredient, index) => {
+                      return (
+                        <li key={index}>
+                          {" "}
+                          <input type="checkbox" /> {ingredient}{" "}
+                          <button
+                            className="sendToList"
+                            onClick={() =>
+                              addItem({
+                                text: ingredient,
+                                shop: [],
+                              })
+                            }
+                          >
+                            Send to shopping list
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              </div>
+              <div id="startparent">
+                <Link to="/Recipe">
+                  <button className="getStarted">GET STARTED</button>
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+};
+
+export default Home;

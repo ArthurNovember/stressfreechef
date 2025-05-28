@@ -16,9 +16,12 @@ const Home = ({
   return (
     <main>
       <div className="main">
-        <h1>Stress Free Cheff</h1>
-        <input type="text" placeholder=" Search recipes..." />
-        <button>
+        <div className="logoText">
+          <img src="https://i.imgur.com/EdgU8NN.png" className="logo" />
+          <p>Stress Free Cheff</p>
+        </div>
+        <input type="text" placeholder="  Search recipes..." />
+        <button className="searchButton">
           {" "}
           <i className="fas fa-search"></i> Search
         </button>

@@ -22,7 +22,7 @@ nav {
 }
 .logoText p {
   position: absolute;
-  top: 39%;
+  top: 250px;
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 70px;
@@ -36,14 +36,14 @@ nav {
   background-color: #6b0000;
   width: 700px;
   margin: auto;
-  border-radius: 15px;
+  border-radius: 40px;
   border: solid 5px black;
   margin-bottom: 40px;
 }
 
 .logo:hover {
-  animation: swing 1s ease-in-out infinite;
-  transform-origin: top center; /* bod houpání */
+  animation: swing 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  transform-origin: top center;
 }
 
 @keyframes swing {

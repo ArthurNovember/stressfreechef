@@ -248,6 +248,7 @@ function App() {
               addItem={addItem}
               setNewItem={setNewItem}
               newItem={newItem}
+              setSelectedRecipe={setSelectedRecipe}
             />
           }
         />
@@ -289,6 +290,7 @@ function App() {
               addItem={addItem}
               setNewItem={setNewItem}
               newItem={newItem}
+              setSelectedRecipe={setSelectedRecipe}
             />
           }
         />

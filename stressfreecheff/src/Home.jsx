@@ -5,6 +5,7 @@ const Home = ({
   displayRecipes,
   openModal,
   selectedRecipe,
+  setSelectedRecipe,
   recomendedRecipes,
   bestSortRecipes,
   favoriteRecipes,
@@ -13,6 +14,14 @@ const Home = ({
   setNewItem,
   NewItem,
 }) => {
+  useEffect(() => {
+    if (selectedRecipe) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+  }, [selectedRecipe]);
+
   return (
     <main>
       <div className="main">
@@ -68,9 +77,15 @@ const Home = ({
             </div>
           ))}
         </div>
-        <div className="selectedRecipeContainer">
-          {selectedRecipe && (
-            <div>
+
+        {selectedRecipe && (
+          <div className="modalOverlay" onClick={() => setSelectedRecipe(null)}>
+            <div
+              className="selectedRecipeContainer"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
               <div id="forNow">
                 <div className="nameAndPicture">
                   <h2>{selectedRecipe.name}</h2>
@@ -107,8 +122,8 @@ const Home = ({
                 </Link>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </main>
   );

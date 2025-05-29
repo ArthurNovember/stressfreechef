@@ -205,10 +205,11 @@ html {
 
 #startparent {
   background-color: #2f2f2f;
-  width: 1500px;
   height: 90px;
   margin: 0 auto;
   border: solid 8px #1d1c1c;
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
 }
 
 .selectedRecipeContainer h2 {
@@ -228,15 +229,20 @@ html {
   border-top-right-radius: 0px;
 }
 
+.selectedRecipeContainer {
+  max-width: 1500px;
+}
+
 #forNow {
   background-color: #2d2d2d;
-  width: 1500px;
   margin-left: auto;
   margin-right: auto;
   border: solid 8px #1d1c1c;
   border-bottom: 0px;
   margin-top: 20px;
   display: flex;
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
 }
 
 .nameAndPicture {
@@ -265,4 +271,17 @@ html {
 .displayIngredience li button {
   margin-left: auto;
   margin-right: 10px;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }

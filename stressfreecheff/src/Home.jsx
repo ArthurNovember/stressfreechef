@@ -22,11 +22,24 @@ const Home = ({
     }
   }, [selectedRecipe]);
 
+  const [animateLogo, setAnimateLogo] = useState(false);
+  const handleHover = () => {
+    setAnimateLogo(true);
+  };
+  const handleAnimationEnd = () => {
+    setAnimateLogo(false);
+  };
+
   return (
     <main>
       <div className="main">
         <div className="logoText">
-          <img src="https://i.imgur.com/EdgU8NN.png" className="logo" />
+          <img
+            src="https://i.imgur.com/EdgU8NN.png"
+            className={`logo ${animateLogo ? "animate" : ""}`}
+            onMouseEnter={handleHover}
+            onAnimationEnd={handleAnimationEnd}
+          />
           <p>Stress Free Cheff</p>
         </div>
         <input type="text" placeholder="  Search recipes..." />

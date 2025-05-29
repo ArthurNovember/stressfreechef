@@ -81,11 +81,11 @@ li {
 nav a {
   color: white;
   background-color: #333333;
-  border-radius: 3px;
   padding: 20px 0px;
   display: flex;
   justify-content: center;
   width: 100%;
+  border: solid rgb(38, 37, 37) 1px;
 }
 
 nav a:hover {
@@ -98,6 +98,7 @@ section a {
   padding: 10px 86px;
   display: flex;
   justify-content: center;
+  border: #5f0202 solid 1px;
 }
 
 section a:hover {

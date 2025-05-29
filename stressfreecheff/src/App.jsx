@@ -7,6 +7,7 @@ import ShoppingList from "./ShoppingList";
 import Home from "./Home";
 import FavoriteItems from "./FavoriteItems";
 import Recipe from "./Recipe";
+import ExploreRecipes from "./exploreRecipes";
 
 const Recipes = [
   {
@@ -217,7 +218,7 @@ function App() {
                 </Link>
               </li>
               <li>
-                <a href="#exploreRecipes">Explore Recipes</a>
+                <Link to="/ExploreRecipes">Explore Recipes</Link>
               </li>
               <li>
                 <a href="#myRecipes">My Recipes</a>
@@ -313,6 +314,8 @@ function App() {
           }
         />
         <Route path="/Recipe" element={<Recipe />} />
+
+        <Route path="ExploreRecipes" element={<ExploreRecipes />} />
       </Routes>
     </Router>
   );

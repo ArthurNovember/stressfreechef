@@ -108,15 +108,6 @@ const Recipes = [
 ];
 
 function App() {
-  const [selectedRecipe, setSelectedRecipe] = useState(null);
-
-  const openModal = (recipe) => {
-    setSelectedRecipe(recipe);
-  };
-  const closeModal = () => {
-    setSelectedRecipe(null);
-  };
-
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -239,8 +230,6 @@ function App() {
           element={
             <Home
               displayRecipes={displayRecipes}
-              openModal={openModal}
-              selectedRecipe={selectedRecipe}
               recomendedRecipes={recomendedRecipes}
               bestSortRecipes={bestSortRecipes}
               favoriteRecipes={favoriteRecipes}
@@ -248,7 +237,6 @@ function App() {
               addItem={addItem}
               setNewItem={setNewItem}
               newItem={newItem}
-              setSelectedRecipe={setSelectedRecipe}
             />
           }
         />
@@ -281,8 +269,6 @@ function App() {
           element={
             <Home
               displayRecipes={displayRecipes}
-              openModal={openModal}
-              selectedRecipe={selectedRecipe}
               recomendedRecipes={recomendedRecipes}
               bestSortRecipes={bestSortRecipes}
               favoriteRecipes={favoriteRecipes}
@@ -290,7 +276,6 @@ function App() {
               addItem={addItem}
               setNewItem={setNewItem}
               newItem={newItem}
-              setSelectedRecipe={setSelectedRecipe}
             />
           }
         />

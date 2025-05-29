@@ -3,9 +3,6 @@ import { Link } from "react-router-dom";
 
 const Home = ({
   displayRecipes,
-  openModal,
-  selectedRecipe,
-  setSelectedRecipe,
   recomendedRecipes,
   bestSortRecipes,
   favoriteRecipes,
@@ -14,6 +11,15 @@ const Home = ({
   setNewItem,
   NewItem,
 }) => {
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+
+  const openModal = (recipe) => {
+    setSelectedRecipe(recipe);
+  };
+  const closeModal = () => {
+    setSelectedRecipe(null);
+  };
+
   useEffect(() => {
     if (selectedRecipe) {
       document.body.style.overflow = "hidden";

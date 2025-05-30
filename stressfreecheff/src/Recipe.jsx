@@ -1,15 +1,58 @@
 import React, { useState, useEffect } from "react";
 import "./Recipe.css";
+import { useLocation, Link } from "react-router-dom";
 const Recipe = () => {
+  const location = useLocation();
+  const { recipe } = location.state || {};
+  const [currentStep, setCurrentStep] = useState(0);
+
+  if (!recipe || !recipe.steps) {
+    return (
+      <div>
+        <p>Recipe not found</p>
+        <Link to="/domov">
+          <button>Back to HOME</button>
+        </Link>
+      </div>
+    );
+  }
+
+  const step = recipe.steps[currentStep];
+
   return (
     <div className="Recipe">
       <div className="imgContainer">
-        <img src="https://www.allrecipes.com/thmb/Vw5kItdm0Hk3Kl6NSIKf3xg59UM=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/16160-juicy-grilled-chicken-breasts-ddmfs-5528-01-3x4-fde4b162c1e74b82a8ca94cbad082ae8.jpg" />
+        {step.type === "image" ? (
+          <img src={step.src} />
+        ) : (
+          <video className="recipeVideo" src={step.src} controls />
+        )}
       </div>
-      <h3 className="step">Step 1</h3>
-      <p className="instruction">Gather the ingredients</p>
+      <h3 className="step">Step {currentStep + 1}</h3>
+      <p className="instruction">{step.description}</p>
       <div className="buttonContainer">
-        <button className="nextStep">NEXT STEP</button>
+        {currentStep > 0 ? (
+          <button
+            className="previousStep"
+            onClick={() => setCurrentStep((prev) => prev - 1)}
+          >
+            PREVIOUS STEP
+          </button>
+        ) : (
+          <p> </p>
+        )}
+        {currentStep < recipe.steps.length - 1 ? (
+          <button
+            className="nextStep"
+            onClick={() => setCurrentStep((prev) => prev + 1)}
+          >
+            NEXT STEP
+          </button>
+        ) : (
+          <div>
+            <p className="completed">RECIPE COMPLETED</p>
+          </div>
+        )}
       </div>
     </div>
   );

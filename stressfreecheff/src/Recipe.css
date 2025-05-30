@@ -4,15 +4,15 @@
 
 .imgContainer {
   background-color: #212121;
-  width: 900px;
-  height: 500px;
+  width: 78.6%;
+  height: 40vh;
   margin: auto;
   border: solid 10px rgb(70, 32, 32);
 }
 
 .step {
   background-color: rgb(28, 28, 28);
-  width: 920px;
+  width: 80%;
   margin: auto;
   padding-top: 10px;
   padding-bottom: 10px;
@@ -20,7 +20,8 @@
 
 .instruction {
   background-color: rgb(48, 48, 48);
-  width: 920px;
+  width: 80%;
+  height: 15vh;
   margin: auto;
   padding-top: 30px;
   padding-bottom: 30px;
@@ -28,15 +29,38 @@
 
 .buttonContainer {
   background-color: rgb(28, 28, 28);
-  width: 920px;
+  width: 80%;
   margin: auto;
   padding-top: 15px;
   padding-bottom: 15px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
 }
 
 .nextStep {
   margin-right: 20px;
   width: 220px;
+}
+
+.previousStep {
+  margin-left: 20px;
+  width: 220px;
+}
+
+.completed {
+  margin-right: 20px;
+  background-color: rgb(74, 0, 0);
+  font-weight: 700;
+  padding-left: 200px;
+  padding-right: 200px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  border-radius: 5px;
+}
+
+.recipeVideo {
+  width: 78.6%;
+  height: 40vh;
 }

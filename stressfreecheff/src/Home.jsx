@@ -136,7 +136,7 @@ const Home = ({
                 </div>
               </div>
               <div id="startparent">
-                <Link to="/Recipe">
+                <Link to="/Recipe" state={{ recipe: selectedRecipe }}>
                   <button className="getStarted">GET STARTED</button>
                 </Link>
               </div>

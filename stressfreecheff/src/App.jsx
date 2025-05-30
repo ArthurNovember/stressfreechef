@@ -27,7 +27,7 @@ const Recipes = [
       "½ teaspoon ground black pepper",
       "½ teaspoon onion powder",
     ],
-    Steps: [
+    steps: [
       {
         type: "image",
         src: "https://www.allrecipes.com/thmb/kRPFikQimdEg6LUgk9knby0kmqU=/750x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/16160-juicy-grilled-chicken-breasts-ddmfs-5528-01-3x4-fde4b162c1e74b82a8ca94cbad082ae8.jpg",
@@ -76,7 +76,7 @@ const Recipes = [
       },
       {
         type: "video",
-        src: "https://www.youtube.com/shorts/eIAVG-qGdz4",
+        src: "https://www.w3schools.com/html/mov_bbb.mp4",
         description: "Look at the video",
       },
     ],

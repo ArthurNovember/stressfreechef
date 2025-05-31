@@ -1,0 +1,33 @@
+.mainInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: baseline;
+  background-color: black;
+  padding-bottom: 40px;
+  padding-top: 40px;
+  padding-left: 20px;
+}
+
+.mainInfo label {
+  background-color: rgb(79, 8, 8);
+  width: 40%;
+  padding-top: 0px;
+  padding-bottom: 0px;
+  border: 1px rgb(0, 0, 0) solid;
+}
+
+.mainInfo label p {
+  margin-left: 15px;
+}
+
+.mainInfo input {
+  width: 60%;
+  border: 1px rgb(0, 0, 0) solid;
+}
+
+.inputAdd {
+  width: 600px;
+  display: flex;
+  justify-content: space-between;
+  text-align: left;
+}

@@ -8,6 +8,8 @@ import Home from "./Home";
 import FavoriteItems from "./FavoriteItems";
 import Recipe from "./Recipe";
 import ExploreRecipes from "./exploreRecipes";
+import MyRecipes from "./MyRecipes";
+import NewRecipe from "./NewRecipe";
 
 const Recipes = [
   {
@@ -265,13 +267,13 @@ function App() {
                 <Link to="/ExploreRecipes">Explore Recipes</Link>
               </li>
               <li>
-                <a href="#myRecipes">My Recipes</a>
+                <Link to="/MyRecipes">My Recipes</Link>
               </li>
               <li>
                 <Link to="/shopping-list">Shopping List</Link>
               </li>
               <li id="nav">
-                <a href="#myProfile">My Profile</a>
+                <Link to="/MyRecipes">My Profile</Link>
               </li>
             </ul>
           </nav>
@@ -356,6 +358,10 @@ function App() {
         <Route path="/Recipe" element={<Recipe />} />
 
         <Route path="ExploreRecipes" element={<ExploreRecipes />} />
+
+        <Route path="MyRecipes" element={<MyRecipes />} />
+
+        <Route path="NewRecipe" element={<NewRecipe />} />
       </Routes>
     </Router>
   );

@@ -25,7 +25,14 @@ const Recipe = () => {
         {step.type === "image" ? (
           <img src={step.src} />
         ) : (
-          <video className="recipeVideo" src={step.src} controls />
+          <video
+            autoplay
+            muted
+            loop
+            className="recipeVideo"
+            src={step.src}
+            controls
+          />
         )}
       </div>
       <h3 className="step">Step {currentStep + 1}</h3>

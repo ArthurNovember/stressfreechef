@@ -160,6 +160,75 @@ const Recipes = [
       "https://hips.hearstapps.com/hmg-prod/images/mexican-beef-n-rice-skillet1-1665593962.jpg?crop=0.888888888888889xw:1xh;center,top&resize=1200:*",
     ingredience: [],
   },
+
+  {
+    name: "Chicken and Olive Pasta",
+    rating: 4.6,
+    difficulty: "Beginner",
+    time: "80 minutes",
+    id: 9,
+    imgSrc: "https://i.imgur.com/cyCghBt.jpeg",
+    ingredience: [
+      "Chicken breast",
+      "Pasta",
+      "Green pesto",
+      "Green olives",
+      "Sunflower oil",
+      "Spices (Sweet paprika, Chili con carne seasoning, Grill seasoning or others to taste)",
+      "Parmesan (optional)",
+    ],
+    steps: [
+      {
+        type: "image",
+        src: "https://i.imgur.com/N5Ws37Q.jpeg",
+        description: "Gather the ingredients.",
+      },
+      {
+        type: "video",
+        src: "/Videos/Chicken and Olive Pasta/C0046.MP4",
+        description: "Cut the chicken breast into small cubes.",
+      },
+      {
+        type: "video",
+        src: "/Videos/Chicken and Olive Pasta/C0047.MP4",
+        description: "Slice the olives into smaller pieces and set aside.",
+      },
+      {
+        type: "image",
+        src: "https://www.allrecipes.com/thmb/BD0dzMzKoL7QcnldgMJFOKb0yJ4=/750x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/16160-juicy-grilled-chicken-breasts-ddmfs-5534-03-3x4-c6be8e879b7b46fa8bb6978938a8c726.jpg",
+        description:
+          "Add lemon juice, olive oil, dried oregano or parsley, seasoning salt, black pepper, and onion powder to a large zip-top bag; add chicken and press out as much air as possible before sealing bag. Gently massage chicken to distribute marinade. Marinate chicken in the refrigerator for at least 30 minutes or up to 12 hours.",
+      },
+      {
+        type: "image",
+        src: "https://www.seriouseats.com/thmb/Urlc2LfHo_AdLf4Q4cyoE0kSYm8=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/__opt__aboutcom__coeus__resources__content_migration__serious_eats__seriouseats.com__2019__07__20190620-grilled-swordfish-steak-vicky-wasik-1-1500x1125-b0faaa41c20e4da7ab314dc6fcbc748e.jpg",
+        description: "Preheat grill to medium-high and lightly oil the grate.",
+      },
+      {
+        type: "image",
+        src: "https://www.allrecipes.com/thmb/I8hh-SPxRxrDWmQBOcc63YMR2xI=/750x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/16160-juicy-grilled-chicken-breasts-ddmfs-5566-04-3x4-270ab4d4e6a543de85ba54f6dc247147.jpg",
+        description:
+          "Place chicken breasts, smooth-side down on preheated grill; cook, covered, until no longer pink and juices run clear, about 5 minutes per side. An instant-read thermometer inserted into the center should read at least 165 degrees F (74 degrees C).",
+      },
+
+      {
+        type: "image",
+        src: "https://www.allrecipes.com/thmb/NiGSNxPmcjsn0kg90va6_ezc_kY=/750x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/16160-juicy-grilled-chicken-breasts-ddmfs-5572-05-3x4-105815f164c642dc9e6a235c279070d7.jpg",
+        description:
+          "Transfer chicken to a cutting board and tent with aluminum foil. Let rest 5 minutes.",
+      },
+      {
+        type: "image",
+        src: "https://www.allrecipes.com/thmb/PClqnsQ-doMAZo8jLXMXRzpuCkA=/750x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/16160-juicy-grilled-chicken-breasts-ddmfs-5594-hero-3x4-902673c819994c0191442304b40104af.jpg",
+        description: "Serve with lemon wedges.",
+      },
+      {
+        type: "video",
+        src: "https://www.w3schools.com/html/mov_bbb.mp4",
+        description: "Look at the video",
+      },
+    ],
+  },
 ];
 
 function App() {

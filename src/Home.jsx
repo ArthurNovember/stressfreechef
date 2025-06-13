@@ -46,7 +46,7 @@ const Home = ({
             onMouseEnter={handleHover}
             onAnimationEnd={handleAnimationEnd}
           />
-          <p>Stress Free Cheff</p>
+          <p>Stress Free Chef</p>
         </div>
         <input type="text" placeholder="  Search recipes..." />
         <button className="searchButton">

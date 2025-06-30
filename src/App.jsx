@@ -241,7 +241,7 @@ function App() {
 
   const [displayRecipes, setDisplayRecipes] = useState([]);
   useEffect(() => {
-    recomendedRecipes();
+    recommendedRecipes();
   }, []);
 
   const shuffleRecipes = () => {
@@ -260,14 +260,14 @@ function App() {
   };
 
   const difficultyOrder = ["Beginner", "Intermediate", "Hard"];
-  const recomendedRecipes = () => {
-    const recomendedSetter = [...Recipes].sort((a, b) => {
+  const recommendedRecipes = () => {
+    const recommendedSetter = [...Recipes].sort((a, b) => {
       return (
         difficultyOrder.indexOf(a.difficulty) -
         difficultyOrder.indexOf(b.difficulty)
       );
     });
-    setDisplayRecipes(recomendedSetter);
+    setDisplayRecipes(recommendedSetter);
   };
 
   //Shopping List!!!!!!!!!!!!!!!!!!!!!
@@ -354,7 +354,7 @@ function App() {
           element={
             <Home
               displayRecipes={displayRecipes}
-              recomendedRecipes={recomendedRecipes}
+              recommendedRecipes={recommendedRecipes}
               bestSortRecipes={bestSortRecipes}
               favoriteRecipes={favoriteRecipes}
               shuffleRecipes={shuffleRecipes}
@@ -393,7 +393,7 @@ function App() {
           element={
             <Home
               displayRecipes={displayRecipes}
-              recomendedRecipes={recomendedRecipes}
+              recommendedRecipes={recommendedRecipes}
               bestSortRecipes={bestSortRecipes}
               favoriteRecipes={favoriteRecipes}
               shuffleRecipes={shuffleRecipes}

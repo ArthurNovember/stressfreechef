@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "express": "^5.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.3"
@@ -29,5 +30,13 @@
   "main": "eslint.config.js",
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArthurNovember/StressFreeChef.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ArthurNovember/StressFreeChef/issues"
+  },
+  "homepage": "https://github.com/ArthurNovember/StressFreeChef#readme"
 }

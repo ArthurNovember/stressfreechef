@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 const Home = ({
   displayRecipes,
-  recomendedRecipes,
+  recommendedRecipes,
   bestSortRecipes,
   favoriteRecipes,
   shuffleRecipes,
@@ -59,8 +59,8 @@ const Home = ({
         <section className="variants">
           <ul className="HomeUl">
             <li>
-              <a href="#recomended" onClick={recomendedRecipes}>
-                RECOMENDED
+              <a href="#recommended" onClick={recommendedRecipes}>
+                RECOMMENDED
               </a>
             </li>
             <li>

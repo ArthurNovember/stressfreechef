@@ -3,32 +3,63 @@ const router = express.Router();
 const Recipe = require('../models/Recipe');
 
 
-const recipes = [
-  { id: 1, title: 'Palačinky' },
-  { id: 2, title: 'Smažený sýr' }
-];
+router.get('/', async (req, res) => {
+const filter = {};
+if (req.query.search) {
+  filter.title = { $regex: req.query.search, $options: 'i' };
+}
 
-router.get('/api/recipes', (req, res) => {
-  Recipe.find()
-  .then(recipes => res.json(recipes))
-  .catch(err => res.status(500).json({ error: 'Chyba při načítání receptů' }));
+if (req.query.difficulty) {
+  filter.difficulty = req.query.difficulty;
+}
+
+if (req.query.maxTime) {
+  filter.time = { $lte: Number(req.query.maxTime) };
+}
+
+const sortField = req.query.sortBy || 'title';
+const sortOrder = req.query.order === 'desc' ? -1 : 1;
+
+const limit = Number(req.query.limit) || 10;
+const page = Number(req.query.page) || 1;
+
+let query = Recipe.find(filter)
+  .sort({ [sortField]: sortOrder })
+  .skip((page - 1) * limit)
+  .limit(limit);
+
+  if (req.query.fields) {
+  const fields = req.query.fields.split(',').join(' ');
+  query = query.select(fields);
+}
+
+try {
+  const results = await query;
+  res.json(results);
+} catch (err) {
+  res.status(500).json({ error: 'Chyba při získávání receptů' });
+}
 
 });
-router.post('/api/recipes', (req, res) => {
-const { title } = req.body;
+
+
+router.post('/', (req, res) => {
+const { title, difficulty, time } = req.body;
   // ✅ VALIDACE
   if (!title || typeof title !== 'string' || title.trim() === '') {
     return res.status(400).json({ error: 'Chybí název receptu nebo je neplatný' });
   }
   // ✅ Vytvoř nový dokument podle modelu
-  const newRecipe = new Recipe({ title: title.trim() });
+  const newRecipe = new Recipe({  title: title.trim(),
+    difficulty,
+    time });
   newRecipe.save()
     .then(saved => res.status(201).json(saved))
     .catch(err => res.status(500).json({ error: 'Chyba při ukládání receptu' }));
 });
 
 
-router.delete('/api/recipes/:id', (req,res)=> {
+router.delete('/:id', (req,res)=> {
 Recipe.findByIdAndDelete(req.params.id)
   .then(deleted => {
     if (!deleted) {
@@ -40,7 +71,7 @@ Recipe.findByIdAndDelete(req.params.id)
 
 } );
 
-router.patch('/api/recipes/:id', (req, res) => {
+router.patch('/:id', (req, res) => {
 const updatedFields = req.body;
 if ('title' in updatedFields) {
   if (

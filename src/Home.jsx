@@ -87,7 +87,7 @@ const Home = ({
               <a href="#forNow">
                 <img onClick={() => openModal(recipe)} src={recipe.imgSrc} />
               </a>
-              <h3>{recipe.name}</h3>
+              <h3>{recipe.title}</h3>
               <p>Rating: {recipe.rating}⭐</p>
               <p className={recipe.difficulty}>
                 Difficulty: {recipe.difficulty}
@@ -107,13 +107,13 @@ const Home = ({
             >
               <div id="forNow">
                 <div className="nameAndPicture">
-                  <h2>{selectedRecipe.name}</h2>
+                  <h2>{selectedRecipe.title}</h2>
                   <img src={selectedRecipe.imgSrc} />
                 </div>
 
                 <div className="displayIngredience">
                   <ol>
-                    {selectedRecipe.ingredience.map((ingredient, index) => {
+                    {selectedRecipe.ingredients.map((ingredient, index) => {
                       return (
                         <li key={index}>
                           {" "}

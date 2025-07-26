@@ -1,6 +1,7 @@
 const express = require('express');
 require('dotenv').config(); // Načti .env soubor
 const mongoose = require('mongoose'); // Import Mongoose
+const cors = require('cors');
 
 const Recipe = require('./models/Recipe'); 
 
@@ -15,9 +16,13 @@ mongoose.connect(process.env.MONGO_URL)
   .catch((err) => console.error('❌ Nepodařilo se připojit k MongoDB:', err));
 
 const app = express();
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
 app.use(express.json());
+app.use(cors());
+// app.use(cors({
+//   origin: 'https://stressfreecheff-backend.onrender.com/' //  Až bude napojen frontend
+// }));
 
 
 // ✅ Připoj router
@@ -29,6 +34,17 @@ app.use('/api/recipes', recipesRouter);
 app.get('/', (req, res) => {
   res.send('Backend běží!');
 });
+
+app.get('/api/ping', (req, res) => {
+  res.status(200).send('OK');
+});
+
+
+app.use((err, req, res, next) => {
+  console.error('❌ Chyba v aplikaci:', err.stack);
+  res.status(500).json({ error: 'Došlo k chybě na serveru.' });
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Server běží na portu ${PORT}`);
 });

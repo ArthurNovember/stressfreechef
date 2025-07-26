@@ -43,20 +43,36 @@ try {
 });
 
 
-router.post('/', (req, res) => {
-const { title, difficulty, time } = req.body;
-  // ✅ VALIDACE
-  if (!title || typeof title !== 'string' || title.trim() === '') {
-    return res.status(400).json({ error: 'Chybí název receptu nebo je neplatný' });
-  }
-  // ✅ Vytvoř nový dokument podle modelu
-  const newRecipe = new Recipe({  title: title.trim(),
+router.post('/', async (req, res) => {
+  const {
+    title,
+    rating,
     difficulty,
-    time });
-  newRecipe.save()
-    .then(saved => res.status(201).json(saved))
-    .catch(err => res.status(500).json({ error: 'Chyba při ukládání receptu' }));
+    time,
+    imgSrc,
+    ingredients,
+    steps
+  } = req.body;
+
+  try {
+    const newRecipe = new Recipe({
+      title,
+      rating,
+      difficulty,
+      time,
+      imgSrc,
+      ingredients,
+      steps
+    });
+
+    await newRecipe.save();
+    res.status(201).json(newRecipe);
+  } catch (error) {
+    console.error('Chyba při ukládání receptu:', error);
+    res.status(500).json({ error: 'Chyba při ukládání receptu' });
+  }
 });
+
 
 
 router.delete('/:id', (req,res)=> {

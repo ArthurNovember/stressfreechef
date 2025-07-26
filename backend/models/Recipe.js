@@ -1,14 +1,34 @@
 const mongoose = require('mongoose');
 // Definice schématu
-const recipeSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  difficulty: String,      // ← přidáno
-  time: Number             // ← přidáno (v minutách)
+const stepSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: ['image', 'video', 'text'], // ✅ Nově podporujeme i textový krok
+    required: true
+  },
+  src: {
+    type: String,
+    required: function () {
+      // src je povinný JEN pokud je typ 'image' nebo 'video'
+      return this.type === 'image' || this.type === 'video';
+    }
+  },
+  description: {
+    type: String,
+    required: true
+  }
 });
 
-recipeSchema.index({ title: 1 }); // 1 = vzestupné řazení
-recipeSchema.index({ time: 1 });       // ! přidává index pro rychlé filtrování dle času
-recipeSchema.index({ difficulty: 1 }); // ! přidává index pro rychlé filtrování dle obtížnosti
+const recipeSchema = new mongoose.Schema({
+  title: { type: String, required: true }, // ✅ Opraveno z 'name'
+  rating: { type: Number, default: 0 },
+  difficulty: { type: String, required: true },
+  time: { type: String, required: true },
+  imgSrc: { type: String },
+  ingredients: [{ type: String }], // ✅ Opraveno z 'ingredience'
+  steps: [stepSchema],
+  id: { type: Number }, // volitelně
+});
 
 // Vytvoření modelu
 const Recipe = mongoose.model('Recipe', recipeSchema);

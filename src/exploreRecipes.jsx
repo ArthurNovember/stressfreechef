@@ -19,7 +19,7 @@ const ExploreRecipes = () => {
       <div className="recipeContainer1">
         <div className="recipeCard1">
           <a href="#forNow">
-            <img src="https://www.southernliving.com/thmb/1NcAJmyqMvFa6YIP1bu4l6Okpq0=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/Million_Dollar_Soup_012-d15952c1533c426b98686010250f231c.jpg" />
+            <img src="https://i.imgur.com/EZtSp3M.png" />
           </a>
           <h3>NAme</h3>
           <p>Rating: ⭐</p>

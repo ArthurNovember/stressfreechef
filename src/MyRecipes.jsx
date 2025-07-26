@@ -13,7 +13,7 @@ const MyRecipes = () => {
           <div className="recipeCard2">
             <div>
               <a href="#forNow">
-                <img src="https://www.southernliving.com/thmb/1NcAJmyqMvFa6YIP1bu4l6Okpq0=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/Million_Dollar_Soup_012-d15952c1533c426b98686010250f231c.jpg" />
+                <img src="https://i.imgur.com/EZtSp3M.png" />
               </a>
             </div>
             <div className="texto">
@@ -35,7 +35,7 @@ const MyRecipes = () => {
         <div className="recipeContainer2">
           <div className="recipeCard2">
             <a href="#forNow">
-              <img src="https://www.simplyrecipes.com/thmb/GxHNBeEJRStjCMZ9Zfgfh7ghJQE=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/Simply-Recipes-Spinach-Frittata-Recipe-Lead-Shot-2b-4da2b79ee2b545078d58054626f03284.jpg" />
+              <img src="https://i.imgur.com/EZtSp3M.png" />
             </a>
             <div className="texto">
               <h3>NAme</h3>

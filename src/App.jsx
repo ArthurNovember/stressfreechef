@@ -45,10 +45,11 @@ const shuffleRecipes = () => {
 
 
 
-  const bestSortRecipes = () => {
-    const bestSorter = [...recipes].sort((a, b) => b.id - a.id);
-    setDisplayRecipes(bestSorter);
-  };
+const bestSortRecipes = () => {
+  const sorted = [...recipes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  setDisplayRecipes(sorted);
+};
+
 
   const favoriteRecipes = () => {
     const favoriteSetter = [...recipes].sort((a, b) => b.rating - a.rating);

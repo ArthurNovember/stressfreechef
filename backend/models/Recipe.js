@@ -28,7 +28,7 @@ const recipeSchema = new mongoose.Schema({
   ingredients: [{ type: String }], // ✅ Opraveno z 'ingredience'
   steps: [stepSchema],
   id: { type: Number }, // volitelně
-});
+},{ timestamps: true });
 
 // Vytvoření modelu
 const Recipe = mongoose.model('Recipe', recipeSchema);

@@ -1,28 +1,28 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 const userSchema = new mongoose.Schema({
-    username: {
+  username: {
     type: String,
     required: true,
     unique: true, // volitelné: zabrání duplicitám
     trim: true,
   },
-  
+
   email: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
   },
   password: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
 });
 
-userSchema.pre('save', async function (next) {
+userSchema.pre("save", async function (next) {
   const user = this;
   // pokud se heslo nemění, přeskoč hashování
-  if (!user.isModified('password')) return next();
+  if (!user.isModified("password")) return next();
   try {
     const salt = await bcrypt.genSalt(10); // síla hashe
     const hashedPassword = await bcrypt.hash(user.password, salt);
@@ -33,5 +33,5 @@ userSchema.pre('save', async function (next) {
   }
 });
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 module.exports = User;

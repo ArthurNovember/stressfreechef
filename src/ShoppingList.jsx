@@ -171,10 +171,122 @@ const ShoppingList = ({
               <option value="shop">Shop</option>
             </select>
           </div>
+
+          <div className="imgtext">
+            <Link to="/favoriteItems">
+              <img
+                src={obrazek}
+                onMouseEnter={() =>
+                  setObrazek("https://i.imgur.com/PwVAgWN.png")
+                }
+                onMouseLeave={() =>
+                  setObrazek("https://i.imgur.com/DmXZvGl.png")
+                }
+              ></img>
+            </Link>
+          </div>
         </div>
 
         <div className="shoppingList">
           <ol>
+            <li>
+              {" "}
+              <form className="addForm" onSubmit={handleSubmit}>
+                <input
+                  type="text"
+                  onChange={handleTextChange}
+                  value={text}
+                  list="itemSuggestions"
+                  className="addInput"
+                  placeholder="Add Item..."
+                />
+                <datalist id="itemSuggestions">
+                  {uniqueItemNames.map((itemName, index) => (
+                    <option value={itemName} />
+                  ))}
+                </datalist>
+                <div className="nadpisADropdown">
+                  <div className="buttonAndShopsInput">
+                    <button
+                      type="button"
+                      onClick={() => setIsDropdownOpenInput((prev) => !prev)}
+                      className="showShops"
+                    >
+                      {shop.length < 1 ? "Shops▾" : shop.join(", ")}
+                    </button>
+                    {isDropdownOpenInput && (
+                      <ul
+                        className="shopCheckboxListInput"
+                        style={{ zIndex: 9999 }}
+                      >
+                        {shopOptions.map((shopName, i) => (
+                          <li key={i}>
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={shop.includes(shopName)}
+                                onChange={() => {
+                                  const hasShop = shop.includes(shopName);
+                                  const updated = hasShop
+                                    ? shop.filter((s) => s !== shopName)
+                                    : [...shop, shopName];
+                                  setShop(updated);
+                                }}
+                              ></input>
+                              {shopName}
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteShop(shopName)}
+                            >
+                              ❌
+                            </button>
+                          </li>
+                        ))}
+                        <li className="addLi">
+                          <button
+                            type="button"
+                            className="add"
+                            onClick={() =>
+                              addingShop
+                                ? setAddingShop(false)
+                                : setAddingShop(true)
+                            }
+                          >
+                            Add Shop
+                          </button>
+                        </li>
+                        {addingShop && (
+                          <li>
+                            <input
+                              type="text"
+                              placeholder="New Shop"
+                              value={newShopName}
+                              onChange={(e) => setNewShopName(e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const trimmed = newShopName.trim();
+                                if (trimmed && !shopOptions.includes(trimmed)) {
+                                  setShopOptions([...shopOptions, trimmed]);
+                                }
+                                setNewShopName("");
+                                setAddingShop(false);
+                              }}
+                            >
+                              <span className="addText">+</span>
+                            </button>
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+
+                <input className="submit" type="submit" value="Send to list" />
+              </form>
+            </li>
             {sortedItems.map((item, index) => {
               const isFavorite = FavoriteNewItem.some(
                 (fav) => fav.text === item.text
@@ -301,108 +413,7 @@ const ShoppingList = ({
           </ol>
         </div>
       </div>
-      <div className="addItem">
-        <form onSubmit={handleSubmit}>
-          <h2>Add Item</h2>
-          <input
-            type="text"
-            onChange={handleTextChange}
-            value={text}
-            list="itemSuggestions"
-          />
-          <datalist id="itemSuggestions">
-            {uniqueItemNames.map((itemName, index) => (
-              <option value={itemName} />
-            ))}
-          </datalist>
-          <div className="nadpisADropdown">
-            <h2>Select Shop (optional)</h2>
-            <div className="buttonAndShopsInput">
-              <button
-                type="button"
-                onClick={() => setIsDropdownOpenInput((prev) => !prev)}
-                className="showShopsInput"
-              >
-                {shop.length < 1 ? "Shops▾" : shop.join(", ")}
-              </button>
-              {isDropdownOpenInput && (
-                <ul className="shopCheckboxListInput" style={{ zIndex: 9999 }}>
-                  {shopOptions.map((shopName, i) => (
-                    <li key={i}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={shop.includes(shopName)}
-                          onChange={() => {
-                            const hasShop = shop.includes(shopName);
-                            const updated = hasShop
-                              ? shop.filter((s) => s !== shopName)
-                              : [...shop, shopName];
-                            setShop(updated);
-                          }}
-                        ></input>
-                        {shopName}
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteShop(shopName)}
-                      >
-                        ❌
-                      </button>
-                    </li>
-                  ))}
-                  <li className="addLi">
-                    <button
-                      type="button"
-                      className="add"
-                      onClick={() =>
-                        addingShop ? setAddingShop(false) : setAddingShop(true)
-                      }
-                    >
-                      Add Shop
-                    </button>
-                  </li>
-                  {addingShop && (
-                    <li>
-                      <input
-                        type="text"
-                        placeholder="New Shop"
-                        value={newShopName}
-                        onChange={(e) => setNewShopName(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const trimmed = newShopName.trim();
-                          if (trimmed && !shopOptions.includes(trimmed)) {
-                            setShopOptions([...shopOptions, trimmed]);
-                          }
-                          setNewShopName("");
-                          setAddingShop(false);
-                        }}
-                      >
-                        <span className="addText">+</span>
-                      </button>
-                    </li>
-                  )}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          <input className="submit" type="submit" value="Send to list" />
-        </form>
-
-        <div className="imgtext">
-          <Link to="/favoriteItems">
-            <img
-              src={obrazek}
-              onMouseEnter={() => setObrazek("https://i.imgur.com/PwVAgWN.png")}
-              onMouseLeave={() => setObrazek("https://i.imgur.com/DmXZvGl.png")}
-            ></img>
-          </Link>
-        </div>
-      </div>
+      <div className="addItem"></div>
     </div>
   );
 };

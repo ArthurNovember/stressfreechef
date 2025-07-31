@@ -89,7 +89,7 @@ nav a {
 }
 
 nav a:hover {
-  background-color: darkred;
+  background-color: rgb(97, 1, 1);
 }
 
 section a {
@@ -102,7 +102,7 @@ section a {
 }
 
 section a:hover {
-  background-color: rgb(79, 20, 20);
+  background-color: rgb(66, 10, 10);
 }
 
 main input {

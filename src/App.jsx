@@ -10,7 +10,7 @@ import Recipe from "./Recipe";
 import ExploreRecipes from "./exploreRecipes";
 import MyRecipes from "./MyRecipes";
 import NewRecipe from "./NewRecipe";
-
+import AuthForm from "./AuthForm";
 
 
 function App() {
@@ -139,7 +139,7 @@ const bestSortRecipes = () => {
                 <Link to="/shopping-list">Shopping List</Link>
               </li>
               <li id="nav">
-                <Link to="/MyRecipes">My Profile</Link>
+                <Link to="/AuthForm">My Profile</Link>
               </li>
             </ul>
           </nav>
@@ -228,6 +228,8 @@ const bestSortRecipes = () => {
         <Route path="MyRecipes" element={<MyRecipes />} />
 
         <Route path="NewRecipe" element={<NewRecipe />} />
+
+        <Route path="AuthForm" element={<AuthForm />} />
       </Routes>
     </Router>
   );

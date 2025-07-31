@@ -1,0 +1,88 @@
+.FormContainer {
+    background-color: rgb(26, 26, 26);
+    max-width: 370px;
+    border-radius: 20px;
+    border: solid 2px black ;
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.2);
+margin-left: auto;
+margin-right: auto;
+padding-bottom: 20px;
+
+}
+
+.formStyleA {
+    width:47%;
+    border-radius: 0px;
+    background-color: rgb(46, 45, 45);
+    margin-top: 20px;
+    margin-left:1%;
+    margin-right: 0.5%;
+    border-radius: 8px;
+    
+}
+
+
+
+.formStyleB {
+    width:47%;
+    border-radius: 0px;
+    background-color: rgb(46, 45, 45);
+    margin-top: 20px;
+    margin-bottom:20px;
+    margin-right: 1%;
+    margin-left: 0.5%;
+    border-radius: 8px;
+}
+
+.formStyleA:hover {
+background-color: rgb(139, 14, 13);
+}
+
+.formStyleB:hover {
+background-color: rgb(139, 14, 13);
+}
+
+.formInput {
+    background-color: rgb(23, 23, 23);
+    border: black solid 1.5px;
+    margin-left: auto;
+    margin-right: auto; 
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.2);
+    width: 93%;
+    height: 33px;
+    
+}
+
+.labelWithInput label{
+    margin-left: 6px;
+    text-align: left;
+    margin-left: auto;
+    margin-right: auto; 
+    width: 93%;
+    color: rgb(196, 192, 192);
+
+
+}
+
+.labelWithInput {
+    display:flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin-bottom: 15px;
+
+
+}
+
+.labelWithInputs{
+display: flex;
+flex-direction: column;
+margin-left: auto;
+margin-right: auto;
+
+}
+
+.signup {
+    background-color: rgb(139, 14, 13);
+    width: 95%;
+    margin-top: 30px;
+}

@@ -29,6 +29,8 @@ app.use(cors());
 const recipesRouter = require('./routes/recipes');
 app.use('/api/recipes', recipesRouter);
 
+const authRoutes = require('./routes/auth');
+app.use('/api', authRoutes);
 
 
 app.get('/', (req, res) => {

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import AuthForm from "./AuthForm";
 
 const MyProfile = ({ userInfo }) => {
-  if (!userInfo) return <div>Načítám...</div>;
+  if (!userInfo) return <div>Loading...</div>;
   const handleLogout = () => {
     localStorage.removeItem("token"); // smaže token
     window.location.href = "/AuthForm"; // přesměruje na přihlášení
@@ -10,7 +10,7 @@ const MyProfile = ({ userInfo }) => {
 
   return (
     <div>
-      <h2>Vítej, {userInfo.username}!</h2>
+      <h2>Welcome, {userInfo.username}!</h2>
       <p>Email: {userInfo.email}</p>
       <button onClick={handleLogout}>Logout</button>
     </div>

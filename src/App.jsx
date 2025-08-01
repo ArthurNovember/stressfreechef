@@ -17,6 +17,35 @@ function App() {
   const [userInfo, setUserInfo] = useState(null); // 🎯 přidat stav pro uživatele
   const token = localStorage.getItem("token");
 
+  // 🧠 přidej v App.jsx
+  const verifyTokenAndSetUserInfo = async () => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const response = await fetch(
+          "https://stressfreecheff-backend.onrender.com/api/profile",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        const data = await response.json();
+        if (response.ok) {
+          setUserInfo(data.user);
+        } else {
+          localStorage.removeItem("token");
+          setUserInfo(null);
+        }
+      } catch (err) {
+        console.error("Chyba při ověřování tokenu:", err);
+        setUserInfo(null);
+      }
+    }
+  };
+
   useEffect(() => {
     // 🎯 ověření tokenu při načtení
     const checkToken = async () => {
@@ -265,14 +294,17 @@ function App() {
 
         <Route path="NewRecipe" element={<NewRecipe />} />
 
-        <Route path="AuthForm" element={<AuthForm />} />
+        <Route
+          path="AuthForm"
+          element={<AuthForm onLoginSuccess={verifyTokenAndSetUserInfo} />}
+        />
         <Route
           path="/myprofile"
           element={
-            userInfo ? ( // 🎯 zobraz profil pokud je user přihlášený
+            userInfo ? (
               <MyProfile userInfo={userInfo} />
             ) : (
-              <AuthForm />
+              <AuthForm onLoginSuccess={verifyTokenAndSetUserInfo} />
             )
           }
         />

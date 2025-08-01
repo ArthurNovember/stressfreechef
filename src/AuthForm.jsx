@@ -3,7 +3,7 @@ import "./AuthForm.css";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
-const AuthForm = () => {
+const AuthForm = ({ onLoginSuccess }) => {
   const [isSignUp, setIsSignUp] = useState(true);
   const [isLogin, setIsLogin] = useState(false);
   const [username, setUsername] = useState("");
@@ -14,7 +14,7 @@ const AuthForm = () => {
 
   const handleSignup = async () => {
     if (password !== confirmPassword) {
-      alert("Hesla se neshodují.");
+      alert("Passwords do not match.");
       return;
     }
 
@@ -33,14 +33,14 @@ const AuthForm = () => {
       const data = await response.json();
 
       if (response.ok) {
-        alert("Registrace proběhla úspěšně.");
+        alert("Registration was successful.");
         setIsSignUp(false); // Přepne tě na login
         setIsLogin(true);
       } else {
-        alert(data.error || "Chyba při registraci.");
+        alert(data.error || "Registration error.");
       }
     } catch (error) {
-      alert("Chyba při komunikaci se serverem.");
+      alert("Server communication error.");
     }
   };
 
@@ -60,14 +60,15 @@ const AuthForm = () => {
       const data = await response.json();
 
       if (response.ok) {
-        alert("Přihlášení úspěšné!");
-        localStorage.setItem("token", data.token); // 🎯 uloží token
-        navigate("/myprofile"); // 🎯 přesměruje na stránku s profilem
+        alert("Login successful!");
+        localStorage.setItem("token", data.token);
+        onLoginSuccess();
+        navigate("/myprofile"); // ✅ automatický přechod
       } else {
-        alert(data.error || "Chyba při přihlašování.");
+        alert(data.error || "Login error.");
       }
     } catch (error) {
-      alert("Chyba při komunikaci se serverem.");
+      alert("Server communication error.");
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./AuthForm.css";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const AuthForm = () => {
   const [isSignUp, setIsSignUp] = useState(true);
@@ -9,6 +10,7 @@ const AuthForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const navigate = useNavigate(); // 🎯 přidat pod useState
 
   const handleSignup = async () => {
     if (password !== confirmPassword) {
@@ -59,8 +61,8 @@ const AuthForm = () => {
 
       if (response.ok) {
         alert("Přihlášení úspěšné!");
-        localStorage.setItem("token", data.token); // uloží token
-        // případně redirect nebo změna stavu
+        localStorage.setItem("token", data.token); // 🎯 uloží token
+        navigate("/myprofile"); // 🎯 přesměruje na stránku s profilem
       } else {
         alert(data.error || "Chyba při přihlašování.");
       }

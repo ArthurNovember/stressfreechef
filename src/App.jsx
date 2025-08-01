@@ -11,9 +11,47 @@ import ExploreRecipes from "./exploreRecipes";
 import MyRecipes from "./MyRecipes";
 import NewRecipe from "./NewRecipe";
 import AuthForm from "./AuthForm";
-
+import MyProfile from "./MyProfile";
 
 function App() {
+  const [userInfo, setUserInfo] = useState(null); // 🎯 přidat stav pro uživatele
+  const token = localStorage.getItem("token");
+
+  useEffect(() => {
+    // 🎯 ověření tokenu při načtení
+    const checkToken = async () => {
+      if (token) {
+        try {
+          const response = await fetch(
+            "https://stressfreecheff-backend.onrender.com/api/profile",
+            {
+              // 🎯 ověřovací požadavek
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          const data = await response.json();
+
+          if (response.ok) {
+            setUserInfo(data.user); // 🎯 uloží info o uživateli
+          } else {
+            localStorage.removeItem("token"); // 🎯 smaže token, pokud neplatný
+            setUserInfo(null);
+          }
+        } catch (err) {
+          console.error("Chyba při ověřování tokenu:", err);
+          setUserInfo(null);
+        }
+      }
+    };
+
+    checkToken(); // 🎯 spustí ověření při načtení
+  }, []);
+
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -22,34 +60,32 @@ function App() {
   };
 
   const [displayRecipes, setDisplayRecipes] = useState([]);
-const [recipes, setRecipes] = useState([]);           // ✅ přidat tento stav
+  const [recipes, setRecipes] = useState([]); // ✅ přidat tento stav
 
-// Změň useEffect:
-useEffect(() => {
-  fetch("https://stressfreecheff-backend.onrender.com/api/recipes")
-    .then((response) => response.json())
-    .then((data) => {
-      setRecipes(data);           // ✅ Uložení do kompletního seznamu
-      setDisplayRecipes(data);    // ✅ Zobrazitelný seznam
-    })
-    .catch((error) => {
-      console.error("Chyba při načítání receptů:", error);
-    });
-}, []);
+  // Změň useEffect:
+  useEffect(() => {
+    fetch("https://stressfreecheff-backend.onrender.com/api/recipes")
+      .then((response) => response.json())
+      .then((data) => {
+        setRecipes(data); // ✅ Uložení do kompletního seznamu
+        setDisplayRecipes(data); // ✅ Zobrazitelný seznam
+      })
+      .catch((error) => {
+        console.error("Chyba při načítání receptů:", error);
+      });
+  }, []);
 
+  const shuffleRecipes = () => {
+    const shuffled = [...recipes].sort(() => Math.random() - 0.5);
+    setDisplayRecipes(shuffled);
+  };
 
-const shuffleRecipes = () => {
-  const shuffled = [...recipes].sort(() => Math.random() - 0.5); 
-  setDisplayRecipes(shuffled);
-};
-
-
-
-const bestSortRecipes = () => {
-  const sorted = [...recipes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  setDisplayRecipes(sorted);
-};
-
+  const bestSortRecipes = () => {
+    const sorted = [...recipes].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+    setDisplayRecipes(sorted);
+  };
 
   const favoriteRecipes = () => {
     const favoriteSetter = [...recipes].sort((a, b) => b.rating - a.rating);
@@ -139,7 +175,7 @@ const bestSortRecipes = () => {
                 <Link to="/shopping-list">Shopping List</Link>
               </li>
               <li id="nav">
-                <Link to="/AuthForm">My Profile</Link>
+                <Link to={token ? "/myprofile" : "/authform"}>MyProfile</Link>
               </li>
             </ul>
           </nav>
@@ -230,6 +266,16 @@ const bestSortRecipes = () => {
         <Route path="NewRecipe" element={<NewRecipe />} />
 
         <Route path="AuthForm" element={<AuthForm />} />
+        <Route
+          path="/myprofile"
+          element={
+            userInfo ? ( // 🎯 zobraz profil pokud je user přihlášený
+              <MyProfile userInfo={userInfo} />
+            ) : (
+              <AuthForm />
+            )
+          }
+        />
       </Routes>
     </Router>
   );

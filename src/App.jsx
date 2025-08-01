@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
+
 import "./App.css";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import ShoppingList from "./ShoppingList";
@@ -47,38 +46,7 @@ function App() {
   };
 
   useEffect(() => {
-    // 🎯 ověření tokenu při načtení
-    const checkToken = async () => {
-      if (token) {
-        try {
-          const response = await fetch(
-            "https://stressfreecheff-backend.onrender.com/api/profile",
-            {
-              // 🎯 ověřovací požadavek
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          const data = await response.json();
-
-          if (response.ok) {
-            setUserInfo(data.user); // 🎯 uloží info o uživateli
-          } else {
-            localStorage.removeItem("token"); // 🎯 smaže token, pokud neplatný
-            setUserInfo(null);
-          }
-        } catch (err) {
-          console.error("Chyba při ověřování tokenu:", err);
-          setUserInfo(null);
-        }
-      }
-    };
-
-    checkToken(); // 🎯 spustí ověření při načtení
+    verifyTokenAndSetUserInfo(); // volá jednotnou funkci
   }, []);
 
   const scrollToTop = () => {

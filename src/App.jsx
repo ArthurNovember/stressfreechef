@@ -103,6 +103,7 @@ function App() {
   //Shopping List!!!!!!!!!!!!!!!!!!!!!
   const [text, setText] = useState("");
   const [shop, setShop] = useState([]);
+  const [newItem, setNewItem] = useState([]);
   useEffect(() => {
     const fetchShoppingList = async () => {
       const token = localStorage.getItem("token");

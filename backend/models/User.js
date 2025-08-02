@@ -17,6 +17,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+
+  shoppingList: [
+    {
+      text: String,
+      shop: [String],
+      checked: { type: Boolean, default: false },
+    },
+  ],
 });
 
 userSchema.pre("save", async function (next) {

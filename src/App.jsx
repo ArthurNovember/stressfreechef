@@ -103,11 +103,36 @@ function App() {
   //Shopping List!!!!!!!!!!!!!!!!!!!!!
   const [text, setText] = useState("");
   const [shop, setShop] = useState([]);
-  const [newItem, setNewItem] = useState([]);
-  const addItem = (item) => {
-    setNewItem((prevItem) => {
-      return [...prevItem, item];
-    });
+  useEffect(() => {
+    const fetchShoppingList = async () => {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        "https://stressfreecheff-backend.onrender.com/api/shopping-list",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data = await res.json();
+      setNewItem(data);
+    };
+    if (token) fetchShoppingList();
+  }, []);
+
+  const addItem = async (item) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(
+      "https://stressfreecheff-backend.onrender.com/api/shopping-list",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(item),
+      }
+    );
+    const updatedList = await res.json();
+    setNewItem(updatedList);
   };
 
   //FavoriteItems!!!!!!!!!!!!!!!!!!!!!!!!!!!

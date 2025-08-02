@@ -49,6 +49,34 @@ function App() {
     verifyTokenAndSetUserInfo(); // volá jednotnou funkci
   }, []);
 
+  const fetchShoppingList = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await fetch(
+        "https://stressfreecheff-backend.onrender.com/api/shopping-list",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        setNewItem(data);
+      } else {
+        console.error("Chyba při načítání shopping listu:", await res.text());
+      }
+    } catch (err) {
+      console.error("Chyba při fetchi shopping listu:", err);
+    }
+  };
+
+  const handleLoginSuccess = async () => {
+    await verifyTokenAndSetUserInfo();
+    await fetchShoppingList(); // 💥 teď se shopping list načte automaticky
+  };
+
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -290,15 +318,16 @@ function App() {
 
         <Route
           path="AuthForm"
-          element={<AuthForm onLoginSuccess={verifyTokenAndSetUserInfo} />}
+          element={<AuthForm onLoginSuccess={handleLoginSuccess} />}
         />
+
         <Route
           path="/myprofile"
           element={
             userInfo ? (
               <MyProfile userInfo={userInfo} />
             ) : (
-              <AuthForm onLoginSuccess={verifyTokenAndSetUserInfo} />
+              <AuthForm onLoginSuccess={handleLoginSuccess} />
             )
           }
         />

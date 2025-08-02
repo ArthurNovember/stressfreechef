@@ -25,6 +25,10 @@ const userSchema = new mongoose.Schema({
       checked: { type: Boolean, default: false },
     },
   ],
+  shopOptions: {
+    type: [String],
+    default: ["Albert", "Lidl"],
+  },
 });
 
 userSchema.pre("save", async function (next) {

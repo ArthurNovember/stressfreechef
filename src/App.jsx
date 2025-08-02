@@ -49,6 +49,19 @@ function App() {
     verifyTokenAndSetUserInfo(); // volá jednotnou funkci
   }, []);
 
+  const fetchShopOptions = async () => {
+    const res = await fetch(
+      "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    const data = await res.json();
+    setShopOptions(data);
+  };
+
   const fetchShoppingList = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -107,6 +120,7 @@ function App() {
   const handleLoginSuccess = async () => {
     await verifyTokenAndSetUserInfo();
     await fetchShoppingList(); // 💥 teď se shopping list načte automaticky
+    await fetchShopOptions(); // 🎯 přidáno
   };
 
   const scrollToTop = () => {

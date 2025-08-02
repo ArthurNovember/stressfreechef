@@ -41,4 +41,18 @@ router.delete("/:index", authenticateToken, async (req, res) => {
   res.json(user.shoppingList);
 });
 
+// GET user's shop options
+router.get("/shop-options", authenticateToken, async (req, res) => {
+  const user = await User.findById(req.user.id);
+  res.json(user.shopOptions);
+});
+
+// PATCH user's shop options
+router.patch("/shop-options", authenticateToken, async (req, res) => {
+  const user = await User.findById(req.user.id);
+  user.shopOptions = req.body; // expects array of strings
+  await user.save();
+  res.json(user.shopOptions);
+});
+
 module.exports = router;

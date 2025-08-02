@@ -259,10 +259,29 @@ const ShoppingList = ({
                             />
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={async () => {
                                 const trimmed = newShopName.trim();
                                 if (trimmed && !shopOptions.includes(trimmed)) {
-                                  setShopOptions([...shopOptions, trimmed]);
+                                  const updatedShops = [
+                                    ...shopOptions,
+                                    trimmed,
+                                  ];
+                                  setShopOptions(updatedShops);
+
+                                  // 🎯 PATCH na server
+                                  await fetch(
+                                    "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
+                                    {
+                                      method: "PATCH",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                        Authorization: `Bearer ${localStorage.getItem(
+                                          "token"
+                                        )}`,
+                                      },
+                                      body: JSON.stringify(updatedShops),
+                                    }
+                                  );
                                 }
                                 setNewShopName("");
                                 setAddingShop(false);

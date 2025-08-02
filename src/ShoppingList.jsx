@@ -18,6 +18,8 @@ const ShoppingList = ({
   shopOptions,
   setShopOptions,
   uniqueItemNames,
+  updateShoppingItem,
+  deleteShoppingItem,
 }) => {
   const handleTextChange = (event) => {
     setText(event.target.value);
@@ -32,27 +34,20 @@ const ShoppingList = ({
     setText("");
   };
 
-  const deleteItem = (indexToDelete) => {
-    setNewItem((prevItems) =>
-      prevItems.filter((item, index) => index !== indexToDelete)
-    );
+  const deleteItem = async (index) => {
+    await deleteShoppingItem(index);
   };
 
   const [obrazek, setObrazek] = useState("https://i.imgur.com/DmXZvGl.png");
 
-  const handleToggleShop = (index, shop) => {
-    setNewItem((prevItems) =>
-      prevItems.map((item, i) => {
-        if (i !== index) return item;
+  const handleToggleShop = async (index, shop) => {
+    const item = newItem[index];
+    const hasShop = item.shop.includes(shop);
+    const updatedShop = hasShop
+      ? item.shop.filter((s) => s !== shop)
+      : [...item.shop, shop];
 
-        const hasShop = item.shop.includes(shop);
-        const updatedShop = hasShop
-          ? item.shop.filter((s) => s !== shop)
-          : [...item.shop, shop];
-
-        return { ...item, shop: updatedShop };
-      })
-    );
+    await updateShoppingItem(index, { shop: updatedShop });
   };
 
   const [addingShop, setAddingShop] = useState(false);
@@ -116,13 +111,11 @@ const ShoppingList = ({
   }
 
   //checkbox
-  const toggleChecked = (itemText) => {
-    setNewItem((prevItems) =>
-      prevItems.map((item) =>
-        item.text === itemText ? { ...item, checked: !item.checked } : item
-      )
-    );
+  const toggleChecked = async (itemText, index) => {
+    const newChecked = !newItem[index].checked;
+    await updateShoppingItem(index, { checked: newChecked });
   };
+
   return (
     <div className="celek">
       <div className="filterAndShoppingList">
@@ -298,7 +291,7 @@ const ShoppingList = ({
                     <input
                       type="checkbox"
                       checked={item.checked}
-                      onChange={() => toggleChecked(item.text)}
+                      onChange={() => toggleChecked(item.text, index)}
                     />
                     <span
                       className="itemText"

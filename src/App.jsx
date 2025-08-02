@@ -72,6 +72,38 @@ function App() {
     }
   };
 
+  const updateShoppingItem = async (index, updatedFields) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(
+      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${index}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedFields),
+      }
+    );
+    const updatedList = await res.json();
+    setNewItem(updatedList);
+  };
+
+  const deleteShoppingItem = async (index) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(
+      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${index}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    const updatedList = await res.json();
+    setNewItem(updatedList);
+  };
+
   const handleLoginSuccess = async () => {
     await verifyTokenAndSetUserInfo();
     await fetchShoppingList(); // 💥 teď se shopping list načte automaticky
@@ -268,6 +300,8 @@ function App() {
               shopOptions={shopOptions}
               setShopOptions={setShopOptions}
               uniqueItemNames={uniqueItemNames}
+              updateShoppingItem={updateShoppingItem} // ✅ přidáno
+              deleteShoppingItem={deleteShoppingItem} // ✅ přidáno
             />
           }
         />

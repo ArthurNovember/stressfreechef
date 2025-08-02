@@ -1,8 +1,5 @@
-import React, { useEffect, useState } from "react";
-import AuthForm from "./AuthForm";
-
 const MyProfile = ({ userInfo }) => {
-  if (!userInfo) return <div>Loading...</div>;
+  if (!userInfo) return <div>Loading... </div>;
   const handleLogout = () => {
     localStorage.removeItem("token"); // smaže token
     window.location.href = "/AuthForm"; // přesměruje na přihlášení

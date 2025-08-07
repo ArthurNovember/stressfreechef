@@ -16,6 +16,7 @@ router.post("/", authenticateToken, async (req, res) => {
   const user = await User.findById(req.user._id);
   user.shoppingList.push({ text, shop, checked: false });
   await user.save();
+  await user.populate("shoppingList.shop"); // ✅ Tohle je důležité
   res.json(user.shoppingList);
 });
 
@@ -30,6 +31,7 @@ router.patch("/:index", authenticateToken, async (req, res) => {
   if (req.body.shop) item.shop = req.body.shop;
 
   await user.save();
+  await user.populate("shoppingList.shop"); // ✅ DŮLEŽITÉ
   res.json(user.shoppingList);
 });
 
@@ -39,6 +41,7 @@ router.delete("/:index", authenticateToken, async (req, res) => {
   const { index } = req.params;
   user.shoppingList.splice(index, 1);
   await user.save();
+  await user.populate("shoppingList.shop"); // ✅ Tohle je důležité
   res.json(user.shoppingList);
 });
 

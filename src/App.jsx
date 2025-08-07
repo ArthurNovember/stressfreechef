@@ -49,18 +49,23 @@ function App() {
     verifyTokenAndSetUserInfo(); // volá jednotnou funkci
   }, []);
 
+  //Shoppy
+  const [shopOptions, setShopOptions] = useState(["Albert", "Lidl"]);
   const fetchShopOptions = async () => {
+    const token = localStorage.getItem("token");
     const res = await fetch(
       "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
       {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       }
     );
     const data = await res.json();
-    setShopOptions(data);
+    setShopOptions(data); // <-- celé objekty!
   };
+  useEffect(() => {
+    fetchShopOptions();
+    if (token) fetchShopOptions();
+  }, []);
 
   const fetchShoppingList = async () => {
     const token = localStorage.getItem("token");
@@ -178,6 +183,7 @@ function App() {
   const [text, setText] = useState("");
   const [shop, setShop] = useState([]);
   const [newItem, setNewItem] = useState([]);
+
   useEffect(() => {
     const fetchShoppingList = async () => {
       const token = localStorage.getItem("token");
@@ -249,8 +255,6 @@ function App() {
   const id = Date.now(); // Unikátní ID pro každou položku
   const uniqueItemNames = [...new Set(newItem.map((item) => item.text))];
 
-  //Shoppy
-  const [shopOptions, setShopOptions] = useState(["Albert", "Lidl"]);
   return (
     <Router>
       <div>

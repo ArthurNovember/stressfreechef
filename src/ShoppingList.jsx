@@ -122,22 +122,23 @@ const ShoppingList = ({
         <div className="filterAndSort">
           <div className="filterShops">
             <h3>Shop:</h3>
-            {shopOptions.map((shopName, i) => (
-              <label key={i}>
+            {shopOptions.map(({ _id, name }) => (
+              <label key={_id}>
                 <input
                   type="checkbox"
-                  checked={filterShops.includes(shopName)}
+                  checked={filterShops.includes(_id)}
                   onChange={() => {
                     setFilterShops((prev) =>
-                      prev.includes(shopName)
-                        ? prev.filter((s) => s !== shopName)
-                        : [...prev, shopName]
+                      prev.includes(_id)
+                        ? prev.filter((s) => s !== _id)
+                        : [...prev, _id]
                     );
                   }}
                 />
-                {shopName}
+                {name}
               </label>
             ))}
+
             <label className="noShop">
               <input
                 type="checkbox"
@@ -205,32 +206,41 @@ const ShoppingList = ({
                       onClick={() => setIsDropdownOpenInput((prev) => !prev)}
                       className="showShops"
                     >
-                      {shop.length < 1 ? "Shops▾" : shop.join(", ")}
+                      {shop.length < 1
+                        ? "Shops▾"
+                        : shop
+                            .map((id) => {
+                              const found = shopOptions.find(
+                                (s) => String(s._id) === String(id)
+                              );
+                              return found ? found.name : "Unknown";
+                            })
+                            .join(", ")}
                     </button>
                     {isDropdownOpenInput && (
                       <ul
                         className="shopCheckboxListInput"
                         style={{ zIndex: 9999 }}
                       >
-                        {shopOptions.map((shopName, i) => (
-                          <li key={i}>
+                        {shopOptions.map(({ _id, name }) => (
+                          <li key={_id}>
                             <label>
                               <input
                                 type="checkbox"
-                                checked={shop.includes(shopName)}
+                                checked={shop.includes(_id)}
                                 onChange={() => {
-                                  const hasShop = shop.includes(shopName);
+                                  const hasShop = shop.includes(_id);
                                   const updated = hasShop
-                                    ? shop.filter((s) => s !== shopName)
-                                    : [...shop, shopName];
+                                    ? shop.filter((s) => s !== _id)
+                                    : [...shop, _id];
                                   setShop(updated);
                                 }}
-                              ></input>
-                              {shopName}
+                              />
+                              {name}
                             </label>
                             <button
                               type="button"
-                              onClick={() => handleDeleteShop(shopName)}
+                              onClick={() => handleDeleteShop(_id)}
                             >
                               ❌
                             </button>
@@ -240,15 +250,12 @@ const ShoppingList = ({
                           <button
                             type="button"
                             className="add"
-                            onClick={() =>
-                              addingShop
-                                ? setAddingShop(false)
-                                : setAddingShop(true)
-                            }
+                            onClick={() => setAddingShop((prev) => !prev)}
                           >
                             Add Shop
                           </button>
                         </li>
+
                         {addingShop && (
                           <li>
                             <input
@@ -261,27 +268,28 @@ const ShoppingList = ({
                               type="button"
                               onClick={async () => {
                                 const trimmed = newShopName.trim();
-                                if (trimmed && !shopOptions.includes(trimmed)) {
-                                  const updatedShops = [
-                                    ...shopOptions,
-                                    trimmed,
-                                  ];
-                                  setShopOptions(updatedShops);
-
-                                  // 🎯 PATCH na server
-                                  await fetch(
+                                if (
+                                  trimmed &&
+                                  !shopOptions.some(
+                                    (shop) => shop.name === trimmed
+                                  )
+                                ) {
+                                  const response = await fetch(
                                     "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
                                     {
-                                      method: "PATCH",
+                                      method: "POST",
                                       headers: {
                                         "Content-Type": "application/json",
                                         Authorization: `Bearer ${localStorage.getItem(
                                           "token"
                                         )}`,
                                       },
-                                      body: JSON.stringify(updatedShops),
+                                      body: JSON.stringify({ name: trimmed }),
                                     }
                                   );
+
+                                  const newShop = await response.json();
+                                  setShopOptions((prev) => [...prev, newShop]);
                                 }
                                 setNewShopName("");
                                 setAddingShop(false);
@@ -331,9 +339,13 @@ const ShoppingList = ({
                       className="showShops"
                     >
                       <span>
-                        {item.shop.length > 0
-                          ? ` ${item.shop.join(", ")}`
-                          : "Shops▾"}
+                        <span>
+                          {item.shop.length > 0
+                            ? ` ${item.shop
+                                .map((shopObj) => shopObj.name)
+                                .join(", ")}`
+                            : "Shops▾"}
+                        </span>
                       </span>
                     </button>
                     {isOpen && (

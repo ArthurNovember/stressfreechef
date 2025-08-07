@@ -21,14 +21,10 @@ const userSchema = new mongoose.Schema({
   shoppingList: [
     {
       text: String,
-      shop: [String],
+      shop: [{ type: mongoose.Schema.Types.ObjectId, ref: "Shop" }],
       checked: { type: Boolean, default: false },
     },
   ],
-  shopOptions: {
-    type: [String],
-    default: ["Albert", "Lidl"],
-  },
 });
 
 userSchema.pre("save", async function (next) {

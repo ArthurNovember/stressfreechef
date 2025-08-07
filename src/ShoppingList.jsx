@@ -34,22 +34,27 @@ const ShoppingList = ({
     setText("");
   };
 
-  const deleteItem = async (index) => {
-    await deleteShoppingItem(index);
+  const deleteItem = async (itemId) => {
+    await deleteShoppingItem(itemId);
   };
 
   const [obrazek, setObrazek] = useState("https://i.imgur.com/DmXZvGl.png");
 
-  const handleToggleShop = async (index, shopId) => {
-    const item = newItem[index];
-    const currentShops = item.shop.map((s) => (s._id ? s._id : s));
-    const hasShop = currentShops.includes(shopId);
+  const handleToggleShop = async (itemId, shopId) => {
+    const item = newItem.find((i) => i._id === itemId);
+    if (!item) return;
 
-    const updatedShop = hasShop
-      ? currentShops.filter((id) => id !== shopId)
-      : [...currentShops, shopId];
+    const shopAlreadySelected = item.shop.some(
+      (s) => String(s._id) === String(shopId)
+    );
 
-    await updateShoppingItem(index, { shop: updatedShop });
+    const updatedShops = shopAlreadySelected
+      ? item.shop
+          .filter((s) => String(s._id) !== String(shopId))
+          .map((s) => s._id)
+      : [...item.shop.map((s) => s._id), shopId];
+
+    await updateShoppingItem(itemId, { shop: updatedShops });
   };
 
   const [addingShop, setAddingShop] = useState(false);
@@ -109,9 +114,9 @@ const ShoppingList = ({
   }
 
   //checkbox
-  const toggleChecked = async (itemText, index) => {
-    const newChecked = !newItem[index].checked;
-    await updateShoppingItem(index, { checked: newChecked });
+  const toggleChecked = async (_id, currentChecked) => {
+    const newChecked = !currentChecked;
+    await updateShoppingItem(_id, { checked: newChecked });
   };
 
   return (
@@ -316,8 +321,9 @@ const ShoppingList = ({
                     <input
                       type="checkbox"
                       checked={item.checked}
-                      onChange={() => toggleChecked(item.text, index)}
+                      onChange={() => toggleChecked(item._id, item.checked)}
                     />
+
                     <span
                       className="itemText"
                       style={{
@@ -357,9 +363,10 @@ const ShoppingList = ({
                                   (s) => String(s._id) === String(shop._id)
                                 )}
                                 onChange={() =>
-                                  handleToggleShop(index, shop._id)
-                                }
+                                  handleToggleShop(item._id, shop._id)
+                                } // ✅ změna tady
                               />
+
                               {shop.name}
                             </label>
                             <button
@@ -445,10 +452,10 @@ const ShoppingList = ({
                   <button
                     className="deleteItem"
                     onClick={() => {
-                      deleteItem(index);
+                      deleteItem(item._id);
                     }}
                   >
-                    <i class="fas fa-times"></i>
+                    <i className="fas fa-times"></i>
                   </button>
                 </li>
               );

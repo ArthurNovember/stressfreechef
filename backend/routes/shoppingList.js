@@ -21,28 +21,46 @@ router.post("/", authenticateToken, async (req, res) => {
 });
 
 // PATCH toggle check or update shop
-router.patch("/:index", authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
-  const { index } = req.params;
-  const item = user.shoppingList[index];
-  if (!item) return res.status(404).json({ error: "Item not found" });
+router.patch("/:itemId", authenticateToken, async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-  if (req.body.hasOwnProperty("checked")) item.checked = req.body.checked;
-  if (req.body.shop) item.shop = req.body.shop;
+    const item = user.shoppingList.id(itemId);
+    if (!item) return res.status(404).json({ error: "Item not found" });
 
-  await user.save();
-  await user.populate("shoppingList.shop"); // ✅ DŮLEŽITÉ
-  res.json(user.shoppingList);
+    // ✅ Aktualizuj hodnoty, které jsou povoleny
+    if (req.body.hasOwnProperty("checked")) item.checked = req.body.checked;
+    if (req.body.shop) item.shop = req.body.shop;
+
+    await user.save();
+    await user.populate("shoppingList.shop"); // důležité pro názvy
+
+    res.json(user.shoppingList);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // DELETE item from shopping list
-router.delete("/:index", authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
-  const { index } = req.params;
-  user.shoppingList.splice(index, 1);
-  await user.save();
-  await user.populate("shoppingList.shop"); // ✅ Tohle je důležité
-  res.json(user.shoppingList);
+// routes/shoppingList.js
+router.delete("/:itemId", authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const { itemId } = req.params;
+    user.shoppingList = user.shoppingList.filter(
+      (i) => String(i._id) !== String(itemId)
+    );
+
+    await user.save();
+    await user.populate("shoppingList.shop"); // ⬅️ DŮLEŽITÉ
+    res.json(user.shoppingList); // ⬅️ teď vrací objekty se jmény
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.get("/shop-options", authenticateToken, async (req, res) => {

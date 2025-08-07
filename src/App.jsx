@@ -90,27 +90,27 @@ function App() {
     }
   };
 
-  const updateShoppingItem = async (index, updatedFields) => {
+  const updateShoppingItem = async (itemId, updates) => {
     const token = localStorage.getItem("token");
     const res = await fetch(
-      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${index}`,
+      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${itemId}`,
       {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(updatedFields),
+        body: JSON.stringify(updates),
       }
     );
     const updatedList = await res.json();
     setNewItem(updatedList);
   };
 
-  const deleteShoppingItem = async (index) => {
+  const deleteShoppingItem = async (itemId) => {
     const token = localStorage.getItem("token");
     const res = await fetch(
-      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${index}`,
+      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${itemId}`,
       {
         method: "DELETE",
         headers: {

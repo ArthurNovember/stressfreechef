@@ -86,4 +86,25 @@ router.post("/shop-options", authenticateToken, async (req, res) => {
   }
 });
 
+// DELETE shop option
+router.delete("/shop-options/:id", authenticateToken, async (req, res) => {
+  const shopId = req.params.id;
+  const userId = req.user._id;
+
+  try {
+    // 🧼 1) Smaž shop z kolekce Shop
+    await Shop.deleteOne({ _id: shopId, owner: userId });
+
+    // 🧼 2) Odeber tento shop z každé položky shoppingList
+    await User.updateMany(
+      { _id: userId },
+      { $pull: { "shoppingList.$[].shop": shopId } }
+    );
+
+    res.json({ message: "Shop deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

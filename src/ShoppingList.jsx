@@ -60,14 +60,29 @@ const ShoppingList = ({
   const [addingShop, setAddingShop] = useState(false);
   const [newShopName, setNewShopName] = useState("");
 
-  const handleDeleteShop = (shopToDelete) => {
-    setShopOptions((prev) => prev.filter((s) => s !== shopToDelete));
-    setNewItem((prevItems) =>
-      prevItems.map((item) => ({
-        ...item,
-        shop: item.shop.filter((s) => s !== shopToDelete),
-      }))
-    );
+  const handleDeleteShop = async (shopToDeleteId) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await fetch(
+        `https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options/${shopToDeleteId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      // 🧼 Lokálně taky smaž (aby se UI hned aktualizovalo)
+      setShopOptions((prev) => prev.filter((s) => s._id !== shopToDeleteId));
+      setNewItem((prevItems) =>
+        prevItems.map((item) => ({
+          ...item,
+          shop: item.shop.filter((s) => s._id !== shopToDeleteId),
+        }))
+      );
+    } catch (err) {
+      console.error("Chyba při mazání shopu:", err);
+    }
   };
 
   const [isDropdownOpen, setIsDropDownOpen] = useState({});

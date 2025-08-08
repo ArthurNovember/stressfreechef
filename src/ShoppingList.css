@@ -35,8 +35,8 @@
 
 .celek {
   gap: 40px; /* mezera mezi sloupci */
-  margin-left: 50px;
-  margin-right: 50px;
+  /*margin-left: 50px;
+  margin-right: 50px; */
 }
 
 .imgtext img {
@@ -179,7 +179,7 @@
   margin: 0;
   top: 100%;
   left: 0;
-  margin-left: 20px;
+  margin-left: 25px;
 }
 
 .shopCheckboxListInput li {
@@ -210,10 +210,6 @@
 .shopCheckboxListInput input {
   width: auto;
   height: auto;
-}
-
-.filterAndShoppingList {
-  margin-right: 20px;
 }
 
 .filterShops {

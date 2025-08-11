@@ -16,7 +16,7 @@ function App() {
   const [userInfo, setUserInfo] = useState(null); // 🎯 přidat stav pro uživatele
   const token = localStorage.getItem("token");
 
-  // 🧠 přidej v App.jsx
+  // 🧠 ověření tokenu
   const verifyTokenAndSetUserInfo = async () => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -66,67 +66,6 @@ function App() {
     fetchShopOptions();
     if (token) fetchShopOptions();
   }, []);
-
-  const fetchShoppingList = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      const res = await fetch(
-        "https://stressfreecheff-backend.onrender.com/api/shopping-list",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (res.ok) {
-        const data = await res.json();
-        setNewItem(data);
-      } else {
-        console.error("Chyba při načítání shopping listu:", await res.text());
-      }
-    } catch (err) {
-      console.error("Chyba při fetchi shopping listu:", err);
-    }
-  };
-
-  const updateShoppingItem = async (itemId, updates) => {
-    const token = localStorage.getItem("token");
-    const res = await fetch(
-      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${itemId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updates),
-      }
-    );
-    const updatedList = await res.json();
-    setNewItem(updatedList);
-  };
-
-  const deleteShoppingItem = async (itemId) => {
-    const token = localStorage.getItem("token");
-    const res = await fetch(
-      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${itemId}`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    const updatedList = await res.json();
-    setNewItem(updatedList);
-  };
-
-  const handleLoginSuccess = async () => {
-    await verifyTokenAndSetUserInfo();
-    await fetchShoppingList(); // 💥 teď se shopping list načte automaticky
-    await fetchShopOptions(); // 🎯 přidáno
-  };
 
   const scrollToTop = () => {
     window.scrollTo({
@@ -184,20 +123,45 @@ function App() {
   const [shop, setShop] = useState([]);
   const [newItem, setNewItem] = useState([]);
 
-  useEffect(() => {
-    const fetchShoppingList = async () => {
-      const token = localStorage.getItem("token");
+  async function fetchShoppingList() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      // nepřihlášený uživatel → nic nenačítej
+      setNewItem([]);
+      return;
+    }
+
+    try {
       const res = await fetch(
         "https://stressfreecheff-backend.onrender.com/api/shopping-list",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      if (!res.ok) {
+        console.error(
+          "Načítání shopping listu FAIL:",
+          res.status,
+          await res.text()
+        );
+        return;
+      }
+
       const data = await res.json();
       setNewItem(data);
-    };
-    if (token) fetchShoppingList();
+    } catch (err) {
+      console.error("Chyba při fetchi shopping listu:", err);
+    }
+  }
+
+  useEffect(() => {
+    fetchShoppingList();
   }, []);
+
+  const handleLoginSuccess = async () => {
+    await verifyTokenAndSetUserInfo();
+    await fetchShoppingList(); // 💥 teď se shopping list načte automaticky
+    await fetchShopOptions(); // 🎯 přidáno
+  };
 
   const addItem = async (item) => {
     const token = localStorage.getItem("token");
@@ -210,6 +174,38 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(item),
+      }
+    );
+    const updatedList = await res.json();
+    setNewItem(updatedList);
+  };
+
+  const updateShoppingItem = async (itemId, updates) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(
+      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${itemId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      }
+    );
+    const updatedList = await res.json();
+    setNewItem(updatedList);
+  };
+
+  const deleteShoppingItem = async (itemId) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(
+      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${itemId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
     );
     const updatedList = await res.json();
@@ -270,7 +266,7 @@ function App() {
                 <Link to="/ExploreRecipes">Explore Recipes</Link>
               </li>
               <li>
-                <Link to="/MyRecipes">My Recipes</Link>
+                <Link to="/NewRecipe">Add Recipe</Link>
               </li>
               <li>
                 <Link to="/shopping-list">Shopping List</Link>

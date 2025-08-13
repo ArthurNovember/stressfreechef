@@ -50,21 +50,29 @@ function App() {
   }, []);
 
   //Shoppy
-  const [shopOptions, setShopOptions] = useState(["Albert", "Lidl"]);
+  const [shopOptions, setShopOptions] = useState([]);
+
   const fetchShopOptions = async () => {
     const token = localStorage.getItem("token");
-    const res = await fetch(
-      "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-    const data = await res.json();
-    setShopOptions(data); // <-- celé objekty!
+    if (!token) {
+      setShopOptions([]);
+      return;
+    } // guard pro nepřihlášené
+
+    try {
+      const res = await fetch(
+        "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) throw new Error(await res.text());
+      setShopOptions(await res.json());
+    } catch (e) {
+      console.error("Shop options FAIL:", e);
+    }
   };
+
   useEffect(() => {
-    fetchShopOptions();
-    if (token) fetchShopOptions();
+    fetchShopOptions(); // jen jednou
   }, []);
 
   const scrollToTop = () => {

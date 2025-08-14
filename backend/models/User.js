@@ -25,6 +25,13 @@ const userSchema = new mongoose.Schema({
       checked: { type: Boolean, default: false },
     },
   ],
+
+  favoriteItems: [
+    {
+      text: String,
+      shop: [{ type: mongoose.Schema.Types.ObjectId, ref: "Shop" }],
+    },
+  ],
 });
 
 userSchema.pre("save", async function (next) {

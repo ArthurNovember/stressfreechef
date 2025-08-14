@@ -47,6 +47,9 @@ app.use((err, req, res, next) => {
 const shoppingListRouter = require("./routes/shoppingList");
 app.use("/api/shopping-list", shoppingListRouter);
 
+const favoritesRouter = require("./routes/favorites");
+app.use("/api/favorites", favoritesRouter);
+
 app.listen(PORT, () => {
   console.log(`✅ Server běží na portu ${PORT}`);
 });

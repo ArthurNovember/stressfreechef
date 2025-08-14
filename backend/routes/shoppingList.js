@@ -98,7 +98,12 @@ router.delete("/shop-options/:id", authenticateToken, async (req, res) => {
     // 🧼 2) Odeber tento shop z každé položky shoppingList
     await User.updateMany(
       { _id: userId },
-      { $pull: { "shoppingList.$[].shop": shopId } }
+      {
+        $pull: {
+          "shoppingList.$[].shop": shopId,
+          "favoriteItems.$[].shop": shopId,
+        },
+      }
     );
 
     res.json({ message: "Shop deleted" });

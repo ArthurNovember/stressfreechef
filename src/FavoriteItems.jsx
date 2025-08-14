@@ -10,47 +10,65 @@ const FavoriteItems = ({
   handleFavoriteText,
   FavoriteShop,
   setFavoriteShop,
-  handleFavoriteShop,
   addFavoriteItem,
   addItem,
   deleteFavoriteItem,
   shopOptions,
   setShopOptions,
-  ShopOptions,
   uniqueItemNames,
+  updateFavoriteItem,
 }) => {
   //funkce, co se spustí po submitu
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    addFavoriteItem({ text: FavoriteText, shop: FavoriteShop });
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const uniqueIds = [...new Set(FavoriteShop)]; // FavoriteShop = pole _id
+    addFavoriteItem({ text: FavoriteText, shop: uniqueIds });
     setFavoriteText("");
+    setFavoriteShop([]);
   };
+
   const [isDropdownOpenFavorite, setIsDropdownOpenFavorite] = useState(false);
   const [addingShop, setAddingShop] = useState(false);
   const [newShopName, setNewShopName] = useState("");
-  const handleDeleteShop = (shopToDelete) => {
-    setShopOptions((prev) => prev.filter((s) => s !== shopToDelete));
-    setFavoriteNewItem((prevItems) =>
-      prevItems.map((item) => ({
-        ...item,
-        shop: item.shop.filter((s) => s !== shopToDelete),
-      }))
-    );
+
+  const handleDeleteShop = async (shopToDeleteId) => {
+    try {
+      await fetch(
+        `https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options/${shopToDeleteId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      // UI update:
+      setShopOptions((prev) =>
+        prev.filter((s) => String(s._id) !== String(shopToDeleteId))
+      );
+      setFavoriteNewItem((prev) =>
+        prev.map((item) => ({
+          ...item,
+          shop: (item.shop || []).filter(
+            (s) => String(s._id) !== String(shopToDeleteId)
+          ),
+        }))
+      );
+      setFavoriteShop((prev) =>
+        prev.filter((id) => String(id) !== String(shopToDeleteId))
+      );
+    } catch (err) {
+      console.error("Chyba při mazání shopu:", err);
+    }
   };
 
-  const handleToggleShop = (index, shop) => {
-    setFavoriteNewItem((prevItems) =>
-      prevItems.map((item, i) => {
-        if (i !== index) return item;
+  const handleToggleShop = (index, shopId) => {
+    const item = FavoriteNewItem[index];
+    const currentIds = (item.shop || []).map((s) => s._id);
+    const has = currentIds.some((id) => String(id) === String(shopId));
+    const nextIds = has
+      ? currentIds.filter((id) => String(id) !== String(shopId))
+      : [...currentIds, shopId];
 
-        const hasShop = item.shop.includes(shop);
-        const updatedShop = hasShop
-          ? item.shop.filter((s) => s !== shop)
-          : [...item.shop, shop];
-
-        return { ...item, shop: updatedShop };
-      })
-    );
+    updateFavoriteItem(item._id, { shop: nextIds });
   };
 
   const [isDropdownOpen, setIsDropDownOpen] = useState({});
@@ -66,7 +84,9 @@ const FavoriteItems = ({
     if (filterShopsFavorite.length === 0) {
       return true;
     }
-    const hasShopMatch = item.shop.some((s) => filterShopsFavorite.includes(s));
+    const hasShopMatch = item.shop.some((s) =>
+      filterShopsFavorite.includes(s._id)
+    );
     const isNoShop =
       item.shop.length === 0 && filterShopsFavorite.includes("No Shop");
     if (hasShopMatch === true || isNoShop === true) {
@@ -83,8 +103,8 @@ const FavoriteItems = ({
 
   if (sortModeFavorite === "shop") {
     sortedItemsFavorite.sort((a, b) => {
-      const aNoShop = a.shop.length === 0;
-      const bNoShop = b.shop.length === 0;
+      const aFirstShopName = a.shop[0].name || "";
+      const bFirstShopName = b.shop[0].name || "";
 
       if (aNoShop && !bNoShop) return 1;
       if (!aNoShop && bNoShop) return -1;
@@ -92,7 +112,7 @@ const FavoriteItems = ({
       if (!aNoShop && !bNoShop) {
         const aFirstShop = a.shop[0];
         const bFirstShop = b.shop[0];
-        return aFirstShop.localeCompare(bFirstShop);
+        return aFirstShopName.localeCompare(bFirstShopName);
       }
 
       return 0;
@@ -114,7 +134,7 @@ const FavoriteItems = ({
 
           <datalist id="itemSuggestions">
             {uniqueItemNames.map((itemName, index) => (
-              <option value={itemName} />
+              <option value={itemName} key={index} />
             ))}
           </datalist>
         </div>
@@ -127,34 +147,39 @@ const FavoriteItems = ({
               onClick={() => setIsDropdownOpenFavorite((prev) => !prev)}
               className="showShopsInput"
             >
-              {FavoriteShop.length < 1 ? "Shops▾" : FavoriteShop.join(", ")}
+              {FavoriteShop.length < 1
+                ? "Shops▾"
+                : FavoriteShop.map((id) => {
+                    const found = shopOptions.find(
+                      (s) => String(s._id) === String(id)
+                    );
+                    return found ? found.name : "Unknown";
+                  }).join(", ")}
             </button>
             {isDropdownOpenFavorite && (
               <ul className="shopCheckboxListInput" style={{ zIndex: 9999 }}>
-                {shopOptions.map((shopName, i) => (
-                  <li key={i}>
+                {shopOptions.map(({ _id, name }) => (
+                  <li key={_id}>
                     <label>
                       <input
                         type="checkbox"
-                        checked={FavoriteShop.includes(shopName)}
+                        checked={FavoriteShop.includes(_id)}
                         onChange={() => {
-                          const hasShop = FavoriteShop.includes(shopName);
-                          const updated = hasShop
-                            ? FavoriteShop.filter((s) => s !== shopName)
-                            : [...FavoriteShop, shopName];
-                          setFavoriteShop(updated);
+                          setFavoriteShop((prev) =>
+                            prev.includes(_id)
+                              ? prev.filter((s) => s !== _id)
+                              : [...prev, _id]
+                          );
                         }}
-                      ></input>
-                      {shopName}
+                      />
+                      {name}
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteShop(shopName)}
-                    >
+                    <button type="button" onClick={() => handleDeleteShop(_id)}>
                       ❌
                     </button>
                   </li>
                 ))}
+
                 <li className="addLi">
                   <button
                     type="button"
@@ -178,8 +203,27 @@ const FavoriteItems = ({
                       type="button"
                       onClick={() => {
                         const trimmed = newShopName.trim();
-                        if (trimmed && !shopOptions.includes(trimmed)) {
-                          setShopOptions([...shopOptions, trimmed]);
+                        if (
+                          trimmed &&
+                          !shopOptions.some((s) => s.name === trimmed)
+                        ) {
+                          (async () => {
+                            const response = await fetch(
+                              "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
+                              {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                  Authorization: `Bearer ${localStorage.getItem(
+                                    "token"
+                                  )}`,
+                                },
+                                body: JSON.stringify({ name: trimmed }),
+                              }
+                            );
+                            const newShop = await response.json(); // { _id, name }
+                            setShopOptions((prev) => [...prev, newShop]);
+                          })();
                         }
                         setNewShopName("");
                         setAddingShop(false);
@@ -202,20 +246,20 @@ const FavoriteItems = ({
         <div className="favoriteSelectAndSort">
           <div className="filterShopsFavorite">
             <p>Shop:</p>
-            {shopOptions.map((shopName, i) => (
-              <label key={i}>
+            {shopOptions.map(({ _id, name }) => (
+              <label key={_id}>
                 <input
                   type="checkbox"
-                  checked={filterShopsFavorite.includes(shopName)}
+                  checked={filterShopsFavorite.includes(_id)}
                   onChange={() => {
                     setFilterShopsFavorite((prev) =>
-                      prev.includes(shopName)
-                        ? prev.filter((s) => s !== shopName)
-                        : [...prev, shopName]
+                      prev.includes(_id)
+                        ? prev.filter((s) => s !== _id)
+                        : [...prev, _id]
                     );
                   }}
                 />
-                {shopName}
+                {name}
               </label>
             ))}
             <label className="noShop">
@@ -262,7 +306,7 @@ const FavoriteItems = ({
                       >
                         <span>
                           {item.shop.length > 0
-                            ? ` ${item.shop.join(", ")}`
+                            ? ` ${item.shop.map((s) => s.name).join(", ")}`
                             : "Shops▾"}
                         </span>
                       </button>
@@ -273,24 +317,29 @@ const FavoriteItems = ({
                             zIndex: 100 + (FavoriteNewItem.length - index),
                           }}
                         >
-                          {shopOptions.map((shop, i) => (
-                            <li key={i}>
+                          {shopOptions.map((shop) => (
+                            <li key={shop._id}>
                               <label>
                                 <input
                                   type="checkbox"
-                                  checked={item.shop.includes(shop)}
-                                  onChange={() => handleToggleShop(index, shop)}
-                                ></input>
-                                {shop}
+                                  checked={(item.shop || []).some(
+                                    (s) => String(s._id) === String(shop._id)
+                                  )}
+                                  onChange={() =>
+                                    handleToggleShop(index, shop._id)
+                                  }
+                                />
+                                {shop.name}
                               </label>
                               <button
                                 type="button"
-                                onClick={() => handleDeleteShop(shop)}
+                                onClick={() => handleDeleteShop(shop._id)}
                               >
                                 ❌
                               </button>
                             </li>
                           ))}
+
                           <li className="addLi">
                             <button
                               type="button"
@@ -318,12 +367,31 @@ const FavoriteItems = ({
                                   const trimmed = newShopName.trim();
                                   if (
                                     trimmed &&
-                                    !shopOptions.includes(trimmed)
+                                    !shopOptions.some((s) => s.name === trimmed)
                                   ) {
-                                    setShopOptions([...shopOptions, trimmed]);
+                                    (async () => {
+                                      const response = await fetch(
+                                        "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
+                                        {
+                                          method: "POST",
+                                          headers: {
+                                            "Content-Type": "application/json",
+                                            Authorization: `Bearer ${localStorage.getItem(
+                                              "token"
+                                            )}`,
+                                          },
+                                          body: JSON.stringify({
+                                            name: trimmed,
+                                          }),
+                                        }
+                                      );
+                                      const newShop = await response.json();
+                                      setShopOptions((prev) => [
+                                        ...prev,
+                                        newShop,
+                                      ]);
+                                    })();
                                   }
-                                  setNewShopName("");
-                                  setAddingShop(false);
                                 }}
                               >
                                 <span className="addText">+</span>
@@ -333,7 +401,15 @@ const FavoriteItems = ({
                         </ul>
                       )}
                     </div>
-                    <button className="addButton" onClick={() => addItem(item)}>
+                    <button
+                      className="addButton"
+                      onClick={() =>
+                        addItem({
+                          text: item.text,
+                          shop: (item.shop || []).map((s) => s._id),
+                        })
+                      }
+                    >
                       ADD TO SHOPPING LIST
                     </button>
                     <button

@@ -1,36 +1,44 @@
 .Recipe img {
-  height: 100%;
+  max-height: 570px;
+  max-width: 500px;
+}
+
+.Recipe {
+  padding-top: 100px;
 }
 
 .imgContainer {
   background-color: #212121;
-  width: 78.6%;
-  height: 40vh;
-  margin: auto;
+  width: 500px;
+  height: 570px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   border: solid 10px rgb(70, 32, 32);
 }
 
 .step {
   background-color: rgb(28, 28, 28);
-  width: 80%;
-  margin: auto;
+  width: 100%;
+  margin-bottom: 0px;
+  margin-top: 0px;
   padding-top: 10px;
   padding-bottom: 10px;
 }
 
 .instruction {
   background-color: rgb(48, 48, 48);
-  width: 80%;
-  height: 15vh;
-  margin: auto;
+  height: 405px;
+  margin-top: 0px;
+  margin-bottom: 0px;
   padding-top: 30px;
   padding-bottom: 30px;
 }
 
 .buttonContainer {
   background-color: rgb(28, 28, 28);
-  width: 80%;
-  margin: auto;
+  width: 100%;
+
   padding-top: 15px;
   padding-bottom: 15px;
   display: flex;
@@ -63,4 +71,25 @@
 .recipeVideo {
   width: 78.6%;
   height: 40vh;
+}
+
+.recipeBackground {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(8px);
+  z-index: -1;
+}
+
+.imgAndTextRecipe {
+  display: flex;
+  justify-content: center;
+}
+
+.buttonAndStep {
+  width: 60%;
 }

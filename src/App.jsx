@@ -169,6 +169,7 @@ function App() {
     await verifyTokenAndSetUserInfo();
     await fetchShoppingList(); // 💥 teď se shopping list načte automaticky
     await fetchShopOptions(); // 🎯 přidáno
+    await fetchFavoriteItems(); // ✅ přidáno
   };
 
   const addItem = async (item) => {
@@ -231,29 +232,86 @@ function App() {
 
   //useState+updatovací funkce shopu itemu
   const [FavoriteShop, setFavoriteShop] = useState([]);
-  const handleFavoriteShop = (event) => {
-    setFavoriteShop(event.target.value);
+
+  // Načtení favorites
+  async function fetchFavoriteItems() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setFavoriteNewItem([]);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        "https://stressfreecheff-backend.onrender.com/api/favorites",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) throw new Error(await res.text());
+      setFavoriteNewItem(await res.json());
+    } catch (e) {
+      console.error("Načítání favorites FAIL:", e);
+    }
+  }
+
+  // Vytvoření favorite položky
+  const addFavoriteItem = async (item) => {
+    const token = localStorage.getItem("token");
+    // item.shop může být: pole objektů { _id, name } nebo pole stringů s _id
+    const shopIds = Array.isArray(item.shop)
+      ? item.shop
+          .map((s) => (typeof s === "string" ? s : s._id))
+          .filter(Boolean)
+      : [];
+
+    const res = await fetch(
+      "https://stressfreecheff-backend.onrender.com/api/favorites",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: item.text, shop: shopIds }),
+      }
+    );
+    const updated = await res.json();
+    setFavoriteNewItem(updated);
   };
 
-  //funkce na přidání itemu
-  const addFavoriteItem = (item) => {
-    {
-      if (!FavoriteNewItem.find((fav) => fav.text === item.text))
-        setFavoriteNewItem((prevFavoriteItems) => {
-          return [...prevFavoriteItems, item];
-        });
-    }
-  };
-  //Funkce mazání itemu
-  const deleteFavoriteItem = (itemToDelete) => {
-    setFavoriteNewItem((prev) =>
-      prev.filter(
-        (fav) =>
-          fav.text.toLowerCase().trim() !==
-          itemToDelete.text.toLowerCase().trim()
-      )
+  // Úprava favorite (text / shop)
+  const updateFavoriteItem = async (itemId, updates) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(
+      `https://stressfreecheff-backend.onrender.com/api/favorites/${itemId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        // updates.shop očekává pole _id
+        body: JSON.stringify(updates),
+      }
     );
+    const updated = await res.json();
+    setFavoriteNewItem(updated);
   };
+
+  // Smazání favorite položky
+  const deleteFavoriteItem = async (itemOrId) => {
+    const id = typeof itemOrId === "string" ? itemOrId : itemOrId._id;
+    const token = localStorage.getItem("token");
+    const res = await fetch(
+      `https://stressfreecheff-backend.onrender.com/api/favorites/${id}`,
+      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
+    );
+    const updated = await res.json();
+    setFavoriteNewItem(updated);
+  };
+
+  useEffect(() => {
+    fetchFavoriteItems();
+  }, []);
 
   //extra !!!!!!!!!!!!!!!!!!!!!!!!!
   const id = Date.now(); // Unikátní ID pro každou položku
@@ -354,13 +412,13 @@ function App() {
               handleFavoriteText={handleFavoriteText}
               FavoriteShop={FavoriteShop}
               setFavoriteShop={setFavoriteShop}
-              handleFavoriteShop={handleFavoriteShop}
               addFavoriteItem={addFavoriteItem}
               addItem={addItem}
               deleteFavoriteItem={deleteFavoriteItem}
               shopOptions={shopOptions}
               setShopOptions={setShopOptions}
               uniqueItemNames={uniqueItemNames}
+              updateFavoriteItem={updateFavoriteItem} // ✅ nově
             />
           }
         />

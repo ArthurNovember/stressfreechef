@@ -326,12 +326,16 @@ const ShoppingList = ({
               </form>
             </li>
             {sortedItems.map((item, index) => {
-              const isFavorite = FavoriteNewItem.some(
-                (fav) => fav.text === item.text
+              const favMatch = FavoriteNewItem.find(
+                (fav) =>
+                  fav.text?.trim().toLowerCase() ===
+                  item.text?.trim().toLowerCase()
               );
+              const isFavorite = !!favMatch;
+              const favoriteId = favMatch?._id; // ← Tohle je ID, které chce backend u DELETE
               const isOpen = isDropdownOpen[index] || false;
               return (
-                <li key={index}>
+                <li key={item._id || index}>
                   <label>
                     <input
                       type="checkbox"
@@ -454,10 +458,15 @@ const ShoppingList = ({
                   <button
                     className="srdce"
                     onClick={() => {
-                      if (isFavorite) {
-                        deleteFavoriteItem(item);
+                      if (isFavorite && favoriteId) {
+                        // 🗑️ smaž správné favorite _id
+                        deleteFavoriteItem(favoriteId);
                       } else {
-                        addFavoriteItem(item);
+                        // ➕ přidej do favorites (pošli text + shop IDs)
+                        addFavoriteItem({
+                          text: item.text,
+                          shop: (item.shop || []).map((s) => s._id),
+                        });
                       }
                     }}
                     style={{ color: isFavorite ? "Red" : "gray" }}

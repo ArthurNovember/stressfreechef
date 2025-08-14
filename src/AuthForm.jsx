@@ -73,7 +73,7 @@ const AuthForm = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div>
+    <div className="authfull">
       <div className="FormContainer">
         <button
           style={{

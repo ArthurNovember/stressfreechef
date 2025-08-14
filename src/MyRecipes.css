@@ -61,5 +61,14 @@
 .loginInfo {
   display: flex;
   justify-content: space-around;
-  background-color: rgb(36, 34, 34);
+  background-color: rgb(0, 0, 0);
+}
+
+.myProfile {
+  padding-top: 55px;
+  background-image: url("https://i.imgur.com/KcxsVeU.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 800px;
 }

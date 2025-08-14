@@ -9,7 +9,7 @@ const MyProfile = ({ userInfo }) => {
   };
 
   return (
-    <div>
+    <div className="myProfile">
       <div className="loginInfo">
         <h2>Welcome, {userInfo.username}!</h2>
         <h2>Email: {userInfo.email}</h2>

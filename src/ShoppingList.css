@@ -9,6 +9,8 @@
   padding-right: 20px;
   border-radius: 10px;
   min-height: 0; /* klíčové pro fungování scrollování s flexboxem */
+  /*margin-left: 50px;
+  margin-right: 50px;*/
 }
 
 .shoppingList li {
@@ -35,12 +37,20 @@
 
 .celek {
   gap: 40px; /* mezera mezi sloupci */
-  /*margin-left: 50px;
-  margin-right: 50px; */
+
+  padding-top: 50px;
+  padding-bottom: 50px;
+  background-image: url("https://i.imgur.com/qlmSb1Q.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 800px;
 }
 
 .imgtext img {
-  width: 10%;
+  width: 100px;
+  position: relative;
+  top: -20px;
 }
 
 .imgtext h2 {
@@ -223,7 +233,7 @@
   display: flex;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-around;
 }
 
 .shoppingList li label {

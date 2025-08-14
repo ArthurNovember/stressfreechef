@@ -4,7 +4,6 @@
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
-  padding-top: 100px;
 }
 
 nav {
@@ -33,7 +32,7 @@ nav {
 }
 
 .logoText {
-  background-color: #6b0000;
+  background-color: #760101;
   width: 700px;
   margin: auto;
   border-radius: 40px;
@@ -85,7 +84,8 @@ nav a {
   display: flex;
   justify-content: center;
   width: 100%;
-  border: solid rgb(38, 37, 37) 1px;
+  border-left: solid rgb(48, 48, 48) 1.5px;
+  border-right: solid rgb(48, 48, 48) 1.5px;
 }
 
 nav a:hover {
@@ -93,12 +93,13 @@ nav a:hover {
 }
 
 section a {
-  background-color: #6b0000;
+  background-color: #760303;
   color: white;
   padding: 10px 86px;
   display: flex;
   justify-content: center;
-  border: #5f0202 solid 1px;
+  border-left: solid rgb(0, 0, 0) 1.5px;
+  border-right: solid rgb(48, 48, 48) 1.5px;
 }
 
 section a:hover {
@@ -287,8 +288,9 @@ html {
 }
 
 .main {
-  background-image: url("https://i.imgur.com/X2EG6qA.png");
+  background-image: url("https://i.imgur.com/yUtWIFO.jpeg");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  padding-top: 100px;
 }

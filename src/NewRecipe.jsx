@@ -9,6 +9,16 @@ const NewRecipe = () => {
       setPreview(URL.createObjectURL(file));
     }
   };
+
+  const [stepPreview, setStepPreview] = useState(null);
+
+  const handleStepFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setStepPreview(URL.createObjectURL(file));
+    }
+  };
+
   return (
     <div className="new">
       <div className="mainInfo">
@@ -57,15 +67,54 @@ const NewRecipe = () => {
           </div>
         </label>
 
-        <button>ADD RECIPE</button>
+        <img className="addRecipe" src="https://i.imgur.com/wPktOjd.png"></img>
+        <div className="public">
+          <select>
+            <option type="radio">Public</option>
+            <option type="radio">Private</option>
+          </select>
+        </div>
       </div>
       <div className="stepsAndIngrents">
         <div className="Steps">
           <h3>STEPS</h3>
           <ol>
-            <li>Gather ingredients</li>
             <li>
+              <input value="Gather ingredients"></input>
+              <div className="uploadContainer">
+                {/* Placeholder s obrázkem */}
+                <div className="imagePreview">
+                  <img src="https://i.imgur.com/ncCfTUM.png" alt="Preview" />
+                </div>
+              </div>
+              <button className="X">X</button>
+            </li>
+            <li className="addStep">
               <input></input>
+              <div className="photoAndButton">
+                <label for="uploadStepID">
+                  <div className="uploadContainer">
+                    {/* Placeholder s obrázkem */}
+                    <div className="imagePreview">
+                      {stepPreview ? (
+                        <img src={stepPreview} alt="Preview" />
+                      ) : (
+                        <p>Upload Step Thumbnail</p>
+                      )}
+                    </div>
+                    <input
+                      id="uploadStepID"
+                      className="uploads"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleStepFileChange}
+                      hidden
+                    />
+                  </div>
+                </label>
+
+                <button>Add Step</button>
+              </div>
             </li>
           </ol>
         </div>
@@ -73,9 +122,12 @@ const NewRecipe = () => {
         <div className="Ingredients">
           <h3>INGREDIENTS</h3>
           <ol>
-            <li>Chicken</li>
             <li>
+              <input value="chicken"></input>
+            </li>
+            <li className="inputWithButton">
               <input></input>
+              <button className="AddIngredient">Add Ingredient</button>
             </li>
           </ol>
         </div>

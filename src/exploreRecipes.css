@@ -9,7 +9,7 @@
   background-position: center;
   background-repeat: no-repeat;
   padding-top: 100px;
-  min-height: 800px;
+  min-height: 100vh;
 }
 
 .explore input {

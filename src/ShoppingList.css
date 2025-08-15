@@ -44,7 +44,7 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  min-height: 800px;
+  min-height: 100vh;
 }
 
 .imgtext img {

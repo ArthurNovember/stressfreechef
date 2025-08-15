@@ -12,6 +12,10 @@
   min-height: 800px;
 }
 
+.explore input {
+  border-radius: 8px;
+}
+
 .explore h2 {
   font-size: 40px;
 }

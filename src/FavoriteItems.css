@@ -68,6 +68,7 @@
   border-radius: 10px;
   border-bottom-left-radius: 0px;
   border-bottom-right-radius: 0px;
+  box-sizing: border-box; /* ať se padding počítá správně */
 }
 
 .TopAddShop {

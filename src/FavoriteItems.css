@@ -61,14 +61,32 @@
 .topAdd {
   background-color: rgb(25, 25, 25);
   width: 60%;
-  min-height: 100px; /* ✅ místo height */
-  padding-top: 15px;
-  margin-top: 0px;
+  /* height: 100px;  pryč */
+  min-height: 100px;
+  padding: 15px;
   margin: auto;
   border-radius: 10px;
-  border-bottom-left-radius: 0px;
-  border-bottom-right-radius: 0px;
-  box-sizing: border-box; /* ať se padding počítá správně */
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topAdd h1 {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 32px); /* přebije globální 6.2em */
+  line-height: 1.2;
+}
+
+main .writeFavorite {
+  /* přebije main input z App.css */
+  width: 97%;
+  height: 30px;
+  border: 0.1px solid rgb(114, 114, 114);
+  background-color: rgb(67, 67, 67);
+  border-radius: 5px;
 }
 
 .TopAddShop {

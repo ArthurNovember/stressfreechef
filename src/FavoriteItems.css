@@ -61,7 +61,7 @@
 .topAdd {
   background-color: rgb(25, 25, 25);
   width: 60%;
-  height: 100px;
+  min-height: 100px; /* ✅ místo height */
   padding-top: 15px;
   margin-top: 0px;
   margin: auto;
@@ -82,7 +82,7 @@
   border-top-right-radius: 0px;
 }
 
-main .writeFavorite {
+.writeFavoriteShop {
   width: 97%;
   height: 30px;
   border: solid rgb(114, 114, 114) 0.1px;

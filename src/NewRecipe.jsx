@@ -62,6 +62,7 @@ const NewRecipe = () => {
               type="file"
               accept="image/*"
               onChange={handleFileChange}
+              hidden
             />
           </div>
         </label>
@@ -107,6 +108,7 @@ const NewRecipe = () => {
                       type="file"
                       accept="image/*"
                       onChange={handleStepFileChange}
+                      hidden
                     />
                   </div>
                 </label>

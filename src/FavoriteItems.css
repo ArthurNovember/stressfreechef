@@ -58,7 +58,7 @@
   border-bottom-right-radius: 0px;
 }
 
-.topAdd {
+.AddTopFavorite {
   background-color: rgb(25, 25, 25);
   width: 60%;
   min-height: 100px; /* ✅ místo height */

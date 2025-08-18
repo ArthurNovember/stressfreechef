@@ -122,7 +122,7 @@ const FavoriteItems = ({
   return (
     <div className="FavoriteCelek">
       <form onSubmit={handleSubmit}>
-        <div className="topAdd">
+        <div className="AddTopFavorite">
           <h1>Add To Favorite</h1>
           <input
             type="text"

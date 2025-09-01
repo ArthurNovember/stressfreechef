@@ -103,19 +103,28 @@ const FavoriteItems = ({
 
   if (sortModeFavorite === "shop") {
     sortedItemsFavorite.sort((a, b) => {
-      const aFirstShopName = a.shop[0].name || "";
-      const bFirstShopName = b.shop[0].name || "";
+      const aHas = Array.isArray(a.shop) && a.shop.length > 0;
+      const bHas = Array.isArray(b.shop) && b.shop.length > 0;
 
-      if (aNoShop && !bNoShop) return 1;
-      if (!aNoShop && bNoShop) return -1;
+      if (!aHas && bHas) return 1; // bez shopu až nakonec
+      if (aHas && !bHas) return -1;
+      if (!aHas && !bHas) return 0;
 
-      if (!aNoShop && !bNoShop) {
-        const aFirstShop = a.shop[0];
-        const bFirstShop = b.shop[0];
-        return aFirstShopName.localeCompare(bFirstShopName);
-      }
+      const getFirstShopName = (item) => {
+        const first = item.shop[0];
+        if (typeof first === "string") {
+          // když je to jen _id, najdeme jméno v shopOptions
+          return (
+            shopOptions.find((s) => String(s._id) === String(first))?.name || ""
+          );
+        }
+        // když je to objekt { _id, name }
+        return first?.name || "";
+      };
 
-      return 0;
+      const aName = getFirstShopName(a);
+      const bName = getFirstShopName(b);
+      return aName.localeCompare(bName, undefined, { sensitivity: "base" });
     });
   }
 

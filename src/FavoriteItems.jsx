@@ -60,15 +60,17 @@ const FavoriteItems = ({
     }
   };
 
-  const handleToggleShop = (index, shopId) => {
-    const item = FavoriteNewItem[index];
-    const currentIds = (item.shop || []).map((s) => s._id);
+  const handleToggleShop = (itemId, currentShops, shopId) => {
+    const currentIds = (currentShops || []).map((s) =>
+      typeof s === "string" ? s : s._id
+    );
+
     const has = currentIds.some((id) => String(id) === String(shopId));
     const nextIds = has
       ? currentIds.filter((id) => String(id) !== String(shopId))
       : [...currentIds, shopId];
 
-    updateFavoriteItem(item._id, { shop: nextIds });
+    updateFavoriteItem(itemId, { shop: nextIds });
   };
 
   const [isDropdownOpen, setIsDropDownOpen] = useState({});
@@ -335,7 +337,11 @@ const FavoriteItems = ({
                                     (s) => String(s._id) === String(shop._id)
                                   )}
                                   onChange={() =>
-                                    handleToggleShop(index, shop._id)
+                                    handleToggleShop(
+                                      item._id,
+                                      item.shop,
+                                      shop._id
+                                    )
                                   }
                                 />
                                 {shop.name}

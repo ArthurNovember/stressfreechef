@@ -48,14 +48,6 @@ const Home = ({
           />
           <p>Stress Free Chef</p>
         </div>
-        <input type="text" placeholder="  Search recipes..." />
-        <button className="searchButton">
-          {" "}
-          <i className="fas fa-search"></i> Search
-        </button>
-        <br />
-        <br />
-        <br />
         <section className="variants">
           <ul className="HomeUl">
             <li>

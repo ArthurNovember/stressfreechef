@@ -21,6 +21,8 @@ const ShoppingList = ({
   updateShoppingItem,
   deleteShoppingItem,
 }) => {
+  const hasToken = !!localStorage.getItem("token");
+
   const handleTextChange = (event) => {
     setText(event.target.value);
   };
@@ -137,68 +139,69 @@ const ShoppingList = ({
   return (
     <div className="celek">
       <div className="filterAndShoppingList">
-        <div className="filterAndSort">
-          <div className="filterShops">
-            <h3>Shop:</h3>
-            {shopOptions.map(({ _id, name }) => (
-              <label key={_id}>
+        {hasToken && (
+          <div className="filterAndSort">
+            <div className="filterShops">
+              <h3>Shop:</h3>
+              {shopOptions.map(({ _id, name }) => (
+                <label key={_id}>
+                  <input
+                    type="checkbox"
+                    checked={filterShops.includes(_id)}
+                    onChange={() => {
+                      setFilterShops((prev) =>
+                        prev.includes(_id)
+                          ? prev.filter((s) => s !== _id)
+                          : [...prev, _id]
+                      );
+                    }}
+                  />
+                  {name}
+                </label>
+              ))}
+
+              <label className="noShop">
                 <input
                   type="checkbox"
-                  checked={filterShops.includes(_id)}
+                  checked={filterShops.includes("No Shop")}
                   onChange={() => {
                     setFilterShops((prev) =>
-                      prev.includes(_id)
-                        ? prev.filter((s) => s !== _id)
-                        : [...prev, _id]
+                      prev.includes("No Shop")
+                        ? prev.filter((s) => s !== "No Shop")
+                        : [...prev, "No Shop"]
                     );
                   }}
                 />
-                {name}
+                No Shop
               </label>
-            ))}
+            </div>
 
-            <label className="noShop">
-              <input
-                type="checkbox"
-                checked={filterShops.includes("No Shop")}
-                onChange={() => {
-                  setFilterShops((prev) =>
-                    prev.includes("No Shop")
-                      ? prev.filter((s) => s !== "No Shop")
-                      : [...prev, "No Shop"]
-                  );
-                }}
-              />
-              No Shop
-            </label>
+            <div className="sortSelector">
+              <label>Sort by:</label>
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value)}
+              >
+                <option value="added">Added</option>
+                <option value="shop">Shop</option>
+              </select>
+            </div>
+
+            <div className="imgtext">
+              <Link to="/favoriteItems">
+                <img
+                  src={obrazek}
+                  onMouseEnter={() =>
+                    setObrazek("https://i.imgur.com/PwVAgWN.png")
+                  }
+                  onMouseLeave={() =>
+                    setObrazek("https://i.imgur.com/DmXZvGl.png")
+                  }
+                ></img>
+              </Link>
+            </div>
           </div>
-
-          <div className="sortSelector">
-            <label>Sort by:</label>
-            <select
-              value={sortMode}
-              onChange={(e) => setSortMode(e.target.value)}
-            >
-              <option value="added">Added</option>
-              <option value="shop">Shop</option>
-            </select>
-          </div>
-
-          <div className="imgtext">
-            <Link to="/favoriteItems">
-              <img
-                src={obrazek}
-                onMouseEnter={() =>
-                  setObrazek("https://i.imgur.com/PwVAgWN.png")
-                }
-                onMouseLeave={() =>
-                  setObrazek("https://i.imgur.com/DmXZvGl.png")
-                }
-              ></img>
-            </Link>
-          </div>
-        </div>
-
+        )}
         <div className="shoppingList">
           <ol>
             <li>
@@ -218,108 +221,113 @@ const ShoppingList = ({
                   ))}
                 </datalist>
                 <div className="nadpisADropdown">
-                  <div className="buttonAndShopsInput">
-                    <button
-                      type="button"
-                      onClick={() => setIsDropdownOpenInput((prev) => !prev)}
-                      className="showShops"
-                    >
-                      {shop.length < 1
-                        ? "Shops▾"
-                        : shop
-                            .map((id) => {
-                              const found = shopOptions.find(
-                                (s) => String(s._id) === String(id)
-                              );
-                              return found ? found.name : "Unknown";
-                            })
-                            .join(", ")}
-                    </button>
-                    {isDropdownOpenInput && (
-                      <ul
-                        className="shopCheckboxListInput"
-                        style={{ zIndex: 9999 }}
+                  {hasToken && (
+                    <div className="buttonAndShopsInput">
+                      <button
+                        type="button"
+                        onClick={() => setIsDropdownOpenInput((prev) => !prev)}
+                        className="showShops"
                       >
-                        {shopOptions.map(({ _id, name }) => (
-                          <li key={_id}>
-                            <label>
+                        {shop.length < 1
+                          ? "Shops▾"
+                          : shop
+                              .map((id) => {
+                                const found = shopOptions.find(
+                                  (s) => String(s._id) === String(id)
+                                );
+                                return found ? found.name : "Unknown";
+                              })
+                              .join(", ")}
+                      </button>
+                      {isDropdownOpenInput && (
+                        <ul
+                          className="shopCheckboxListInput"
+                          style={{ zIndex: 9999 }}
+                        >
+                          {shopOptions.map(({ _id, name }) => (
+                            <li key={_id}>
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={shop.includes(_id)}
+                                  onChange={() => {
+                                    const hasShop = shop.includes(_id);
+                                    const updated = hasShop
+                                      ? shop.filter((s) => s !== _id)
+                                      : [...shop, _id];
+                                    setShop(updated);
+                                  }}
+                                />
+                                {name}
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteShop(_id)}
+                              >
+                                ❌
+                              </button>
+                            </li>
+                          ))}
+                          <li className="addLi">
+                            <button
+                              type="button"
+                              className="add"
+                              onClick={() => setAddingShop((prev) => !prev)}
+                            >
+                              Add Shop
+                            </button>
+                          </li>
+
+                          {addingShop && (
+                            <li>
                               <input
-                                type="checkbox"
-                                checked={shop.includes(_id)}
-                                onChange={() => {
-                                  const hasShop = shop.includes(_id);
-                                  const updated = hasShop
-                                    ? shop.filter((s) => s !== _id)
-                                    : [...shop, _id];
-                                  setShop(updated);
-                                }}
+                                type="text"
+                                placeholder="New Shop"
+                                value={newShopName}
+                                onChange={(e) => setNewShopName(e.target.value)}
                               />
-                              {name}
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteShop(_id)}
-                            >
-                              ❌
-                            </button>
-                          </li>
-                        ))}
-                        <li className="addLi">
-                          <button
-                            type="button"
-                            className="add"
-                            onClick={() => setAddingShop((prev) => !prev)}
-                          >
-                            Add Shop
-                          </button>
-                        </li>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const trimmed = newShopName.trim();
+                                  if (
+                                    trimmed &&
+                                    !shopOptions.some(
+                                      (shop) => shop.name === trimmed
+                                    )
+                                  ) {
+                                    const response = await fetch(
+                                      "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
+                                      {
+                                        method: "POST",
+                                        headers: {
+                                          "Content-Type": "application/json",
+                                          Authorization: `Bearer ${localStorage.getItem(
+                                            "token"
+                                          )}`,
+                                        },
+                                        body: JSON.stringify({ name: trimmed }),
+                                      }
+                                    );
 
-                        {addingShop && (
-                          <li>
-                            <input
-                              type="text"
-                              placeholder="New Shop"
-                              value={newShopName}
-                              onChange={(e) => setNewShopName(e.target.value)}
-                            />
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                const trimmed = newShopName.trim();
-                                if (
-                                  trimmed &&
-                                  !shopOptions.some(
-                                    (shop) => shop.name === trimmed
-                                  )
-                                ) {
-                                  const response = await fetch(
-                                    "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
-                                    {
-                                      method: "POST",
-                                      headers: {
-                                        "Content-Type": "application/json",
-                                        Authorization: `Bearer ${localStorage.getItem(
-                                          "token"
-                                        )}`,
-                                      },
-                                      body: JSON.stringify({ name: trimmed }),
-                                    }
-                                  );
-
-                                  const newShop = await response.json();
-                                  setShopOptions((prev) => [...prev, newShop]);
-                                }
-                                setNewShopName("");
-                                setAddingShop(false);
-                              }}
-                            >
-                              <span className="addText">+</span>
-                            </button>
-                          </li>
-                        )}
-                      </ul>
-                    )}
-                  </div>
+                                    const newShop = await response.json();
+                                    setShopOptions((prev) => [
+                                      ...prev,
+                                      newShop,
+                                    ]);
+                                  }
+                                  setNewShopName("");
+                                  setAddingShop(false);
+                                }}
+                              >
+                                <span className="addText">+</span>
+                              </button>
+                            </li>
+                          )}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <input className="submit" type="submit" value="Send to list" />
@@ -358,7 +366,15 @@ const ShoppingList = ({
                   <div className="buttonAndShops">
                     <button
                       type="button"
-                      onClick={() => ToggleDropDown(index)}
+                      onClick={() => {
+                        if (!hasToken) {
+                          alert(
+                            "Log in to unlock the store assignment feature."
+                          );
+                          return;
+                        }
+                        ToggleDropDown(index);
+                      }}
                       className="showShops"
                     >
                       <span>
@@ -458,6 +474,10 @@ const ShoppingList = ({
                   <button
                     className="srdce"
                     onClick={() => {
+                      if (!hasToken) {
+                        alert("Log in to unlock the favorites feature.");
+                        return;
+                      }
                       if (isFavorite && favoriteId) {
                         // 🗑️ smaž správné favorite _id
                         deleteFavoriteItem(favoriteId);

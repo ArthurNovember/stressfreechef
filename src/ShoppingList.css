@@ -265,6 +265,7 @@
   border: none;
   font-size: 20px;
   padding-left: 15px;
+  padding: 0.7em 1.2em;
 }
 
 .submit {

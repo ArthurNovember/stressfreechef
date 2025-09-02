@@ -16,6 +16,25 @@ function App() {
   const [userInfo, setUserInfo] = useState(null); // 🎯 přidat stav pro uživatele
   const token = localStorage.getItem("token");
 
+  // ---- LocalStorage fallback pro shopping list (offline / nepřihlášený uživatel)
+  const LOCAL_KEY = "sfc_shoppingList";
+
+  const loadLocalList = () => {
+    try {
+      return JSON.parse(localStorage.getItem(LOCAL_KEY)) || [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveLocalList = (list) => {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+  };
+
+  const genLocalId = () =>
+    String(Date.now()) + "_" + Math.random().toString(16).slice(2);
+  //
+
   // 🧠 ověření tokenu
   const verifyTokenAndSetUserInfo = async () => {
     const token = localStorage.getItem("token");
@@ -135,7 +154,8 @@ function App() {
     const token = localStorage.getItem("token");
     if (!token) {
       // nepřihlášený uživatel → nic nenačítej
-      setNewItem([]);
+      const offline = loadLocalList();
+      setNewItem(offline);
       return;
     }
 
@@ -174,6 +194,21 @@ function App() {
 
   const addItem = async (item) => {
     const token = localStorage.getItem("token");
+    if (!token) {
+      // offline verze
+      const current = loadLocalList();
+      const newObj = {
+        _id: genLocalId(), // aby fungovalo mazání/úpravy v UI
+        text: item.text || "",
+        shop: [], // offline bez napojení na shop options
+        checked: false,
+      };
+      const updated = [...current, newObj];
+      saveLocalList(updated);
+      setNewItem(updated);
+      return;
+    }
+    //online
     const res = await fetch(
       "https://stressfreecheff-backend.onrender.com/api/shopping-list",
       {
@@ -191,6 +226,24 @@ function App() {
 
   const updateShoppingItem = async (itemId, updates) => {
     const token = localStorage.getItem("token");
+    if (!token) {
+      // offline verze – umožníme přepínat checked; shop offline ignorujeme
+      const current = loadLocalList();
+      const updated = current.map((i) =>
+        i._id === itemId
+          ? {
+              ...i,
+              ...("checked" in updates ? { checked: updates.checked } : {}),
+              // shop změny necháváme bez efektu v offline módu
+            }
+          : i
+      );
+      saveLocalList(updated);
+      setNewItem(updated);
+      return;
+    }
+
+    // online verze (původní)
     const res = await fetch(
       `https://stressfreecheff-backend.onrender.com/api/shopping-list/${itemId}`,
       {
@@ -208,6 +261,16 @@ function App() {
 
   const deleteShoppingItem = async (itemId) => {
     const token = localStorage.getItem("token");
+    if (!token) {
+      // offline verze
+      const current = loadLocalList();
+      const updated = current.filter((i) => i._id !== itemId);
+      saveLocalList(updated);
+      setNewItem(updated);
+      return;
+    }
+
+    // online verze (původní)
     const res = await fetch(
       `https://stressfreecheff-backend.onrender.com/api/shopping-list/${itemId}`,
       {
@@ -332,7 +395,17 @@ function App() {
                 <Link to="/ExploreRecipes">Explore Recipes</Link>
               </li>
               <li>
-                <Link to="/NewRecipe">Add Recipe</Link>
+                {token ? (
+                  <Link to="/NewRecipe">Add Recipe</Link>
+                ) : (
+                  <Link
+                    onClick={() => {
+                      alert("Log in to add a new recipe.");
+                    }}
+                  >
+                    Add Recipe
+                  </Link>
+                )}
               </li>
               <li>
                 <Link to="/shopping-list">Shopping List</Link>

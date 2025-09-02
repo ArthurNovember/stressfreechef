@@ -1,5 +1,5 @@
 import React from "react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./FavoriteItems.css";
 
 const FavoriteItems = ({
@@ -26,6 +26,30 @@ const FavoriteItems = ({
     setFavoriteText("");
     setFavoriteShop([]);
   };
+
+  const inputDropdownWrapRef = useRef(null); // horní (input) dropdown
+  const dropdownRefs = useRef({}); // řádkové dropdowny (podle indexu)
+
+  // 3) outside-click handler
+  useEffect(() => {
+    const onDown = (e) => {
+      const clickedTop =
+        inputDropdownWrapRef.current &&
+        inputDropdownWrapRef.current.contains(e.target);
+
+      const clickedRow = Object.values(dropdownRefs.current).some(
+        (node) => node && node.contains(e.target)
+      );
+
+      if (!clickedTop && !clickedRow) {
+        setIsDropdownOpenFavorite(false); // horní
+        setIsDropDownOpen({}); // řádkové
+      }
+    };
+
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
 
   const [isDropdownOpenFavorite, setIsDropdownOpenFavorite] = useState(false);
   const [addingShop, setAddingShop] = useState(false);
@@ -152,7 +176,7 @@ const FavoriteItems = ({
         <div className="TopAddShop">
           <h2>Select Shop (optional)</h2>
 
-          <div className="buttonAndShopsInput">
+          <div className="buttonAndShopsInput" ref={inputDropdownWrapRef}>
             <button
               type="button"
               onClick={() => setIsDropdownOpenFavorite((prev) => !prev)}
@@ -309,7 +333,10 @@ const FavoriteItems = ({
                     <span className="numbering">{index + 1}</span>. {item.text}
                   </span>{" "}
                   <div>
-                    <div className="buttonAndShops">
+                    <div
+                      className="buttonAndShops"
+                      ref={(el) => (dropdownRefs.current[index] = el)}
+                    >
                       <button
                         type="button"
                         onClick={() => ToggleDropDown(index)}

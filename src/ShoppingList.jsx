@@ -1,5 +1,5 @@
 import React from "react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import "./ShoppingList.css";
 import { Link } from "react-router-dom";
 
@@ -22,6 +22,30 @@ const ShoppingList = ({
   deleteShoppingItem,
 }) => {
   const hasToken = !!localStorage.getItem("token");
+
+  //zavření dropdownů
+  const dropdownRefs = useRef({});
+  const inputDropdownRef = useRef(null);
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const clickedInsideInput =
+        inputDropdownRef.current && inputDropdownRef.current.contains(e.target);
+
+      const clickedInsideAnyRow = Object.values(dropdownRefs.current).some(
+        (node) => node && node.contains(e.target)
+      );
+
+      if (!clickedInsideInput && !clickedInsideAnyRow) {
+        setIsDropdownOpenInput(false);
+        setIsDropDownOpen({});
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  //
 
   const handleTextChange = (event) => {
     setText(event.target.value);
@@ -222,7 +246,7 @@ const ShoppingList = ({
                 </datalist>
                 <div className="nadpisADropdown">
                   {hasToken && (
-                    <div className="buttonAndShopsInput">
+                    <div className="buttonAndShopsInput" ref={inputDropdownRef}>
                       <button
                         type="button"
                         onClick={() => setIsDropdownOpenInput((prev) => !prev)}
@@ -363,7 +387,10 @@ const ShoppingList = ({
                     </span>
                   </label>
 
-                  <div className="buttonAndShops">
+                  <div
+                    className="buttonAndShops"
+                    ref={(el) => (dropdownRefs.current[index] = el)}
+                  >
                     <button
                       type="button"
                       onClick={() => {

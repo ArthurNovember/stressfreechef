@@ -1,7 +1,7 @@
 .itemContainer {
   background-color: rgb(58, 57, 57);
   min-height: 300px;
-  max-width: 12s50px;
+
   margin: auto;
   display: flex;
   flex-direction: column;
@@ -130,4 +130,15 @@
   background-position: center;
   background-repeat: no-repeat;
   min-height: 100vh;
+}
+
+.buttonAndShops {
+  position: relative;
+  display: inline-flex; /* může být i flex */
+}
+
+/* Kotva pro horní (input) dropdown */
+.buttonAndShopsInput {
+  position: relative;
+  display: inline-block;
 }

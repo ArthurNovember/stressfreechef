@@ -92,6 +92,15 @@
   overflow-wrap: anywhere;
   margin-left: 10px;
   font-size: 25px;
+  max-width: fit-content;
+}
+
+.itemTextLabel {
+  max-width: fit-content;
+}
+
+.nameAndCheck {
+  display: flex;
 }
 
 .deleteItem {
@@ -150,8 +159,8 @@
 }
 
 .buttonAndShops {
-  position: relative; /* velmi důležité! */
-  display: inline-block;
+  display: flex;
+  position: relative;
 }
 
 .add {
@@ -189,7 +198,6 @@
   margin: 0;
   top: 100%;
   left: 0;
-  margin-left: 20px;
 }
 
 .shopCheckboxListInput li {

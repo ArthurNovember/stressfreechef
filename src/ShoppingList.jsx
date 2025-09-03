@@ -368,25 +368,28 @@ const ShoppingList = ({
               const isOpen = isDropdownOpen[index] || false;
               return (
                 <li key={item._id || index}>
-                  <label>
+                  <div className="nameAndCheck">
                     <input
                       type="checkbox"
                       checked={item.checked}
                       onChange={() => toggleChecked(item._id, item.checked)}
+                      id={item._id}
                     />
-
-                    <span
-                      className="itemText"
-                      style={{
-                        color: item.checked ? "grey" : "inherit",
-                        textDecoration: item.checked ? "line-through" : "none",
-                      }}
-                    >
-                      <span className="numbering">{index + 1}.</span>{" "}
-                      {item.text}
-                    </span>
-                  </label>
-
+                    <label htmlFor={item._id} className="itemTextLabel">
+                      <span
+                        className="itemText"
+                        style={{
+                          color: item.checked ? "grey" : "inherit",
+                          textDecoration: item.checked
+                            ? "line-through"
+                            : "none",
+                        }}
+                      >
+                        <span className="numbering">{index + 1}.</span>{" "}
+                        {item.text}
+                      </span>
+                    </label>
+                  </div>
                   <div
                     className="buttonAndShops"
                     ref={(el) => (dropdownRefs.current[index] = el)}
@@ -496,38 +499,38 @@ const ShoppingList = ({
                         )}
                       </ul>
                     )}
-                  </div>
 
-                  <button
-                    className="srdce"
-                    onClick={() => {
-                      if (!hasToken) {
-                        alert("Log in to unlock the favorites feature.");
-                        return;
-                      }
-                      if (isFavorite && favoriteId) {
-                        // 🗑️ smaž správné favorite _id
-                        deleteFavoriteItem(favoriteId);
-                      } else {
-                        // ➕ přidej do favorites (pošli text + shop IDs)
-                        addFavoriteItem({
-                          text: item.text,
-                          shop: (item.shop || []).map((s) => s._id),
-                        });
-                      }
-                    }}
-                    style={{ color: isFavorite ? "Red" : "gray" }}
-                  >
-                    <i className="fas fa-heart"></i>
-                  </button>
-                  <button
-                    className="deleteItem"
-                    onClick={() => {
-                      deleteItem(item._id);
-                    }}
-                  >
-                    <i className="fas fa-times"></i>
-                  </button>
+                    <button
+                      className="srdce"
+                      onClick={() => {
+                        if (!hasToken) {
+                          alert("Log in to unlock the favorites feature.");
+                          return;
+                        }
+                        if (isFavorite && favoriteId) {
+                          // 🗑️ smaž správné favorite _id
+                          deleteFavoriteItem(favoriteId);
+                        } else {
+                          // ➕ přidej do favorites (pošli text + shop IDs)
+                          addFavoriteItem({
+                            text: item.text,
+                            shop: (item.shop || []).map((s) => s._id),
+                          });
+                        }
+                      }}
+                      style={{ color: isFavorite ? "Red" : "gray" }}
+                    >
+                      <i className="fas fa-heart"></i>
+                    </button>
+                    <button
+                      className="deleteItem"
+                      onClick={() => {
+                        deleteItem(item._id);
+                      }}
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
                 </li>
               );
             })}

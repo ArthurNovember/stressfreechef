@@ -183,6 +183,7 @@ function App() {
 
   useEffect(() => {
     fetchShoppingList();
+    fetchItemSuggestions();
   }, []);
 
   const handleLoginSuccess = async () => {
@@ -190,6 +191,7 @@ function App() {
     await fetchShoppingList(); // 💥 teď se shopping list načte automaticky
     await fetchShopOptions(); // 🎯 přidáno
     await fetchFavoriteItems(); // ✅ přidáno
+    await fetchItemSuggestions();
   };
 
   const addItem = async (item) => {
@@ -222,6 +224,7 @@ function App() {
     );
     const updatedList = await res.json();
     setNewItem(updatedList);
+    await fetchItemSuggestions();
   };
 
   const updateShoppingItem = async (itemId, updates) => {
@@ -257,6 +260,7 @@ function App() {
     );
     const updatedList = await res.json();
     setNewItem(updatedList);
+    await fetchItemSuggestions();
   };
 
   const deleteShoppingItem = async (itemId) => {
@@ -282,6 +286,7 @@ function App() {
     );
     const updatedList = await res.json();
     setNewItem(updatedList);
+    await fetchItemSuggestions();
   };
 
   //FavoriteItems!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -339,6 +344,7 @@ function App() {
     );
     const updated = await res.json();
     setFavoriteNewItem(updated);
+    await fetchItemSuggestions();
   };
 
   // Úprava favorite (text / shop)
@@ -358,6 +364,7 @@ function App() {
     );
     const updated = await res.json();
     setFavoriteNewItem(updated);
+    await fetchItemSuggestions();
   };
 
   // Smazání favorite položky
@@ -370,6 +377,7 @@ function App() {
     );
     const updated = await res.json();
     setFavoriteNewItem(updated);
+    await fetchItemSuggestions();
   };
 
   useEffect(() => {
@@ -378,7 +386,32 @@ function App() {
 
   //extra !!!!!!!!!!!!!!!!!!!!!!!!!
   const id = Date.now(); // Unikátní ID pro každou položku
-  const uniqueItemNames = [...new Set(newItem.map((item) => item.text))];
+
+  //Item Suggestions
+  const [uniqueItemNames, setUniqueItemNames] = useState([]);
+
+  const fetchItemSuggestions = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      if (!token) {
+        // offline fallback: aspoň z lokálně zobrazených položek
+        const offline = [
+          ...new Set(newItem.map((i) => (i.text || "").trim()).filter(Boolean)),
+        ];
+        setUniqueItemNames(offline);
+        return;
+      }
+
+      const res = await fetch(
+        "https://stressfreecheff-backend.onrender.com/api/item-suggestions",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) throw new Error(await res.text());
+      setUniqueItemNames(await res.json());
+    } catch (e) {
+      console.error("Fetch item suggestions failed:", e);
+    }
+  };
 
   return (
     <Router>

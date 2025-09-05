@@ -50,6 +50,13 @@ app.use("/api/shopping-list", shoppingListRouter);
 const favoritesRouter = require("./routes/favorites");
 app.use("/api/favorites", favoritesRouter);
 
+const itemSuggestionsRouter = require("./routes/itemSuggestions");
+app.use("/api/item-suggestions", itemSuggestionsRouter);
+
+app.get("/api/ping", (req, res) => {
+  res.type("text").status(200).send("OK");
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Server běží na portu ${PORT}`);
 });

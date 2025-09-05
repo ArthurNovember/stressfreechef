@@ -32,6 +32,8 @@ const userSchema = new mongoose.Schema({
       shop: [{ type: mongoose.Schema.Types.ObjectId, ref: "Shop" }],
     },
   ],
+
+  itemSuggestions: { type: [String], default: [] },
 });
 
 userSchema.pre("save", async function (next) {

@@ -22,6 +22,13 @@ router.post("/", authenticateToken, async (req, res) => {
   if (!already) {
     user.favoriteItems.push({ text, shop: shop || [] });
     await user.save();
+    const t = (req.body.text || "").trim();
+    if (t) {
+      await User.updateOne(
+        { _id: req.user._id },
+        { $addToSet: { itemSuggestions: t } }
+      );
+    }
   }
 
   await user.populate("favoriteItems.shop");

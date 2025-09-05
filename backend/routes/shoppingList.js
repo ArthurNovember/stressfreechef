@@ -16,6 +16,15 @@ router.post("/", authenticateToken, async (req, res) => {
   const user = await User.findById(req.user._id);
   user.shoppingList.push({ text, shop, checked: false });
   await user.save();
+
+  const t = (req.body.text || "").trim();
+  if (t) {
+    await User.updateOne(
+      { _id: req.user._id },
+      { $addToSet: { itemSuggestions: t } } // přidá do seznamu návrhů, bez duplicit
+    );
+  }
+
   await user.populate("shoppingList.shop"); // ✅ Tohle je důležité
   res.json(user.shoppingList);
 });

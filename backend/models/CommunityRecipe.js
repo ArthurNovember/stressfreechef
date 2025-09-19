@@ -1,4 +1,4 @@
-// models/UserRecipe.js
+// models/CommunityRecipe.js
 const mongoose = require("mongoose");
 
 const stepSchema = new mongoose.Schema(
@@ -15,7 +15,7 @@ const stepSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const userRecipeSchema = new mongoose.Schema(
+const communityRecipeSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     rating: { type: Number, default: 0 },
@@ -25,21 +25,10 @@ const userRecipeSchema = new mongoose.Schema(
     ingredients: [{ type: String }],
     steps: [stepSchema],
 
-    owner: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-
-    // 🔽 nově
-    isPublic: { type: Boolean, default: false },
-    publicRecipeId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "CommunityRecipe",
-      default: null,
-    },
+    // volitelné: ukázat autora u veřejných receptů
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("UserRecipe", userRecipeSchema);
+module.exports = mongoose.model("CommunityRecipe", communityRecipeSchema);

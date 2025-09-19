@@ -53,6 +53,12 @@ app.use("/api/favorites", favoritesRouter);
 const itemSuggestionsRouter = require("./routes/itemSuggestions");
 app.use("/api/item-suggestions", itemSuggestionsRouter);
 
+const myRecipesRouter = require("./routes/myRecipes");
+app.use("/api/my-recipes", myRecipesRouter);
+
+const communityRecipesRouter = require("./routes/communityRecipes");
+app.use("/api/community-recipes", communityRecipesRouter);
+
 app.get("/api/ping", (req, res) => {
   res.type("text").status(200).send("OK");
 });

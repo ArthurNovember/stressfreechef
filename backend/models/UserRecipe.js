@@ -1,6 +1,17 @@
 // models/UserRecipe.js
 const mongoose = require("mongoose");
 
+const imageSchema = new mongoose.Schema(
+  {
+    url: { type: String },
+    publicId: { type: String },
+    width: { type: Number },
+    height: { type: Number },
+    format: { type: String },
+  },
+  { _id: false }
+);
+
 const stepSchema = new mongoose.Schema(
   {
     type: { type: String, enum: ["image", "video", "text"], required: true },
@@ -11,6 +22,11 @@ const stepSchema = new mongoose.Schema(
       },
     },
     description: { type: String, required: true },
+    // ↓↓↓ NOVÉ – pro čisté mazání a užitečná metadata
+    mediaPublicId: { type: String },
+    mediaWidth: Number,
+    mediaHeight: Number,
+    mediaFormat: String,
   },
   { _id: false }
 );
@@ -22,6 +38,7 @@ const userRecipeSchema = new mongoose.Schema(
     difficulty: { type: String, required: true },
     time: { type: String, required: true },
     imgSrc: { type: String },
+    image: imageSchema, // NOVÉ pole
     ingredients: [{ type: String }],
     steps: [stepSchema],
 

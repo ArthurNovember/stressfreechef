@@ -48,6 +48,7 @@ router.post("/", authenticateToken, async (req, res) => {
       difficulty: String(difficulty).trim(),
       time: String(time).trim(),
       imgSrc: imgSrc ? String(imgSrc) : undefined,
+      image: req.body?.image,
       ingredients: Array.isArray(ingredients)
         ? ingredients.map((i) => String(i).trim()).filter(Boolean)
         : [],
@@ -64,6 +65,7 @@ router.post("/", authenticateToken, async (req, res) => {
         difficulty: userRec.difficulty,
         time: userRec.time,
         imgSrc: userRec.imgSrc,
+        image: userRec.image,
         ingredients: userRec.ingredients,
         steps: userRec.steps,
         owner: req.user._id, // volitelné, když chceš ukázat autora
@@ -172,6 +174,7 @@ router.patch("/:id", authenticateToken, async (req, res) => {
         difficulty: doc.difficulty,
         time: doc.time,
         imgSrc: doc.imgSrc,
+        image: doc.image,
         ingredients: doc.ingredients,
         steps: doc.steps,
         owner: req.user._id, // volitelné, pokud chceš autora u public
@@ -193,6 +196,7 @@ router.patch("/:id", authenticateToken, async (req, res) => {
           difficulty: doc.difficulty,
           time: doc.time,
           imgSrc: doc.imgSrc,
+          image: doc.image,
           ingredients: doc.ingredients,
           steps: doc.steps,
         },

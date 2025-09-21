@@ -59,6 +59,9 @@ app.use("/api/my-recipes", myRecipesRouter);
 const communityRecipesRouter = require("./routes/communityRecipes");
 app.use("/api/community-recipes", communityRecipesRouter);
 
+const uploadRoutes = require("./routes/uploadRoutes");
+app.use("/api/uploads", uploadRoutes);
+
 app.get("/api/ping", (req, res) => {
   res.type("text").status(200).send("OK");
 });

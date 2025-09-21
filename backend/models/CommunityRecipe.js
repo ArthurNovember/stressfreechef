@@ -1,6 +1,17 @@
 // models/CommunityRecipe.js
 const mongoose = require("mongoose");
 
+const imageSchema = new mongoose.Schema(
+  {
+    url: { type: String },
+    publicId: { type: String },
+    width: { type: Number },
+    height: { type: Number },
+    format: { type: String },
+  },
+  { _id: false }
+);
+
 const stepSchema = new mongoose.Schema(
   {
     type: { type: String, enum: ["image", "video", "text"], required: true },
@@ -22,6 +33,7 @@ const communityRecipeSchema = new mongoose.Schema(
     difficulty: { type: String, required: true },
     time: { type: String, required: true },
     imgSrc: { type: String },
+    image: imageSchema, // NOVÉ pole
     ingredients: [{ type: String }],
     steps: [stepSchema],
 

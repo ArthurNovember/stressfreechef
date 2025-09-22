@@ -1,8 +1,5 @@
 // src/api.js
-const BASE = (
-  import.meta.env?.VITE_API_BASE ||
-  "https://stressfreecheff-backend.onrender.com"
-).replace(/\/+$/, "");
+export const BASE = "https://stressfreecheff-backend.onrender.com";
 
 function authHeaders() {
   const token = localStorage.getItem("token");

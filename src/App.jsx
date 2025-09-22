@@ -425,7 +425,7 @@ function App() {
                 </Link>
               </li>
               <li>
-                <Link to="/ExploreRecipes">Explore Recipes</Link>
+                <Link to="/ExploreRecipes">Community Recipes</Link>
               </li>
               <li>
                 {token ? (

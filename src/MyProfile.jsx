@@ -135,7 +135,7 @@ const MyProfile = ({ userInfo }) => {
       </div>
 
       <div className="My">
-        {/* SAVED RECIPES – zatím placeholder / budoucí feature */}
+        {/* SAVED RECIPES – zatím placeholder / budoucí feature 
         <div className="savedRecipes">
           <div className="MyRecipeNewRecipe">
             <h2 className="MyCategory">SAVED RECIPES</h2>
@@ -156,6 +156,7 @@ const MyProfile = ({ userInfo }) => {
             </div>
           </div>
         </div>
+        */}
 
         {/* MY RECIPES – skutečná data z /api/my-recipes */}
         <div className="myRecipes">

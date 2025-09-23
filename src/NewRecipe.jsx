@@ -79,7 +79,7 @@ const NewRecipe = () => {
       setMsg(null);
 
       if (!title.trim() || !difficulty || !time.trim()) {
-        setMsg({ type: "error", text: "Vyplň Title, Difficulty a Time." });
+        setMsg({ type: "error", text: "Fill in Title, Difficulty and Time." });
         return;
       }
 
@@ -143,14 +143,6 @@ const NewRecipe = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  // ------- Volitelné: smazání už nahraného média -------
-  const handleDeleteThumbnail = async (recipeId) => {
-    await deleteRecipeMedia(recipeId);
-  };
-  const handleDeleteStepMedia = async (recipeId, stepIndex) => {
-    await deleteStepMedia(recipeId, stepIndex);
   };
 
   return (

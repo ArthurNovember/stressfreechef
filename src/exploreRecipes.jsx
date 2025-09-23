@@ -132,18 +132,20 @@ const ExploreRecipes = () => {
       <h2>EXPLORE RECIPES</h2>
 
       <div className="searchAndViews">
+        {/*}
         <div className="views">
           <button type="button">GRID VIEW</button>
           <button type="button" disabled>
             SWIPE VIEW
           </button>
-        </div>
+        </div>*/}
 
         <input
           type="text"
-          placeholder="  Search recipes..."
+          placeholder="Search recipes..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
+          className="eploreinput"
         />
         <button
           className="searchButton"

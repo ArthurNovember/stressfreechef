@@ -115,12 +115,6 @@ main input {
   border-bottom-right-radius: 0px;
 }
 
-.searchButton {
-  background-color: #6b0000;
-  position: relative;
-  top: 2px;
-}
-
 button {
   padding-top: 11px;
 }

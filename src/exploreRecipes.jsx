@@ -163,11 +163,11 @@ const ExploreRecipes = () => {
         </p>
       )}
       {loading && (
-        <p style={{ opacity: 0.8, marginTop: 8 }}>Načítám recepty…</p>
+        <p style={{ opacity: 0.8, marginTop: 8 }}>Loading recipes…</p>
       )}
       {!loading && !err && items.length === 0 && (
         <p style={{ opacity: 0.8, marginTop: 8 }}>
-          Nic nenalezeno. Zkus jiné klíčové slovo.
+          No results found. Try a different keyword.
         </p>
       )}
 
@@ -230,17 +230,17 @@ const ExploreRecipes = () => {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={!canPrev}
           >
-            ◀︎ Předchozí
+            ◀︎ Previous
           </button>
           <span>
-            Strana {page} / {pages} · {total} výsledků
+            Page {page} / {pages} · {total} results
           </span>
           <button
             type="button"
             onClick={() => setPage((p) => Math.min(pages, p + 1))}
             disabled={!canNext}
           >
-            Další ▶︎
+            Next ▶︎
           </button>
         </div>
       )}

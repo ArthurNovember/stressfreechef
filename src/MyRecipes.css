@@ -71,3 +71,17 @@
   background-repeat: no-repeat;
   min-height: 100vh;
 }
+
+.deleteButton {
+  max-height: 40px;
+  max-width: 40px;
+  position: relative;
+  top: -10px;
+  right: -10px;
+  text-align: center;
+}
+
+.deleteButton:hover {
+  cursor: pointer;
+  opacity: 0.5;
+}

@@ -79,3 +79,12 @@ export async function deleteStepMedia(recipeId, stepIndex) {
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+export async function deleteMyRecipe(recipeId) {
+  const res = await fetch(`${BASE}/api/my-recipes/${recipeId}`, {
+    method: "DELETE",
+    headers: { ...authHeaders() },
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json(); // { message: "Recept smazán." }
+}

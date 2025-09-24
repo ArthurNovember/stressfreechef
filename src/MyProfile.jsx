@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./MyRecipes.css";
 import { Link } from "react-router-dom";
+import { deleteMyRecipe } from "./api"; // ⬅️ nahoře
 
 // 🌍 backend base (stejný pattern jako v exploreRecipes.jsx)
 const DEPLOYED_BACKEND_URL = "https://stressfreecheff-backend.onrender.com";
@@ -56,6 +57,19 @@ const MyProfile = ({ userInfo }) => {
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+
+  //Mazání
+  const handleDelete = async (recipeId) => {
+    if (!window.confirm("Do you really want to delete this recipe?")) return;
+    try {
+      await deleteMyRecipe(recipeId);
+      // smaž ho z lokálního seznamu
+      setItems((prev) => prev.filter((r) => r._id !== recipeId));
+      setTotal((t) => t - 1);
+    } catch (err) {
+      alert("Deletion failed: " + (err?.message || err));
+    }
+  };
 
   // debounce vyhledávání
   useEffect(() => {
@@ -223,6 +237,11 @@ const MyProfile = ({ userInfo }) => {
                     <p>Difficulty: {r?.difficulty || "—"}</p>
                     <p>Time: {r?.time || "—"} ⏱️</p>
                   </div>
+                  <img
+                    src="https://i.imgur.com/aRJEINp.png"
+                    className="deleteButton"
+                    onClick={() => handleDelete(r._id)}
+                  />
                 </div>
               );
             })}

@@ -125,6 +125,7 @@
   top: 0px; /* vzdálenost od horní hrany */
   right: 0px; /* vzdálenost od pravé hrany */
   background-color: #490202;
+  border-radius: 0px;
 }
 
 .public {

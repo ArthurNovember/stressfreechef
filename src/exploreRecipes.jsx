@@ -56,7 +56,7 @@ const ExploreRecipes = ({ addItem }) => {
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [page, setPage] = useState(1);
-  const [limit] = useState(12);
+  const [limit] = useState(14);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);

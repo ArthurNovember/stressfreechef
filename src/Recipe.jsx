@@ -30,18 +30,21 @@ const Recipe = () => {
       <div className="imgAndTextRecipe">
         <div className="imgContainer">
           {step.type === "image" ? (
-            <img src={step.src} />
-          ) : (
+            <img src={step.src} alt="Step" />
+          ) : step.type === "video" ? (
             <video
-              autoplay
+              autoPlay
               muted
               loop
               className="recipeVideo"
               src={step.src}
               controls
             />
+          ) : (
+            <p className="replace">{currentStep + 1}</p>
           )}
         </div>
+
         <div className="buttonAndStep">
           <h3 className="step">Step {currentStep + 1}</h3>
           <p className="instruction">{step.description}</p>

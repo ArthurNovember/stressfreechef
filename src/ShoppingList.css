@@ -281,6 +281,8 @@
   background-color: rgb(115, 6, 6);
   margin-right: 10px;
   border: none;
+  color: white;
+  font-weight: bold;
 }
 
 .submit:hover {

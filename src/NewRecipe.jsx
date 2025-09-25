@@ -98,6 +98,14 @@ const NewRecipe = () => {
         return;
       }
 
+      const hasAtLeastOneTextStep = steps.some(
+        (s) => (s.description || "").trim().length > 0
+      );
+      if (!hasAtLeastOneTextStep) {
+        setMsg({ type: "error", text: "Add at least one step description." });
+        return;
+      }
+
       setSaving(true);
 
       // 1) Vytvořím recept VŽDY jako PRIVATE (public až po uploadech)

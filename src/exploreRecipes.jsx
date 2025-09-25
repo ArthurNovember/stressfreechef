@@ -117,7 +117,7 @@ const ExploreRecipes = ({ addItem }) => {
           throw new Error(
             `Non-JSON response (HTTP ${
               res.status
-            }). Zkontroluj URL/CORS.\n${raw.slice(0, 200)}`
+            }). Check URL/CORS.\n${raw.slice(0, 200)}`
           );
         }
 
@@ -128,7 +128,7 @@ const ExploreRecipes = ({ addItem }) => {
         setTotal(Number(data.total) || 0);
         setPages(Number(data.pages) || 1);
       } catch (e) {
-        if (!aborted) setErr(e?.message || "Nepodařilo se načíst recepty.");
+        if (!aborted) setErr(e?.message || "Failed to load recipes.");
       } finally {
         if (!aborted) setLoading(false);
       }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import "./MyRecipes.css";
 import { Link } from "react-router-dom";
 import { deleteMyRecipe } from "./api"; // ⬅️ nahoře
@@ -108,14 +108,12 @@ const MyProfile = ({ userInfo, addItem }) => {
         setPages(1);
         return;
       }
-
-      setLoading(true);
-      setErr("");
-
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(limit));
-      if (debouncedQ) params.set("q", debouncedQ); // ready pro budoucí BE filter
+
+      setLoading(true);
+      setErr("");
 
       try {
         const res = await fetch(`${API_URL}?${params.toString()}`, {
@@ -143,15 +141,10 @@ const MyProfile = ({ userInfo, addItem }) => {
     return () => {
       aborted = true;
     };
-  }, [page, limit, debouncedQ]);
+  }, [page, limit]);
 
-  // reset page při změně hledání
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedQ]);
-
-  const canPrev = useMemo(() => page > 1, [page]);
-  const canNext = useMemo(() => page < pages, [page, pages]);
+  const canPrev = page > 1;
+  const canNext = page < pages;
 
   if (!userInfo) return <div>Loading...</div>;
 

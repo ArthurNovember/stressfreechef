@@ -24,7 +24,7 @@ const Recipe = () => {
       <div
         className="recipeBackground"
         style={{
-          backgroundImage: `url(${recipe.imgSrc})`,
+          backgroundImage: `url(${recipe.image?.url || recipe.imgSrc})`,
         }}
       ></div>
       <div className="imgAndTextRecipe">

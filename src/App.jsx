@@ -530,7 +530,10 @@ function App() {
         />
         <Route path="/Recipe" element={<Recipe />} />
 
-        <Route path="ExploreRecipes" element={<ExploreRecipes />} />
+        <Route
+          path="ExploreRecipes"
+          element={<ExploreRecipes addItem={addItem} />}
+        />
 
         <Route path="MyRecipes" element={<MyRecipes />} />
 
@@ -545,7 +548,7 @@ function App() {
           path="/myprofile"
           element={
             userInfo ? (
-              <MyProfile userInfo={userInfo} />
+              <MyProfile userInfo={userInfo} addItem={addItem} />
             ) : (
               <AuthForm onLoginSuccess={handleLoginSuccess} />
             )

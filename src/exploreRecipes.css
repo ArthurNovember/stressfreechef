@@ -86,3 +86,7 @@
 .searchAndViews button {
   outline: none;
 }
+
+.modalOverlay video {
+  width: 70%;
+}

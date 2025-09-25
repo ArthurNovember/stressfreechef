@@ -9,11 +9,6 @@
   align-items: baseline;
 }
 
-.My h2 {
-  font-size: 1.5vw;
-  text-align: left;
-}
-
 .recipeContainer2 {
   background-color: rgb(19, 19, 19);
   display: flex;

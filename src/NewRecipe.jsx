@@ -21,6 +21,7 @@ const NewRecipe = () => {
   // --- thumbnail (soubor + preview)
   const [thumbFile, setThumbFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [isVideo, setIsVideo] = useState(false);
 
   // --- kroky: popisy + volitelně soubory
   const [steps, setSteps] = useState([
@@ -37,8 +38,13 @@ const NewRecipe = () => {
   // ------- Handlery: thumbnail ----------
   const handleFileChange = (e) => {
     const f = e.target.files?.[0];
-    setThumbFile(f || null);
-    setPreview(f ? URL.createObjectURL(f) : null);
+    if (f) {
+      setPreview(URL.createObjectURL(f));
+      setIsVideo(f.type.startsWith("video/")); // 👈 true, pokud je to video
+    } else {
+      setPreview(null);
+      setIsVideo(false);
+    }
   };
 
   // ------- Handlery: steps ----------
@@ -47,7 +53,16 @@ const NewRecipe = () => {
     setSteps((arr) =>
       arr.map((s, idx) =>
         idx === i
-          ? { ...s, file: f, preview: f ? URL.createObjectURL(f) : null }
+          ? {
+              ...s,
+              file: f,
+              preview: f ? URL.createObjectURL(f) : null,
+              type: f
+                ? f.type.startsWith("video/")
+                  ? "video"
+                  : "image"
+                : "text",
+            }
           : s
       )
     );
@@ -196,11 +211,34 @@ const NewRecipe = () => {
           <div className="uploadContainer">
             <div className="imagePreview">
               {preview ? (
-                <img src={preview} alt="Preview" />
+                isVideo ? (
+                  <video
+                    src={preview}
+                    muted
+                    autoPlay
+                    loop
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "200px",
+                      borderRadius: 8,
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "200px",
+                      borderRadius: 8,
+                    }}
+                  />
+                )
               ) : (
                 <p>Upload Recipe Thumbnail</p>
               )}
             </div>
+
             <input
               id="uploadID"
               className="uploads"
@@ -252,11 +290,34 @@ const NewRecipe = () => {
                   <div className="uploadContainer">
                     <div className="imagePreview">
                       {s.preview ? (
-                        <img src={s.preview} alt="Preview" />
+                        s.type === "video" ? (
+                          <video
+                            src={s.preview}
+                            muted
+                            autoPlay
+                            loop
+                            style={{
+                              maxWidth: "100%",
+                              maxHeight: "200px",
+                              borderRadius: 8,
+                            }}
+                          />
+                        ) : (
+                          <img
+                            src={s.preview}
+                            alt="Step preview"
+                            style={{
+                              maxWidth: "100%",
+                              maxHeight: "200px",
+                              borderRadius: 8,
+                            }}
+                          />
+                        )
                       ) : (
                         <p>Upload Step Thumbnail (image/video)</p>
                       )}
                     </div>
+
                     <input
                       id={`uploadStep-${i}`}
                       className="uploads"

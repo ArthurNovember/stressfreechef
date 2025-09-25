@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./exploreRecipes.css";
+import { Link } from "react-router-dom";
 
 // 🌍 nastav si svou produkční backend URL jako fallback
 const DEPLOYED_BACKEND_URL = "https://stressfreecheff-backend.onrender.com";
@@ -50,7 +51,7 @@ const getCover = (r) => {
   return { url: url || PLACEHOLDER_IMG, isVideo };
 };
 
-const ExploreRecipes = () => {
+const ExploreRecipes = ({ addItem }) => {
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -60,6 +61,26 @@ const ExploreRecipes = () => {
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+
+  const openModal = (recipe) => {
+    setSelectedRecipe(recipe);
+  };
+  const closeModal = () => {
+    setSelectedRecipe(null);
+  };
+
+  useEffect(() => {
+    if (selectedRecipe) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+  }, [selectedRecipe]);
+
+  const ThumbnailUrl = getCover(selectedRecipe).url;
+  const isVideoSelected = getCover(selectedRecipe).isVideo;
 
   // Debounce vyhledávání (300 ms)
   useEffect(() => {
@@ -181,6 +202,7 @@ const ExploreRecipes = () => {
               <a href="#forNow" title={title}>
                 {isVideo ? (
                   <video
+                    onClick={() => openModal(r)}
                     src={url}
                     preload="metadata"
                     playsInline
@@ -196,6 +218,7 @@ const ExploreRecipes = () => {
                   />
                 ) : (
                   <img
+                    onClick={() => openModal(r)}
                     src={url || PLACEHOLDER_IMG}
                     alt={title}
                     loading="lazy"
@@ -214,6 +237,70 @@ const ExploreRecipes = () => {
           );
         })}
       </div>
+
+      {selectedRecipe && (
+        <div className="modalOverlay" onClick={() => setSelectedRecipe(null)}>
+          <div
+            className="selectedRecipeContainer"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <div id="forNow">
+              <div className="nameAndPicture">
+                <h2>{selectedRecipe.title}</h2>
+                {isVideoSelected ? (
+                  <video
+                    onClick={() => openModal(r)}
+                    src={ThumbnailUrl || PLACEHOLDER_IMG}
+                    preload="metadata"
+                    playsInline
+                    muted
+                    loop
+                    autoPlay
+                  />
+                ) : (
+                  <img
+                    onClick={() => openModal(r)}
+                    src={ThumbnailUrl || PLACEHOLDER_IMG}
+                    alt={selectedRecipe.title}
+                    loading="lazy"
+                  />
+                )}
+              </div>
+
+              <div className="displayIngredience">
+                <ol>
+                  {selectedRecipe.ingredients.map((ingredient, index) => {
+                    return (
+                      <li key={index}>
+                        {" "}
+                        <input type="checkbox" /> {ingredient}{" "}
+                        <button
+                          className="sendToList"
+                          onClick={() =>
+                            addItem({
+                              text: ingredient,
+                              shop: [],
+                            })
+                          }
+                        >
+                          Send to shopping list
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            </div>
+            <div id="startparent">
+              <Link to="/Recipe" state={{ recipe: selectedRecipe }}>
+                <button className="getStarted">GET STARTED</button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {(pages > 1 || total > limit) && (
         <div

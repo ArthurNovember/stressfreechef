@@ -83,3 +83,6 @@
   background-color: rgb(65, 19, 19);
   cursor: default;
 }
+.searchAndViews button {
+  outline: none;
+}

@@ -114,7 +114,7 @@ const MyProfile = ({ userInfo }) => {
         setTotal(Number(data.total) || 0);
         setPages(Number(data.pages) || 1);
       } catch (e) {
-        if (!aborted) setErr(e?.message || "Nepodařilo se načíst recepty.");
+        if (!aborted) setErr(e?.message || "Failed to load recipes.");
       } finally {
         if (!aborted) setLoading(false);
       }
@@ -185,10 +185,10 @@ const MyProfile = ({ userInfo }) => {
               {err}
             </p>
           )}
-          {loading && <p style={{ opacity: 0.8, marginTop: 8 }}>Načítám…</p>}
+          {loading && <p style={{ opacity: 0.8, marginTop: 8 }}>Loading…</p>}
           {!loading && !err && items.length === 0 && (
             <p style={{ opacity: 0.8, marginTop: 8 }}>
-              Zatím tu nemáš žádné recepty. Přidej první! 🎉
+              You don’t have any recipes yet. Add your first one!
             </p>
           )}
 
@@ -262,17 +262,17 @@ const MyProfile = ({ userInfo }) => {
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={!canPrev}
               >
-                ◀︎ Předchozí
+                ◀︎ Previous
               </button>
               <span>
-                Strana {page} / {pages} · {total} výsledků
+                Page {page} / {pages} · {total} results
               </span>
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.min(pages, p + 1))}
                 disabled={!canNext}
               >
-                Další ▶︎
+                Next ▶︎
               </button>
             </div>
           )}

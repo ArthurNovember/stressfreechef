@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import "./exploreRecipes.css";
 
 // 🌍 nastav si svou produkční backend URL jako fallback
@@ -124,8 +124,8 @@ const ExploreRecipes = () => {
     setPage(1);
   }, [debouncedQ]);
 
-  const canPrev = useMemo(() => page > 1, [page]);
-  const canNext = useMemo(() => page < pages, [page, pages]);
+  const canPrev = page > 1;
+  const canNext = page < pages;
 
   return (
     <div className="explore">
@@ -206,7 +206,7 @@ const ExploreRecipes = () => {
                   />
                 )}
               </a>
-              <h3 title={title}>{title}</h3>
+              <h3>{title}</h3>
               <p>Rating: {rating ? "⭐".repeat(rating) : "–"}</p>
               <p>Difficulty: {r?.difficulty || "—"}</p>
               <p>Time: {r?.time || "—"} ⏱️</p>

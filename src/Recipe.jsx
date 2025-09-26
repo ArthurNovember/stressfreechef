@@ -179,18 +179,9 @@ const Recipe = () => {
             </div>
           ) : (
             <div
-              className="buttonContainer"
+              className="buttonContainer2"
               style={{ display: "block", textAlign: "center" }}
             >
-              <div style={{ marginBottom: 10 }}>
-                <button
-                  className="previousStep"
-                  onClick={() => setCurrentStep((p) => Math.max(0, p - 1))}
-                >
-                  PREVIOUS
-                </button>
-              </div>
-
               <p className="completed" style={{ marginBottom: 8 }}>
                 RECIPE COMPLETED
               </p>
@@ -220,7 +211,14 @@ const Recipe = () => {
                 </p>
               )}
 
-              <div style={{ marginTop: 10 }}>
+              <div className="backPrevious">
+                <button
+                  className="previousStep"
+                  onClick={() => setCurrentStep((p) => Math.max(0, p - 1))}
+                >
+                  PREVIOUS
+                </button>
+
                 <Link to="/domov">
                   <button>Back to HOME</button>
                 </Link>

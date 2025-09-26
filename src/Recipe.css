@@ -4,17 +4,16 @@
 }
 
 .Recipe {
-  padding-top: 100px;
+  padding-top: 10vh;
 }
 
 .imgContainer {
   background-color: #212121;
   width: 500px;
-
   display: flex;
   justify-content: center;
   align-items: center;
-  border: solid 10px rgb(70, 32, 32);
+  border: solid 1vh rgb(70, 32, 32);
 }
 
 .step {
@@ -22,25 +21,33 @@
   width: 100%;
   margin-bottom: 0px;
   margin-top: 0px;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: 3vh;
+  padding-bottom: 3vh;
+  text-align: center;
 }
 
 .instruction {
   background-color: rgb(48, 48, 48);
-  height: 405px;
+  height: 44vh;
   margin-top: 0px;
   margin-bottom: 0px;
-  padding-top: 30px;
-  padding-bottom: 30px;
+  padding-top: 3vh;
 }
 
 .buttonContainer {
   background-color: rgb(28, 28, 28);
   width: 100%;
+  padding-top: 11vh;
+  padding-bottom: 11vh;
+  display: flex;
+  justify-content: space-between;
+}
 
-  padding-top: 15px;
-  padding-bottom: 15px;
+.buttonContainer2 {
+  background-color: rgb(28, 28, 28);
+  width: 100%;
+  padding-top: 3vh;
+  padding-bottom: 3vh;
   display: flex;
   justify-content: space-between;
 }
@@ -96,4 +103,15 @@
 
 .replace {
   font-size: 1000%;
+}
+
+.backPrevious {
+  margin-top: 10;
+  display: flex;
+  justify-content: space-between;
+  margin-right: 20px;
+}
+
+.Recipe button {
+  height: 8vh;
 }

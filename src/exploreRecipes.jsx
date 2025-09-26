@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./exploreRecipes.css";
 import { Link } from "react-router-dom";
+import StarRating from "./StarRating";
 
 // 🌍 nastav si svou produkční backend URL jako fallback
 const DEPLOYED_BACKEND_URL = "https://stressfreecheff-backend.onrender.com";
@@ -230,7 +231,16 @@ const ExploreRecipes = ({ addItem }) => {
                 )}
               </a>
               <h3>{title}</h3>
-              <p>Rating: {rating ? "⭐".repeat(rating) : "–"}</p>
+              <StarRating
+                value={
+                  typeof r?.ratingAvg === "number"
+                    ? r.ratingAvg
+                    : r?.rating || 0
+                }
+                readOnly
+                showValue
+                count={r?.ratingCount}
+              />
               <p>Difficulty: {r?.difficulty || "—"}</p>
               <p>Time: {r?.time || "—"} ⏱️</p>
             </div>
@@ -294,7 +304,13 @@ const ExploreRecipes = ({ addItem }) => {
               </div>
             </div>
             <div id="startparent">
-              <Link to="/Recipe" state={{ recipe: selectedRecipe }}>
+              <Link
+                to="/Recipe"
+                state={{
+                  recipe: selectedRecipe,
+                  communityRecipeId: selectedRecipe?._id,
+                }}
+              >
                 <button className="getStarted">GET STARTED</button>
               </Link>
             </div>
@@ -303,15 +319,7 @@ const ExploreRecipes = ({ addItem }) => {
       )}
 
       {(pages > 1 || total > limit) && (
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            justifyContent: "center",
-            marginTop: 16,
-          }}
-        >
+        <div className="explorePages">
           <button
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}

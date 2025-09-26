@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./MyRecipes.css";
 import { Link } from "react-router-dom";
 import { deleteMyRecipe } from "./api"; // ⬅️ nahoře
+import StarRating from "./StarRating";
 
 // 🌍 backend base (stejný pattern jako v exploreRecipes.jsx)
 const DEPLOYED_BACKEND_URL = "https://stressfreecheff-backend.onrender.com";
@@ -57,6 +58,7 @@ const MyProfile = ({ userInfo, addItem }) => {
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [communityRatings, setCommunityRatings] = useState({});
 
   //Mazání
   const handleDelete = async (recipeId) => {
@@ -142,6 +144,49 @@ const MyProfile = ({ userInfo, addItem }) => {
       aborted = true;
     };
   }, [page, limit]);
+
+  useEffect(() => {
+    // posbírej unikátní community ID publikovaných receptů
+    const ids = Array.from(
+      new Set((items || []).map((r) => r?.publicRecipeId).filter(Boolean))
+    );
+
+    if (ids.length === 0) {
+      setCommunityRatings({});
+      return;
+    }
+
+    let aborted = false;
+    (async () => {
+      try {
+        const pairs = await Promise.all(
+          ids.map(async (id) => {
+            const res = await fetch(`${API_BASE}/api/community-recipes/${id}`, {
+              headers: { Accept: "application/json" },
+            });
+            if (!res.ok) return [id, null];
+            const data = await res.json();
+            return [
+              id,
+              {
+                avg: Number(data?.ratingAvg || 0),
+                count: Number(data?.ratingCount || 0),
+              },
+            ];
+          })
+        );
+        if (!aborted) {
+          setCommunityRatings(Object.fromEntries(pairs.filter(Boolean)));
+        }
+      } catch {
+        if (!aborted) setCommunityRatings({});
+      }
+    })();
+
+    return () => {
+      aborted = true;
+    };
+  }, [items, API_BASE]);
 
   const canPrev = page > 1;
   const canNext = page < pages;
@@ -248,7 +293,21 @@ const MyProfile = ({ userInfo, addItem }) => {
                   </a>
                   <div className="texto">
                     <h3 title={title}>{title}</h3>
-                    <p>Rating: {rating ? "⭐".repeat(rating) : "–"}</p>
+                    <StarRating
+                      value={
+                        r?.publicRecipeId
+                          ? communityRatings[r.publicRecipeId]?.avg ?? 0
+                          : Number(r?.rating || 0)
+                      }
+                      readOnly
+                      showValue={Boolean(r?.publicRecipeId)}
+                      count={
+                        r?.publicRecipeId
+                          ? communityRatings[r.publicRecipeId]?.count
+                          : undefined
+                      }
+                    />
+
                     <p>Difficulty: {r?.difficulty || "—"}</p>
                     <p>Time: {r?.time || "—"} ⏱️</p>
                   </div>
@@ -321,7 +380,14 @@ const MyProfile = ({ userInfo, addItem }) => {
                   </div>
                 </div>
                 <div id="startparent">
-                  <Link to="/Recipe" state={{ recipe: selectedRecipe }}>
+                  <Link
+                    to="/Recipe"
+                    state={{
+                      recipe: selectedRecipe,
+                      communityRecipeId:
+                        selectedRecipe?.publicRecipeId || undefined,
+                    }}
+                  >
                     <button className="getStarted">GET STARTED</button>
                   </Link>
                 </div>

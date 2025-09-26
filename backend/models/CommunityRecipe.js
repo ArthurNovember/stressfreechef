@@ -29,7 +29,31 @@ const stepSchema = new mongoose.Schema(
 const communityRecipeSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
-    rating: { type: Number, default: 0 },
+    // ⭐ Community rating (agregace + jednotlivé hlasy)
+    rating: { type: Number, default: 0 }, // legacy zaokrouhlený průměr
+    ratingAvg: { type: Number, default: 0, min: 0, max: 5 },
+    ratingCount: { type: Number, default: 0, min: 0 },
+    ratings: {
+      type: [
+        {
+          user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+          },
+          value: { type: Number, min: 1, max: 5, required: true },
+          _id: false,
+        },
+      ],
+      default: [],
+    },
+
+    // 🔗 pro ofiko recepty (kolekce Recipe)
+    sourceRecipeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Recipe",
+      default: null,
+    },
     difficulty: { type: String, required: true },
     time: { type: String, required: true },
     imgSrc: { type: String },

@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import StarRating from "./StarRating";
+
+const RAW =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
+  "https://stressfreecheff-backend.onrender.com";
+const API_BASE = String(RAW || "").replace(/\/+$/, "");
 
 const Home = ({
   displayRecipes,
@@ -27,6 +33,55 @@ const Home = ({
       document.body.style.overflow = "auto";
     }
   }, [selectedRecipe]);
+
+  const [communityStats, setCommunityStats] = useState({});
+
+  useEffect(() => {
+    // seber unikátní ofiko ID (id nebo _id)
+    const ids = Array.from(
+      new Set(
+        (displayRecipes || []).map((r) => r?._id || r?.id).filter(Boolean)
+      )
+    );
+
+    if (ids.length === 0) {
+      setCommunityStats({});
+      return;
+    }
+
+    let aborted = false;
+    (async () => {
+      try {
+        const pairs = await Promise.all(
+          ids.map(async (rid) => {
+            // zajistí/vrátí community dvojče pro ofiko recipe
+            const res = await fetch(
+              `${API_BASE}/api/community-recipes/ensure-from-recipe/${rid}`,
+              { method: "POST" }
+            );
+            const data = await res.json();
+            if (!res.ok || !data?._id) return [rid, null];
+            return [
+              rid,
+              {
+                id: data._id,
+                avg: Number(data.ratingAvg || 0),
+                count: Number(data.ratingCount || 0),
+              },
+            ];
+          })
+        );
+        if (!aborted)
+          setCommunityStats(Object.fromEntries(pairs.filter(Boolean)));
+      } catch {
+        if (!aborted) setCommunityStats({});
+      }
+    })();
+
+    return () => {
+      aborted = true;
+    };
+  }, [displayRecipes]);
 
   const [animateLogo, setAnimateLogo] = useState(false);
   const handleHover = () => {
@@ -74,19 +129,35 @@ const Home = ({
         </section>
 
         <div className="recipeContainer">
-          {displayRecipes.map((recipe) => (
-            <div className="recipeCard" key={recipe.id}>
-              <a href="#forNow">
-                <img onClick={() => openModal(recipe)} src={recipe.imgSrc} />
-              </a>
-              <h3>{recipe.title}</h3>
-              <p>Rating: {recipe.rating}⭐</p>
-              <p className={recipe.difficulty}>
-                Difficulty: {recipe.difficulty}
-              </p>
-              <p>Time: {recipe.time}⏱️</p>
-            </div>
-          ))}
+          {displayRecipes.map((recipe) => {
+            const rid = recipe?._id || recipe?.id; // ← TADY vzniká rid
+            const stats = communityStats[rid]; // ← a TADY stats (avg,count)
+
+            return (
+              <div className="recipeCard" key={rid}>
+                <a href="#forNow">
+                  <img onClick={() => openModal(recipe)} src={recipe.imgSrc} />
+                </a>
+                <h3>{recipe.title}</h3>
+
+                <StarRating
+                  value={
+                    typeof stats?.avg === "number"
+                      ? stats.avg
+                      : recipe?.rating || 0
+                  }
+                  readOnly
+                  showValue
+                  count={stats?.count}
+                />
+
+                <p className={recipe.difficulty}>
+                  Difficulty: {recipe.difficulty}
+                </p>
+                <p>Time: {recipe.time}⏱️</p>
+              </div>
+            );
+          })}
         </div>
 
         {selectedRecipe && (
@@ -128,7 +199,15 @@ const Home = ({
                 </div>
               </div>
               <div id="startparent">
-                <Link to="/Recipe" state={{ recipe: selectedRecipe }}>
+                <Link
+                  to="/Recipe"
+                  state={{
+                    recipe: selectedRecipe,
+                    communityRecipeId:
+                      communityStats[selectedRecipe?._id || selectedRecipe?.id]
+                        ?.id || undefined,
+                  }}
+                >
                   <button className="getStarted">GET STARTED</button>
                 </Link>
               </div>

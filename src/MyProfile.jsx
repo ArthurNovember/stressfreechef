@@ -229,11 +229,7 @@ const MyProfile = ({ userInfo, addItem }) => {
   return (
     <div className="myProfile">
       <div className="deleteContainer">
-        <button
-          style={{ background: "#010000ff", color: "white" }}
-          onClick={handleDeleteAccount}
-          className="deleteAccount"
-        >
+        <button onClick={handleDeleteAccount} className="deleteAccount">
           Delete account
         </button>
       </div>

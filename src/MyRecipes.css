@@ -89,4 +89,6 @@
   margin-left: auto; /* odtlačí doprava */
   width: 250px;
   border-top-right-radius: 0px;
+  background: rgb(43, 43, 43);
+  color: white;
 }

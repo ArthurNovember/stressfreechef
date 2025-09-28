@@ -83,6 +83,8 @@ const ExploreRecipes = ({ addItem }) => {
   const ThumbnailUrl = getCover(selectedRecipe).url;
   const isVideoSelected = getCover(selectedRecipe).isVideo;
 
+  const [displayRecipes, setDisplayRecipes] = useState([]);
+
   // Debounce vyhledávání (300 ms)
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
@@ -128,6 +130,7 @@ const ExploreRecipes = ({ addItem }) => {
         setItems(Array.isArray(data.items) ? data.items : []);
         setTotal(Number(data.total) || 0);
         setPages(Number(data.pages) || 1);
+        setDisplayRecipes(Array.isArray(data.items) ? data.items : []);
       } catch (e) {
         if (!aborted) setErr(e?.message || "Failed to load recipes.");
       } finally {
@@ -148,6 +151,33 @@ const ExploreRecipes = ({ addItem }) => {
 
   const canPrev = page > 1;
   const canNext = page < pages;
+
+  const shuffleRecipes = () => {
+    const shuffled = [...items].sort(() => Math.random() - 0.5);
+    setDisplayRecipes(shuffled);
+  };
+
+  const bestSortRecipes = () => {
+    const sorted = [...items].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+    setDisplayRecipes(sorted);
+  };
+
+  const favoriteRecipes = () => {
+    const sorted = [...items].sort((a, b) => b.rating - a.rating);
+    setDisplayRecipes(sorted);
+  };
+
+  const difficultyOrder = ["Beginner", "Intermediate", "Hard"];
+  const recommendedRecipes = () => {
+    const sorted = [...items].sort(
+      (a, b) =>
+        difficultyOrder.indexOf(a.difficulty) -
+        difficultyOrder.indexOf(b.difficulty)
+    );
+    setDisplayRecipes(sorted);
+  };
 
   return (
     <div className="explore">
@@ -192,9 +222,32 @@ const ExploreRecipes = ({ addItem }) => {
           No results found. Try a different keyword.
         </p>
       )}
-
+      <section className="variantsExplore">
+        <ul>
+          <li>
+            <a href="#recommended" onClick={recommendedRecipes}>
+              EASIEST
+            </a>
+          </li>
+          <li>
+            <a href="#newest" onClick={bestSortRecipes}>
+              NEWEST
+            </a>
+          </li>
+          <li>
+            <a href="#favorite" onClick={favoriteRecipes}>
+              FAVORITE
+            </a>
+          </li>
+          <li>
+            <a href="#random" onClick={shuffleRecipes}>
+              RANDOM
+            </a>
+          </li>
+        </ul>
+      </section>
       <div className="recipeContainer1">
-        {items.map((r) => {
+        {displayRecipes.map((r) => {
           const { url, isVideo } = getCover(r);
           const title = r?.title || "Untitled";
           const rating = Math.max(0, Math.round(r?.rating || 0));

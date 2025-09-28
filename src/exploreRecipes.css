@@ -42,7 +42,7 @@
   justify-content: center;
   margin-left: 20px;
   flex-wrap: wrap;
-  margin-top: 50px;
+  margin-right: 20px;
   width: 98%;
   padding-top: 30px;
   border-radius: 5px;
@@ -97,4 +97,21 @@
   align-items: center;
   justify-content: center;
   margin-top: 16px;
+}
+
+.variantsExplore {
+  width: 98%;
+  margin-top: 20px;
+  margin-left: 20px;
+  margin-right: 20px;
+  padding-top: 30px;
+  border-radius: 5px;
+}
+
+.variantsExplore a {
+  background-color: rgb(71, 12, 12);
+  height: 15px;
+  display: flex;
+  justify-content: center; /* horizontálně */
+  align-items: center; /* vertikálně */
 }

@@ -107,7 +107,7 @@ const Home = ({
           <ul className="HomeUl">
             <li>
               <a href="#recommended" onClick={recommendedRecipes}>
-                RECOMMENDED
+                EASIEST
               </a>
             </li>
             <li>

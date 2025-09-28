@@ -53,11 +53,6 @@
   margin-top: 20px;
 }
 
-.loginInfo {
-  display: flex;
-  justify-content: space-around;
-}
-
 .myProfile {
   padding-top: 55px;
   background-image: url("https://i.imgur.com/KcxsVeU.png");
@@ -79,4 +74,19 @@
 .deleteButton:hover {
   cursor: pointer;
   opacity: 0.5;
+}
+
+.logout {
+  background-color: rgb(66, 0, 0);
+  width: 250px;
+}
+
+.deleteContainer {
+  display: flex;
+}
+
+.deleteAccount {
+  margin-left: auto; /* odtlačí doprava */
+  width: 250px;
+  border-top-right-radius: 0px;
 }

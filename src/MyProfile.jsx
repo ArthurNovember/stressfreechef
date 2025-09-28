@@ -60,6 +60,34 @@ const MyProfile = ({ userInfo, addItem }) => {
   const [err, setErr] = useState("");
   const [communityRatings, setCommunityRatings] = useState({});
 
+  // --- Account deletion UI state ---
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteAccount() {
+    const sure = window.confirm(
+      "This will permanently delete your account, recipes, shopping list and favorites. This action cannot be undone. Do you want to continue?"
+    );
+    if (!sure) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/account`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok && res.status !== 204) {
+        const txt = await res.text();
+        throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
+      }
+      localStorage.removeItem("token");
+      window.location.href = "/AuthForm";
+    } catch (e) {
+      alert("Account deletion failed: " + (e?.message || e));
+    }
+  }
+
   //Mazání
   const handleDelete = async (recipeId) => {
     if (!window.confirm("Do you really want to delete this recipe?")) return;
@@ -200,12 +228,26 @@ const MyProfile = ({ userInfo, addItem }) => {
 
   return (
     <div className="myProfile">
-      <div className="loginInfo">
-        <h2>Welcome, {userInfo.username}!</h2>
-        <h2>Email: {userInfo.email}</h2>
-        <button onClick={handleLogout}>Logout</button>
+      <div className="deleteContainer">
+        <button
+          style={{ background: "#010000ff", color: "white" }}
+          onClick={handleDeleteAccount}
+          className="deleteAccount"
+        >
+          Delete account
+        </button>
       </div>
-
+      <div classname="loginButtons">
+        <div className="loginInfo">
+          <h2>Welcome, {userInfo.username}!</h2>
+          <h2>Email: {userInfo.email}</h2>
+        </div>
+        <div clasName="endButtons">
+          <button className="logout" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+      </div>
       <div className="My">
         {/* SAVED RECIPES – zatím placeholder / budoucí feature 
         <div className="savedRecipes">

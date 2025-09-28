@@ -91,4 +91,72 @@ router.get("/profile", authenticateToken, (req, res) => {
   });
 });
 
+// DELETE /api/account — smaže účet + všechna navázaná data
+router.delete("/account", authenticateToken, async (req, res) => {
+  const userId = req.user._id;
+
+  // Načtení volitelných modelů (uprav cesty/názvy podle projektu)
+  let UserRecipe, CommunityRecipe, CommunityRating;
+  try {
+    UserRecipe = require("../models/UserRecipe");
+  } catch {}
+  try {
+    CommunityRecipe = require("../models/CommunityRecipe");
+  } catch {}
+  try {
+    CommunityRating = require("../models/CommunityRating");
+  } catch {}
+
+  const cloudinary = require("cloudinary").v2;
+
+  try {
+    // 1) Smazat uploady + soukromé recepty
+    if (UserRecipe) {
+      const myRecipes = await UserRecipe.find({ owner: userId }).lean();
+
+      if (cloudinary) {
+        for (const r of myRecipes) {
+          const coverId = r?.image?.publicId;
+          if (coverId) {
+            try {
+              await cloudinary.uploader.destroy(coverId);
+            } catch (e) {
+              console.warn("CLD cover destroy fail:", e?.message || e);
+            }
+          }
+          for (const s of r?.steps || []) {
+            if (s?.mediaPublicId) {
+              try {
+                await cloudinary.uploader.destroy(s.mediaPublicId);
+              } catch (e) {
+                console.warn("CLD step destroy fail:", e?.message || e);
+              }
+            }
+          }
+        }
+      }
+
+      await UserRecipe.deleteMany({ owner: userId });
+    }
+
+    // 2) Community recepty – výchozí: úplně smazat
+    if (CommunityRecipe) {
+      await CommunityRecipe.deleteMany({ owner: userId });
+    }
+
+    // 3) Hodnocení
+    if (CommunityRating) {
+      await CommunityRating.deleteMany({ user: userId });
+    }
+
+    // 4) Smazat samotného uživatele (embedded shoppingList, favoriteItems, itemSuggestions zmizí s ním)
+    await User.findByIdAndDelete(userId);
+
+    return res.status(204).send();
+  } catch (err) {
+    console.error("Account deletion failed:", err);
+    return res.status(500).json({ error: "Account deletion failed." });
+  }
+});
+
 module.exports = router;

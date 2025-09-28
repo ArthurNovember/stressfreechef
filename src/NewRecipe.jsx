@@ -39,9 +39,11 @@ const NewRecipe = () => {
   const handleFileChange = (e) => {
     const f = e.target.files?.[0];
     if (f) {
+      setThumbFile(f);
       setPreview(URL.createObjectURL(f));
       setIsVideo(f.type.startsWith("video/")); // 👈 true, pokud je to video
     } else {
+      setThumbFile(null);
       setPreview(null);
       setIsVideo(false);
     }

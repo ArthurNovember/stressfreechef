@@ -75,6 +75,33 @@ const Recipe = () => {
     };
   }, [recipe?._id, initialCommunityId]);
 
+  // ⬇️ PŘIDEJ do Recipe.jsx (třeba hned pod ensure useEffect)
+  useEffect(() => {
+    if (!communityId) return;
+    let aborted = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/community-recipes/${communityId}`
+        );
+        const data = await res.json();
+        if (!res.ok)
+          throw new Error(data?.error || "Failed to load community stats");
+        if (!aborted) {
+          setCommunity({
+            avg: Number(data?.ratingAvg || 0),
+            count: Number(data?.ratingCount || 0),
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to fetch community recipe:", e?.message || e);
+      }
+    })();
+    return () => {
+      aborted = true;
+    };
+  }, [communityId]);
+
   const [myRating, setMyRating] = useState(0);
   const [rateMsg, setRateMsg] = useState(null);
   const [community, setCommunity] = useState({

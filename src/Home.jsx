@@ -101,7 +101,7 @@ const Home = ({
             onMouseEnter={handleHover}
             onAnimationEnd={handleAnimationEnd}
           />
-          <p>Stress Free Chef</p>
+          <p className="StressFree">Stress Free Chef</p>
         </div>
         <section className="variants">
           <ul className="HomeUl">

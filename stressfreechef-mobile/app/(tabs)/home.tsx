@@ -1,3 +1,8 @@
+import {
+  useFonts,
+  Merienda_400Regular,
+  Merienda_700Bold,
+} from "@expo-google-fonts/merienda";
 import { useEffect, useState } from "react";
 import {
   View,
@@ -9,6 +14,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  ImageBackground,
 } from "react-native";
 import { API_BASE, fetchJSON } from "../../lib/api";
 
@@ -54,6 +60,11 @@ export default function HomeScreen() {
     };
   }, []);
 
+  const [fontsLoaded] = useFonts({
+    Merienda_400Regular,
+    Merienda_700Bold,
+  });
+
   if (!API_BASE) {
     return (
       <View style={styles.center}>
@@ -77,90 +88,148 @@ export default function HomeScreen() {
     );
   }
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>🏠 Home</Text>
-      <FlatList
-        data={recipes}
-        keyExtractor={(r) => String(r._id || r.id)}
-        numColumns={2}
-        columnWrapperStyle={{ gap: 12 }}
-        contentContainerStyle={{ padding: 12 }}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => setSelected(item)}>
-            <Image source={{ uri: item.imgSrc }} style={styles.img} />
-            <Text style={styles.title} numberOfLines={2}>
-              {item.title}
-            </Text>
-            <Text style={styles.meta}>Difficulty: {item.difficulty}</Text>
-            <Text style={styles.meta}>Time: {item.time} ⏱️</Text>
-          </Pressable>
-        )}
-      />
-      {/* Modal s náhledem receptu */}
-      <Modal
-        visible={!!selected}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setSelected(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-              <Image
-                source={{ uri: selected?.imgSrc }}
-                style={styles.modalImg}
-              />
-              <Text style={styles.modalTitle}>{selected?.title}</Text>
-              {selected?.ingredients?.length ? (
-                <>
-                  <Text style={styles.section}>Ingredients</Text>
-                  {selected!.ingredients!.map((ing, i) => (
-                    <Text key={i} style={styles.ingredient}>
-                      • {ing}
-                    </Text>
-                  ))}
-                </>
-              ) : null}
-              <View style={{ height: 12 }} />
-              <Pressable
-                style={styles.primaryBtn}
-                onPress={() => {
-                  // přejít na detail se „steps“
-                  const rid = String(selected?._id || selected?.id || "");
-                  router.push({
-                    pathname: "/recipe/[id]",
-                    params: {
-                      id: rid,
-                      // POZN: dočasně předáme i celý recipe (kvůli rychlosti),
-                      // později uděláme fetch na detail podle id:
-                      recipe: JSON.stringify(selected),
-                    },
-                  });
-                  setSelected(null);
-                }}
-              >
-                <Text style={styles.primaryBtnText}>GET STARTED</Text>
-              </Pressable>
-              <Pressable
-                style={styles.secondaryBtn}
-                onPress={() => setSelected(null)}
-              >
-                <Text style={styles.secondaryBtnText}>Close</Text>
-              </Pressable>
-            </ScrollView>
+    <ImageBackground
+      source={{ uri: "https://i.imgur.com/yUtWIFO.jpeg" }}
+      style={styles.bg} // ← layout kontejner (flex:1)
+      imageStyle={styles.bgImage} // ← jen vzhled bitmapy
+    >
+      <View style={styles.container}>
+        <View
+          style={{
+            alignItems: "center",
+            flexDirection: "row",
+          }}
+        >
+          <View
+            style={{
+              alignItems: "center",
+              backgroundColor: "#760101",
+              height: 100,
+              width: "25%",
+
+              borderColor: "black",
+              borderWidth: 5,
+              borderRadius: 5,
+              borderTopRightRadius: 0,
+              borderBottomRightRadius: 0,
+            }}
+          >
+            <Image
+              style={{
+                flex: 0.8,
+                aspectRatio: 1.3,
+                justifyContent: "center",
+                top: 5,
+              }}
+              source={{ uri: "https://i.imgur.com/EdgU8NN.png" }}
+            />
           </View>
+          <Text
+            style={{
+              width: "75%",
+              fontSize: 33,
+              lineHeight: 100,
+              borderWidth: 5,
+              borderLeftWidth: 0,
+              height: 100,
+              textAlign: "center",
+              borderTopRightRadius: 5,
+              borderBottomRightRadius: 5,
+              backgroundColor: "#111111ff",
+              color: "#edededff",
+              fontFamily: "Merienda_400Regular",
+            }}
+          >
+            Stress Free Chef
+          </Text>
         </View>
-      </Modal>
-    </View>
+        <FlatList
+          data={recipes}
+          keyExtractor={(r) => String(r._id || r.id)}
+          numColumns={2}
+          columnWrapperStyle={{ gap: 12 }}
+          contentContainerStyle={{ padding: 12 }}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          renderItem={({ item }) => (
+            <Pressable style={styles.card} onPress={() => setSelected(item)}>
+              <Image source={{ uri: item.imgSrc }} style={styles.img} />
+              <Text style={styles.title} numberOfLines={2}>
+                {item.title}
+              </Text>
+              <Text style={styles.meta}>Difficulty: {item.difficulty}</Text>
+              <Text style={styles.meta}>Time: {item.time} ⏱️</Text>
+            </Pressable>
+          )}
+        />
+        {/* Modal s náhledem receptu */}
+        <Modal
+          visible={!!selected}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setSelected(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+                <Image
+                  source={{ uri: selected?.imgSrc }}
+                  style={styles.modalImg}
+                />
+                <Text style={styles.modalTitle}>{selected?.title}</Text>
+                {selected?.ingredients?.length ? (
+                  <>
+                    <Text style={styles.section}>Ingredients</Text>
+                    {selected!.ingredients!.map((ing, i) => (
+                      <Text key={i} style={styles.ingredient}>
+                        • {ing}
+                      </Text>
+                    ))}
+                  </>
+                ) : null}
+
+                <Pressable
+                  style={styles.primaryBtn}
+                  onPress={() => {
+                    // přejít na detail se „steps“
+                    const rid = String(selected?._id || selected?.id || "");
+                    router.push({
+                      pathname: "/recipe/[id]",
+                      params: {
+                        id: rid,
+                        // POZN: dočasně předáme i celý recipe (kvůli rychlosti),
+                        // později uděláme fetch na detail podle id:
+                        recipe: JSON.stringify(selected),
+                      },
+                    });
+                    setSelected(null);
+                  }}
+                >
+                  <Text style={styles.primaryBtnText}>GET STARTED</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.secondaryBtn}
+                  onPress={() => setSelected(null)}
+                >
+                  <Text style={styles.secondaryBtnText}>Close</Text>
+                </Pressable>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </ImageBackground>
   );
 }
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  header: { fontSize: 22, fontWeight: "800", padding: 12 },
+  bg: { flex: 1 }, // ← layout pro ImageBackground
+  bgImage: {
+    resizeMode: "cover",
+    opacity: 0.95, // ← vizuál bitmapy (bez flex!)
+  },
+  container: { flex: 1, paddingTop: 30 }, // ← odstraněno bílé pozadí
   card: {
     flex: 1,
-    backgroundColor: "#fafafa",
+    backgroundColor: "#191919ff",
     borderRadius: 12,
     padding: 10,
     gap: 6,
@@ -172,13 +241,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "#eee",
   },
-  title: { fontSize: 14, fontWeight: "700" },
-  meta: { fontSize: 12, opacity: 0.7 },
+  title: { fontSize: 14, fontWeight: "700", color: "#d0d0d0ff" },
+  meta: { fontSize: 12, opacity: 0.7, color: "#d6d6d6ff" },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 16,
+    backgroundColor: "#211d1dff",
   },
   err: { color: "#c00", fontWeight: "700", textAlign: "center" },
 
@@ -189,7 +259,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalCard: {
-    backgroundColor: "#fff",
+    backgroundColor: "#212121ff",
     borderRadius: 16,
     padding: 12,
     elevation: 4,
@@ -200,11 +270,26 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#eee",
   },
-  modalTitle: { fontSize: 20, fontWeight: "800", marginTop: 10 },
-  section: { marginTop: 12, marginBottom: 4, fontWeight: "700" },
-  ingredient: { fontSize: 14, opacity: 0.9, marginVertical: 2 },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    marginTop: 10,
+    color: "#dcd7d7ff",
+  },
+  section: {
+    marginTop: 12,
+    marginBottom: 4,
+    fontWeight: "700",
+    color: "#9b2929ff",
+  },
+  ingredient: {
+    fontSize: 14,
+    opacity: 0.9,
+    marginVertical: 2,
+    color: "#dcd7d7ff",
+  },
   primaryBtn: {
-    backgroundColor: "#111",
+    backgroundColor: "#570303ff",
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
@@ -218,6 +303,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#ccc",
+    backgroundColor: "#434343ff",
   },
-  secondaryBtnText: { color: "#111", fontWeight: "700" },
+  secondaryBtnText: { color: "#a8a3a3ff", fontWeight: "700" },
 });

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { View, Text, Image, StyleSheet, Pressable } from "react-native";
 type Step = {
   type: "image" | "video" | "text";
@@ -23,13 +23,13 @@ export default function RecipeStepsScreen() {
     recipe?: string; // JSON předaný z Home (dočasně)
   }>();
   // ⚠️ Dočasný zdroj dat ze stringu (rychlá integrace)
-  const recipe: Recipe | null = useMemo(() => {
-    try {
-      return params?.recipe ? JSON.parse(String(params.recipe)) : null;
-    } catch {
-      return null;
-    }
-  }, [params?.recipe]);
+  let recipe: Recipe | null = null;
+  try {
+    recipe = params?.recipe ? JSON.parse(String(params.recipe)) : null;
+  } catch {
+    recipe = null;
+  }
+
   const [current, setCurrent] = useState(0);
   const steps = recipe?.steps || [];
   if (!recipe || steps.length === 0) {
@@ -45,31 +45,26 @@ export default function RecipeStepsScreen() {
   const step = steps[current];
   return (
     <View style={s.wrapper}>
-      {/* Pozadí / hero */}
-      <Image
-        source={{ uri: recipe.image?.url || recipe.imgSrc }}
-        style={s.hero}
-        blurRadius={8}
-      />
-      <View style={s.overlay} />
       {/* Obsah */}
-      <View style={s.card}>
-        <Text style={s.title}>{recipe.title}</Text>
-        <Text style={s.meta}>
-          Step {current + 1} / {steps.length}
-        </Text>
-        <View style={{ height: 12 }} />
-        {step.type === "image" && (
-          <Image source={{ uri: step.src }} style={s.stepImg} />
-        )}
-        {step.type === "text" && (
-          <View style={s.textStep}>
-            <Text style={{ fontSize: 16 }}>{step.description}</Text>
-          </View>
-        )}
-        {/* Video bychom doplnili později přes expo-av */}
-        <View style={{ height: 12 }} />
-        <Text style={s.description}>{step.description}</Text>
+      <View style={[s.card, { justifyContent: "space-between" }]}>
+        <View>
+          <Text style={s.title}>{recipe.title}</Text>
+          <Text style={s.meta}>
+            Step {current + 1} / {steps.length}
+          </Text>
+          <View style={{ height: 12 }} />
+          {step.type === "image" && (
+            <Image source={{ uri: step.src }} style={s.stepImg} />
+          )}
+          {step.type === "text" && (
+            <View style={s.textStep}>
+              <Text style={{ fontSize: 16 }}>{step.description}</Text>
+            </View>
+          )}
+          {/* Video bychom doplnili později přes expo-av */}
+          <View style={{ height: 12 }} />
+          <Text style={s.description}>{step.description}</Text>
+        </View>
         <View style={s.row}>
           <Pressable
             disabled={current === 0}
@@ -90,7 +85,7 @@ export default function RecipeStepsScreen() {
           ) : (
             <Pressable
               onPress={() => router.back()}
-              style={[s.btn, s.btnPrimary]}
+              style={[s.btn, s.btnPrimary, { backgroundColor: "#410101ff" }]}
             >
               <Text style={[s.btnText, { color: "#fff" }]}>FINISH</Text>
             </Pressable>
@@ -102,21 +97,15 @@ export default function RecipeStepsScreen() {
 }
 const s = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: "#000" },
-  hero: { position: "absolute", width: "100%", height: "100%", opacity: 0.35 },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.35)",
-  },
+
   card: {
     flex: 1,
-    marginTop: 64,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: "#211d1dff",
     padding: 16,
+    paddingTop: 30,
   },
-  title: { fontSize: 20, fontWeight: "800" },
-  meta: { opacity: 0.7, marginTop: 4 },
+  title: { fontSize: 20, fontWeight: "800", color: "#dcd7d7ff" },
+  meta: { opacity: 0.7, marginTop: 4, color: "#dcd7d7ff" },
   stepImg: {
     width: "100%",
     aspectRatio: 16 / 9,
@@ -124,8 +113,13 @@ const s = StyleSheet.create({
     backgroundColor: "#eee",
   },
   textStep: { padding: 12, borderRadius: 12, backgroundColor: "#fafafa" },
-  description: { marginTop: 8, fontSize: 16, lineHeight: 22 },
-  row: { flexDirection: "row", gap: 12, marginTop: 16 },
+  description: {
+    marginTop: 8,
+    fontSize: 16,
+    lineHeight: 22,
+    color: "#dcd7d7ff",
+  },
+  row: { flexDirection: "row", gap: 12, paddingBottom: 30 },
   btn: {
     flex: 1,
     borderWidth: StyleSheet.hairlineWidth,
@@ -135,8 +129,11 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   btnDisabled: { opacity: 0.4 },
-  btnPrimary: { backgroundColor: "#111", borderColor: "#111" },
-  btnText: { fontWeight: "800" },
+  btnPrimary: {
+    backgroundColor: "#111",
+    borderColor: "#111",
+  },
+  btnText: { fontWeight: "800", color: "#ffffffff" },
   center: {
     flex: 1,
     alignItems: "center",

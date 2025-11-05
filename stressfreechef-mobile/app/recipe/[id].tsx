@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { View, Text, Image, StyleSheet, Pressable } from "react-native";
+import { Video, ResizeMode } from "expo-av";
 type Step = {
   type: "image" | "video" | "text";
   src?: string;
@@ -52,7 +53,7 @@ export default function RecipeStepsScreen() {
           <Text style={s.meta}>
             Step {current + 1} / {steps.length}
           </Text>
-          <View style={{ height: 12 }} />
+
           {step.type === "image" && (
             <Image source={{ uri: step.src }} style={s.stepImg} />
           )}
@@ -61,8 +62,16 @@ export default function RecipeStepsScreen() {
               <Text style={{ fontSize: 16 }}>{step.description}</Text>
             </View>
           )}
-          {/* Video bychom doplnili později přes expo-av */}
-          <View style={{ height: 12 }} />
+          {step.type === "video" && (
+            <Video
+              source={{ uri: step.src! }}
+              style={s.stepImg}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+              isLooping
+            />
+          )}
+
           <Text style={s.description}>{step.description}</Text>
         </View>
         <View style={s.row}>
@@ -105,7 +114,7 @@ const s = StyleSheet.create({
     paddingTop: 30,
   },
   title: { fontSize: 20, fontWeight: "800", color: "#dcd7d7ff" },
-  meta: { opacity: 0.7, marginTop: 4, color: "#dcd7d7ff" },
+  meta: { opacity: 0.7, marginTop: 4, marginBottom: 8, color: "#dcd7d7ff" },
   stepImg: {
     width: "100%",
     aspectRatio: 16 / 9,

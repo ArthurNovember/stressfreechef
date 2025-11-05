@@ -93,56 +93,52 @@ export default function HomeScreen() {
       style={styles.bg} // ← layout kontejner (flex:1)
       imageStyle={styles.bgImage} // ← jen vzhled bitmapy
     >
-      <View style={styles.container}>
+      <View
+        style={{
+          alignItems: "center",
+          flexDirection: "row",
+        }}
+      >
         <View
           style={{
             alignItems: "center",
-            flexDirection: "row",
+            backgroundColor: "#760101",
+            height: 100,
+            width: "25%",
+
+            borderColor: "black",
+            borderWidth: 5,
           }}
         >
-          <View
+          <Image
             style={{
-              alignItems: "center",
-              backgroundColor: "#760101",
-              height: 100,
-              width: "25%",
-
-              borderColor: "black",
-              borderWidth: 5,
-              borderRadius: 5,
-              borderTopRightRadius: 0,
-              borderBottomRightRadius: 0,
+              flex: 0.8,
+              aspectRatio: 1.3,
+              justifyContent: "center",
+              top: 5,
             }}
-          >
-            <Image
-              style={{
-                flex: 0.8,
-                aspectRatio: 1.3,
-                justifyContent: "center",
-                top: 5,
-              }}
-              source={{ uri: "https://i.imgur.com/EdgU8NN.png" }}
-            />
-          </View>
-          <Text
-            style={{
-              width: "75%",
-              fontSize: 33,
-              lineHeight: 100,
-              borderWidth: 5,
-              borderLeftWidth: 0,
-              height: 100,
-              textAlign: "center",
-              borderTopRightRadius: 5,
-              borderBottomRightRadius: 5,
-              backgroundColor: "#111111ff",
-              color: "#edededff",
-              fontFamily: "Merienda_400Regular",
-            }}
-          >
-            Stress Free Chef
-          </Text>
+            source={{ uri: "https://i.imgur.com/EdgU8NN.png" }}
+          />
         </View>
+        <Text
+          style={{
+            width: "75%",
+            fontSize: 33,
+            lineHeight: 100,
+            borderWidth: 5,
+            borderLeftWidth: 0,
+            height: 100,
+            textAlign: "center",
+
+            backgroundColor: "#111111ff",
+            color: "#edededff",
+            fontFamily: "Merienda_400Regular",
+          }}
+        >
+          Stress Free Chef
+        </Text>
+      </View>
+      <View style={styles.container}>
         <FlatList
           data={recipes}
           keyExtractor={(r) => String(r._id || r.id)}
@@ -254,7 +250,7 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+
     justifyContent: "center",
     padding: 16,
   },

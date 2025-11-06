@@ -34,6 +34,8 @@ type Recipe = {
   time: string;
   ingredients?: string[];
   steps?: Step[];
+  rating?: number;
+  createdAt?: string;
 };
 
 export default function HomeScreen() {
@@ -41,6 +43,13 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<Recipe | null>(null);
+
+  const difficultyOrder = ["Beginner", "Intermediate", "Hard"];
+  const [list, setList] = useState<Recipe[]>([]); // zobrazovaný seznam
+  const [active, setActive] = useState<
+    "EASIEST" | "NEWEST" | "FAVORITE" | "RANDOM"
+  >("NEWEST");
+
   useEffect(() => {
     let aborted = false;
     (async () => {
@@ -48,7 +57,19 @@ export default function HomeScreen() {
         setLoading(true);
         setErr(null);
         const data = await fetchJSON<Recipe[]>(`${API_BASE}/api/recipes`);
-        if (!aborted) setRecipes(data || []);
+
+        if (!aborted) {
+          setRecipes(data || []);
+          setList(
+            (data || [])
+              .slice()
+              .sort(
+                (a, b) =>
+                  new Date(b.createdAt || 0).getTime() -
+                  new Date(a.createdAt || 0).getTime()
+              )
+          ); // default NEWEST
+        }
       } catch (e: any) {
         if (!aborted) setErr(e?.message || "Failed to load recipes.");
       } finally {
@@ -59,6 +80,36 @@ export default function HomeScreen() {
       aborted = true;
     };
   }, []);
+
+  function sortEasiest(src: Recipe[]) {
+    return src
+      .slice()
+      .sort(
+        (a, b) =>
+          difficultyOrder.indexOf(a.difficulty || "") -
+          difficultyOrder.indexOf(b.difficulty || "")
+      );
+  }
+  function sortNewest(src: Recipe[]) {
+    return src
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || 0).getTime() -
+          new Date(a.createdAt || 0).getTime()
+      );
+  }
+  function sortFavorite(src: Recipe[]) {
+    return src.slice().sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  }
+  function shuffle(src: Recipe[]) {
+    const arr = src.slice();
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
 
   const [fontsLoaded] = useFonts({
     Merienda_400Regular,
@@ -87,6 +138,7 @@ export default function HomeScreen() {
       </View>
     );
   }
+
   return (
     <ImageBackground
       source={{ uri: "https://i.imgur.com/yUtWIFO.jpeg" }}
@@ -139,13 +191,96 @@ export default function HomeScreen() {
         </Text>
       </View>
       <View style={styles.container}>
+        <View style={styles.toolbar}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <Pressable
+              style={[styles.chip, active === "NEWEST" && styles.chipActive]}
+              onPress={() => {
+                setActive("NEWEST");
+                setList(sortNewest(recipes));
+              }}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  active === "NEWEST" && styles.chipTextActive,
+                ]}
+              >
+                NEWEST
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.chip, active === "EASIEST" && styles.chipActive]}
+              onPress={() => {
+                setActive("EASIEST");
+                setList(sortEasiest(recipes));
+              }}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  active === "EASIEST" && styles.chipTextActive,
+                ]}
+              >
+                EASIEST
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.chip, active === "FAVORITE" && styles.chipActive]}
+              onPress={() => {
+                setActive("FAVORITE");
+                setList(sortFavorite(recipes));
+              }}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  active === "FAVORITE" && styles.chipTextActive,
+                ]}
+              >
+                FAVORITE
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.chip, active === "RANDOM" && styles.chipActive]}
+              onPress={() => {
+                setActive("RANDOM");
+                setList(shuffle(recipes));
+              }}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  active === "RANDOM" && styles.chipTextActive,
+                ]}
+              >
+                RANDOM
+              </Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+
         <FlatList
-          data={recipes}
+          data={list}
           keyExtractor={(r) => String(r._id || r.id)}
           numColumns={2}
           columnWrapperStyle={{ gap: 12 }}
           contentContainerStyle={{ padding: 12 }}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          ListHeaderComponent={
+            <>
+              {/* Logo + toolbar */}
+              <View style={{ alignItems: "center", flexDirection: "row" }}>
+                {/* ...logo a text stejné jako teď... */}
+              </View>
+              <View style={styles.toolbar}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {/* tlačítka sortování */}
+                </ScrollView>
+              </View>
+            </>
+          }
           renderItem={({ item }) => (
             <Pressable style={styles.card} onPress={() => setSelected(item)}>
               <Image source={{ uri: item.imgSrc }} style={styles.img} />
@@ -222,7 +357,7 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
     opacity: 0.95, // ← vizuál bitmapy (bez flex!)
   },
-  container: { flex: 1, paddingTop: 30 }, // ← odstraněno bílé pozadí
+  container: { flex: 1 }, // ← odstraněno bílé pozadí
   card: {
     flex: 1,
     backgroundColor: "#191919ff",
@@ -302,4 +437,27 @@ const styles = StyleSheet.create({
     backgroundColor: "#434343ff",
   },
   secondaryBtnText: { color: "#a8a3a3ff", fontWeight: "700" },
+  toolbar: {
+    alignItems: "center",
+  },
+  chip: {
+    paddingHorizontal: 17.5,
+    paddingVertical: 15,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: "#000000ff",
+    backgroundColor: "#1a1919ff",
+  },
+  chipActive: {
+    backgroundColor: "#660202ff",
+    borderColor: "#570303ff",
+  },
+  chipText: {
+    fontWeight: "700",
+    color: "#d0d0d0",
+    letterSpacing: 0.3,
+  },
+  chipTextActive: {
+    color: "#ffffff",
+  },
 });

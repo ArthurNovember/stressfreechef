@@ -11,12 +11,15 @@ import {
   Alert,
   StyleSheet,
   ScrollView,
+  Modal,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE, fetchJSON } from "../../lib/api";
 
 const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
+
+import { router } from "expo-router";
 
 /** ===== Helpers ===== */
 const TOKEN_KEY = "token";
@@ -213,6 +216,7 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
   const [err, setErr] = useState<string | null>(null);
   const [items, setItems] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [selected, setSelected] = useState<any | null>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -382,20 +386,26 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
         contentContainerStyle={{ padding: 12, gap: 12 }}
         renderItem={({ item }) => {
           const { url } = getCover(item);
+          const rid = String(item?._id || item?.id || "");
           return (
             <View style={styles.card}>
-              <Image source={{ uri: url }} style={styles.cardImg} />
-              <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                <Text style={styles.cardTitle} numberOfLines={1}>
-                  {item?.title || "Untitled"}
-                </Text>
-                <Text style={styles.metaText}>
-                  Difficulty: {item?.difficulty || "—"}
-                </Text>
-                <Text style={styles.metaText}>
-                  Time: {item?.time || "—"} ⏱️
-                </Text>
-              </View>
+              <Pressable
+                style={{ flex: 1, flexDirection: "row" }}
+                onPress={() => setSelected({ ...item, imgSrc: url })}
+              >
+                <Image source={{ uri: url }} style={styles.cardImg} />
+                <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                  <Text style={styles.cardTitle} numberOfLines={1}>
+                    {item?.title || "Untitled"}
+                  </Text>
+                  <Text style={styles.metaText}>
+                    Difficulty: {item?.difficulty || "—"}
+                  </Text>
+                  <Text style={styles.metaText}>
+                    Time: {item?.time || "—"} ⏱️
+                  </Text>
+                </View>
+              </Pressable>
               <Pressable
                 onPress={() => handleDeleteRecipe(String(item?._id))}
                 style={styles.deleteBtn}
@@ -406,6 +416,64 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
           );
         }}
       />
+      {/* Modal s náhledem receptu */}
+      <Modal
+        visible={!!selected}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSelected(null)}
+      >
+        <View
+          style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+        >
+          <View style={styles.modalCard}>
+            <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+              <Image
+                source={{ uri: selected?.imgSrc }}
+                style={styles.modalImg}
+              />
+              <Text style={styles.modalTitle}>{selected?.title}</Text>
+
+              {Array.isArray(selected?.ingredients) &&
+              selected!.ingredients!.length > 0 ? (
+                <>
+                  <Text style={styles.section}>Ingredients</Text>
+                  {selected!.ingredients!.map((ing: string, i: number) => (
+                    <Text key={i} style={styles.ingredient}>
+                      • {ing}
+                    </Text>
+                  ))}
+                </>
+              ) : null}
+
+              <Pressable
+                style={styles.primaryBtn}
+                onPress={() => {
+                  const rid = String(selected?._id || selected?.id || "");
+                  router.push({
+                    pathname: "/recipe/[id]",
+                    params: {
+                      id: rid,
+                      // pošleme i JSON, stejně jako z Home:
+                      recipe: JSON.stringify(selected),
+                    },
+                  });
+                  setSelected(null);
+                }}
+              >
+                <Text style={styles.primaryBtnText}>GET STARTED</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.secondaryBtn}
+                onPress={() => setSelected(null)}
+              >
+                <Text style={styles.secondaryBtnText}>Close</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -479,7 +547,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
-    marginTop: 8,
+    marginBottom: 8,
   },
   primaryBtnText: { color: "#fff", fontWeight: "700" },
   secondaryBtn: {
@@ -528,5 +596,40 @@ const styles = StyleSheet.create({
     paddingVertical: "10%",
     backgroundColor: "#750c0cff",
     borderRadius: 5,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 16,
+  },
+  modalCard: {
+    backgroundColor: "#212121ff",
+    borderRadius: 16,
+    padding: 12,
+    elevation: 4,
+  },
+  modalImg: {
+    width: "100%",
+    aspectRatio: 1.4,
+    borderRadius: 12,
+    backgroundColor: "#333",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    marginTop: 10,
+    color: "#dcd7d7ff",
+  },
+  section: {
+    marginTop: 12,
+    marginBottom: 4,
+    fontWeight: "700",
+    color: "#9b2929ff",
+  },
+  ingredient: {
+    fontSize: 14,
+    opacity: 0.9,
+    marginVertical: 2,
+    color: "#dcd7d7ff",
   },
 });

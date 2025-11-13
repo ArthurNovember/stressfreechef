@@ -133,7 +133,7 @@ export default function HomeScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 8 }}>Loading recipes…</Text>
+        <Text style={{ marginTop: 8, color: "white" }}>Loading recipes…</Text>
       </View>
     );
   }

@@ -423,9 +423,7 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
         transparent
         onRequestClose={() => setSelected(null)}
       >
-        <View
-          style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
               <Image
@@ -433,9 +431,7 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
                 style={styles.modalImg}
               />
               <Text style={styles.modalTitle}>{selected?.title}</Text>
-
-              {Array.isArray(selected?.ingredients) &&
-              selected!.ingredients!.length > 0 ? (
+              {selected?.ingredients?.length ? (
                 <>
                   <Text style={styles.section}>Ingredients</Text>
                   {selected!.ingredients!.map((ing: string, i: number) => (
@@ -449,12 +445,14 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
               <Pressable
                 style={styles.primaryBtn}
                 onPress={() => {
+                  // přejít na detail se „steps“
                   const rid = String(selected?._id || selected?.id || "");
                   router.push({
                     pathname: "/recipe/[id]",
                     params: {
                       id: rid,
-                      // pošleme i JSON, stejně jako z Home:
+                      // POZN: dočasně předáme i celý recipe (kvůli rychlosti),
+                      // později uděláme fetch na detail podle id:
                       recipe: JSON.stringify(selected),
                     },
                   });
@@ -463,7 +461,6 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
               >
                 <Text style={styles.primaryBtnText}>GET STARTED</Text>
               </Pressable>
-
               <Pressable
                 style={styles.secondaryBtn}
                 onPress={() => setSelected(null)}

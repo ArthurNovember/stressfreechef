@@ -267,6 +267,54 @@ export default function ShoppingScreen() {
     }
   }, [addingShopName, shopOptions]);
 
+  const deleteShopOption = useCallback(async (shopToDeleteId: string) => {
+    Alert.alert(
+      "Delete shop",
+      "This will remove this shop from all items. Continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await getToken();
+              const res = await fetch(
+                `${BASE}/api/shopping-list/shop-options/${shopToDeleteId}`,
+                {
+                  method: "DELETE",
+                  headers: { Authorization: `Bearer ${token}` },
+                }
+              );
+
+              if (!res.ok) {
+                const body = await res.text();
+                throw new Error(body || `HTTP ${res.status}`);
+              }
+
+              // 🧼 Lokálně smaž shop z options…
+              setShopOptions((prev) =>
+                prev.filter((s) => s._id !== shopToDeleteId)
+              );
+
+              // …a zároveň ho odeber ze všech položek
+              setItems((prevItems) =>
+                prevItems.map((item) => ({
+                  ...item,
+                  shop: (item.shop || []).filter(
+                    (s) => s._id !== shopToDeleteId
+                  ),
+                }))
+              );
+            } catch (e: any) {
+              Alert.alert("Failed to delete shop", e?.message || String(e));
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
   /** ===== Filtrování + default newest first ===== */
 
   const processedItems = useMemo(() => {
@@ -553,19 +601,36 @@ export default function ShoppingScreen() {
                   editingItem?.shop?.map((s) => String(s._id)) || [];
                 const active = itemShopIds.includes(shop._id);
                 return (
-                  <Pressable
+                  <View
                     key={shop._id}
                     style={[
                       styles.modalRow,
                       active && { backgroundColor: "#333" },
                     ]}
-                    onPress={() =>
-                      editingItem && toggleShopForItem(editingItem, shop._id)
-                    }
                   >
-                    <Text style={styles.modalRowText}>{shop.name}</Text>
-                    {active && <Text style={styles.modalRowText}>✓</Text>}
-                  </Pressable>
+                    {/* Klik na řádek = přidat/odebrat shop u itemu */}
+                    <Pressable
+                      style={{
+                        flex: 1,
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                      }}
+                      onPress={() =>
+                        editingItem && toggleShopForItem(editingItem, shop._id)
+                      }
+                    >
+                      <Text style={styles.modalRowText}>{shop.name}</Text>
+                      {active && <Text style={styles.modalRowText}>✓</Text>}
+                    </Pressable>
+
+                    {/* ❌ – smaže shop všude */}
+                    <Pressable
+                      style={styles.modalDeleteShopBtn}
+                      onPress={() => deleteShopOption(shop._id)}
+                    >
+                      <Text style={styles.modalDeleteShopText}>❌</Text>
+                    </Pressable>
+                  </View>
                 );
               })}
             </ScrollView>
@@ -823,5 +888,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: 4,
+  },
+  modalDeleteShopBtn: {
+    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalDeleteShopText: {
+    color: "#fff",
+    fontWeight: "700",
   },
 });

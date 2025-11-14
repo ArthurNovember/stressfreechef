@@ -425,6 +425,7 @@ export default function ShoppingScreen() {
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: 12, paddingBottom: 24 }}
+        keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <>
             {/* Nový item */}

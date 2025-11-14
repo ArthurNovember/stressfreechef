@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Modal,
   Pressable,
   StyleSheet,
@@ -15,6 +14,11 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { API_BASE, fetchJSON } from "../../lib/api";
+import { SwipeListView } from "react-native-swipe-list-view";
+
+import { Dimensions } from "react-native";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
 
@@ -182,35 +186,36 @@ export default function ShoppingScreen() {
     []
   );
 
-  const deleteItem = useCallback(async (id: string) => {
-    Alert.alert("Delete item", "Do you want to delete this item?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const token = await getToken();
-            const res = await fetch(`${BASE}/api/shopping-list/${id}`, {
-              method: "DELETE",
-              headers: { Authorization: `Bearer ${token}` },
-            });
+  const deleteItem = useCallback(
+    (id: string) => {
+      // 1) Nastavit rychlou animaci pro následující layout změnu
 
-            const updatedList: ShoppingItem[] = await res.json();
-            if (!res.ok) {
-              throw new Error(
-                (updatedList as any)?.["error"] || `HTTP ${res.status}`
-              );
-            }
+      // 2) Okamžitě upravit state – tady se animace aplikuje
+      setItems((prev) => prev.filter((it) => it._id !== id));
 
-            setItems(updatedList);
-          } catch (e: any) {
-            Alert.alert("Deletion failed", e?.message || String(e));
+      // 3) DELETE na backend pošleme „na pozadí“
+      (async () => {
+        try {
+          const token = await getToken();
+          if (!token) {
+            console.warn("No token – cannot delete item");
+            return;
           }
-        },
-      },
-    ]);
-  }, []);
+
+          await fetch(`${BASE}/api/shopping-list/${id}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        } catch (e: any) {
+          console.error("Failed to delete item", e?.message || e);
+          // když budeš chtít, můžeš tady někdy v budoucnu řešit rollback
+        }
+      })();
+    },
+    [BASE, getToken]
+  );
 
   const toggleChecked = useCallback(
     async (item: ShoppingItem) => {
@@ -373,13 +378,6 @@ export default function ShoppingScreen() {
             <Text style={styles.shopsBtnText}>{shopLabel}</Text>
           </Pressable>
         </View>
-
-        <Pressable
-          onPress={() => deleteItem(item._id)}
-          style={styles.deleteBtn}
-        >
-          <Text style={styles.deleteBtnText}>✕</Text>
-        </Pressable>
       </View>
     );
   };
@@ -420,10 +418,17 @@ export default function ShoppingScreen() {
 
   return (
     <View style={styles.screen}>
-      <FlatList
+      <SwipeListView
         data={processedItems}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
+        renderHiddenItem={() => <View />} // nic neukazujeme
+        rightOpenValue={-SCREEN_WIDTH} // 👈 odjeď přes celou šířku
+        disableRightSwipe
+        swipeToOpenPercent={50} // stačí cca půlka swipu, doladíš
+        onRowDidOpen={(rowKey: string) => {
+          deleteItem(rowKey); // swipe = rovnou smaž
+        }}
         contentContainerStyle={{ padding: 12, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
@@ -440,7 +445,7 @@ export default function ShoppingScreen() {
                   <Text
                     style={{ color: "white", fontSize: 35, paddingTop: 10 }}
                   >
-                    Shopping List
+                    Add new item
                   </Text>
                   <Image
                     source={{

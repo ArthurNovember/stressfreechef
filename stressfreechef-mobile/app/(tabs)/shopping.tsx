@@ -72,6 +72,8 @@ export default function ShoppingScreen() {
 
   const [active, setActive] = useState(false);
 
+  const [manageShopsVisible, setManageShopsVisible] = useState(false);
+
   /** ===== Načtení dat (stejně jako web) ===== */
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -493,6 +495,15 @@ export default function ShoppingScreen() {
                 </View>
               )}
 
+              {shopOptions.length > 0 && (
+                <Pressable
+                  style={styles.manageShopsBtn}
+                  onPress={() => setManageShopsVisible(true)}
+                >
+                  <Text style={styles.manageShopsText}>Manage Shops</Text>
+                </Pressable>
+              )}
+
               <Pressable style={styles.primaryBtn} onPress={handleAddItem}>
                 <Text style={styles.primaryBtnText}>Send to list</Text>
               </Pressable>
@@ -665,6 +676,74 @@ export default function ShoppingScreen() {
               onPress={() => setEditingItemId(null)}
             >
               <Text style={styles.secondaryBtnText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+      {/* Modal – globální správa shopů */}
+      <Modal
+        visible={manageShopsVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setManageShopsVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Manage shops</Text>
+
+            {/* seznam shopů s mazáním */}
+            <ScrollView style={{ maxHeight: 260, marginTop: 8 }}>
+              {shopOptions.map((shop) => (
+                <View key={shop._id} style={styles.modalRow}>
+                  <Text style={styles.modalRowText}>{shop.name}</Text>
+
+                  <Pressable
+                    style={styles.modalDeleteShopBtn}
+                    onPress={() => deleteShopOption(shop._id)}
+                  >
+                    <Text style={styles.modalDeleteShopText}>❌</Text>
+                  </Pressable>
+                </View>
+              ))}
+
+              {shopOptions.length === 0 && (
+                <Text style={{ color: "#aaa", marginTop: 4 }}>
+                  No shops yet.
+                </Text>
+              )}
+            </ScrollView>
+
+            {/* přidání nového shopu */}
+            <View style={{ marginTop: 12 }}>
+              <Text style={styles.label}>Add new shop</Text>
+              <View style={styles.addShopRow}>
+                <TextInput
+                  value={addingShopName}
+                  onChangeText={setAddingShopName}
+                  placeholder="New shop name"
+                  placeholderTextColor="#777"
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                />
+                <Pressable
+                  style={[
+                    styles.primaryBtn,
+                    { marginLeft: 8, paddingHorizontal: 16 },
+                  ]}
+                  disabled={addingShopBusy}
+                  onPress={handleAddShopOption}
+                >
+                  <Text style={styles.primaryBtnText}>
+                    {addingShopBusy ? "…" : "+"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <Pressable
+              style={[styles.secondaryBtn, { marginTop: 16 }]}
+              onPress={() => setManageShopsVisible(false)}
+            >
+              <Text style={styles.secondaryBtnText}>Zavřít</Text>
             </Pressable>
           </View>
         </View>
@@ -901,5 +980,20 @@ const styles = StyleSheet.create({
   modalDeleteShopText: {
     color: "#fff",
     fontWeight: "700",
+  },
+  manageShopsBtn: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#444",
+    backgroundColor: "#222",
+  },
+  manageShopsText: {
+    color: "#ddd",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

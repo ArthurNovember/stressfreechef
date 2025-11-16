@@ -157,6 +157,7 @@ export default function HomeScreen() {
         }}
         ListHeaderComponent={
           <View>
+            <View style={{ height: 33, backgroundColor: "#000000ff" }} />
             <View
               style={{
                 alignItems: "center",
@@ -169,9 +170,9 @@ export default function HomeScreen() {
                   backgroundColor: "#760101",
                   height: 100,
                   width: "25%",
-
                   borderColor: "black",
-                  borderWidth: 5,
+                  borderWidth: 4,
+                  borderLeftWidth: 0,
                 }}
               >
                 <Image
@@ -189,8 +190,9 @@ export default function HomeScreen() {
                   width: "75%",
                   fontSize: 33,
                   lineHeight: 100,
-                  borderWidth: 5,
+                  borderWidth: 4,
                   borderLeftWidth: 0,
+                  borderRightWidth: 0,
                   height: 100,
                   textAlign: "center",
 

@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { View, Text, Image, StyleSheet, Pressable } from "react-native";
 import { Video, ResizeMode } from "expo-av";
+
 type Step = {
   type: "image" | "video" | "text";
   src?: string;
@@ -111,7 +112,7 @@ const s = StyleSheet.create({
     flex: 1,
     backgroundColor: "#211d1dff",
     padding: 16,
-    paddingTop: 30,
+    paddingTop: 45,
   },
   title: { fontSize: 20, fontWeight: "800", color: "#dcd7d7ff" },
   meta: { opacity: 0.7, marginTop: 4, marginBottom: 8, color: "#dcd7d7ff" },

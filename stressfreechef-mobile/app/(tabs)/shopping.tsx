@@ -501,20 +501,22 @@ export default function ShoppingScreen() {
                 </View>
               )}
 
-              {shopOptions.length > 0 && (
-                <Pressable
-                  style={styles.manageShopsBtn}
-                  onPress={() => setManageShopsVisible(true)}
-                >
-                  <Text style={styles.manageShopsText}>Manage Shops</Text>
-                </Pressable>
-              )}
+              <Pressable
+                style={styles.manageShopsBtn}
+                onPress={() => setManageShopsVisible(true)}
+              >
+                <Text style={styles.manageShopsText}>
+                  {shopOptions.length > 0 ? "Manage shops" : "Add shops"}
+                </Text>
+              </Pressable>
 
               <Pressable style={styles.primaryBtn} onPress={handleAddItem}>
                 <Text style={styles.primaryBtnText}>Send to list</Text>
               </Pressable>
             </View>
-
+            <Text style={{ color: "#d9d8d8ff", fontSize: 20, paddingTop: 10 }}>
+              Filter by shop:
+            </Text>
             {/* Filtrování podle shopů */}
             {shopOptions.length > 0 && (
               <ScrollView
@@ -638,14 +640,6 @@ export default function ShoppingScreen() {
                     >
                       <Text style={styles.modalRowText}>{shop.name}</Text>
                       {active && <Text style={styles.modalRowText}>✓</Text>}
-                    </Pressable>
-
-                    {/* ❌ – smaže shop všude */}
-                    <Pressable
-                      style={styles.modalDeleteShopBtn}
-                      onPress={() => deleteShopOption(shop._id)}
-                    >
-                      <Text style={styles.modalDeleteShopText}>❌</Text>
                     </Pressable>
                   </View>
                 );
@@ -789,8 +783,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     padding: 10,
     borderRadius: 10,
-    backgroundColor: "#181818",
-    borderColor: "#222",
+    backgroundColor: "#530f0fff",
+    borderColor: "#4a0505ff",
     borderWidth: 1,
   },
   input: {
@@ -809,7 +803,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   primaryBtn: {
-    backgroundColor: "#570303",
+    backgroundColor: "#171111ff",
     borderRadius: 12,
     paddingVertical: 10,
     alignItems: "center",

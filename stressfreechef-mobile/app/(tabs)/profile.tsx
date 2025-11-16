@@ -410,7 +410,10 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
                 onPress={() => handleDeleteRecipe(String(item?._id))}
                 style={styles.deleteBtn}
               >
-                <Text style={{ color: "#fff", fontWeight: "700" }}>✕</Text>
+                <Image
+                  source={{ uri: "https://i.imgur.com/aRJEINp.png" }}
+                  style={{ width: 35, height: 35 }}
+                />
               </Pressable>
             </View>
           );
@@ -587,13 +590,7 @@ const styles = StyleSheet.create({
   },
   cardImg: { width: 96, height: 96, backgroundColor: "#333" },
   cardTitle: { color: "#dcd7d7", fontWeight: "800", fontSize: 14 },
-  deleteBtn: {
-    alignSelf: "center",
-    paddingHorizontal: 12,
-    paddingVertical: "10%",
-    backgroundColor: "#750c0cff",
-    borderRadius: 5,
-  },
+  deleteBtn: {},
   modalOverlay: {
     flex: 1,
     justifyContent: "center",

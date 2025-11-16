@@ -1,4 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+
 import {
   ActivityIndicator,
   Modal,
@@ -41,6 +43,12 @@ type ShoppingItemUpdate = {
   shop?: string[]; // backend čeká jen ID
 };
 
+type FavoriteItem = {
+  _id: string;
+  text: string;
+  shop: ShopOption[];
+};
+
 /** ===== Helpers ===== */
 const TOKEN_KEY = "token";
 
@@ -78,6 +86,8 @@ export default function ShoppingScreen() {
 
   const [manageShopsVisible, setManageShopsVisible] = useState(false);
 
+  const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
+
   /** ===== Načtení dat (stejně jako web) ===== */
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -90,17 +100,21 @@ export default function ShoppingScreen() {
         );
       }
 
-      const [list, shops] = await Promise.all([
+      const [list, shops, favorites] = await Promise.all([
         fetchJSON<ShoppingItem[]>(`${BASE}/api/shopping-list`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetchJSON<ShopOption[]>(`${BASE}/api/shopping-list/shop-options`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetchJSON<FavoriteItem[]>(`${BASE}/api/favorites`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
       setItems(Array.isArray(list) ? list : []);
       setShopOptions(Array.isArray(shops) ? shops : []);
+      setFavoriteItems(Array.isArray(favorites) ? favorites : []);
     } catch (e: any) {
       if (isUnauthorizedError(e)) {
         setErr("Your session has expired. Please log in again on MyProfile.");
@@ -215,6 +229,82 @@ export default function ShoppingScreen() {
       })();
     },
     [BASE, getToken]
+  );
+
+  const addFavoriteFromItem = useCallback(async (item: ShoppingItem) => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        Alert.alert("Not logged in", "Log in to use favorites.");
+        return;
+      }
+
+      const shopIds = Array.isArray(item.shop)
+        ? item.shop
+            .map((s) => (typeof s === "string" ? s : s._id))
+            .filter(Boolean)
+        : [];
+
+      const res = await fetch(`${BASE}/api/favorites`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          text: item.text,
+          shop: shopIds, // 👈 stejné jako web
+        }),
+      });
+
+      const updated: FavoriteItem[] = await res.json();
+      if (!res.ok) {
+        throw new Error((updated as any)?.error || `HTTP ${res.status}`);
+      }
+
+      setFavoriteItems(Array.isArray(updated) ? updated : []);
+    } catch (e: any) {
+      Alert.alert("Failed to add favorite", e?.message || String(e));
+    }
+  }, []);
+
+  const deleteFavoriteById = useCallback(async (favoriteId: string) => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        Alert.alert("Not logged in", "Log in to use favorites.");
+        return;
+      }
+
+      const res = await fetch(`${BASE}/api/favorites/${favoriteId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const updated: FavoriteItem[] = await res.json();
+      if (!res.ok) {
+        throw new Error((updated as any)?.error || `HTTP ${res.status}`);
+      }
+
+      setFavoriteItems(Array.isArray(updated) ? updated : []);
+    } catch (e: any) {
+      Alert.alert("Failed to update favorites", e?.message || String(e));
+    }
+  }, []);
+
+  const toggleFavoriteForItem = useCallback(
+    async (item: ShoppingItem) => {
+      const favMatch = favoriteItems.find((fav) => isSameFavorite(fav, item));
+
+      if (favMatch) {
+        await deleteFavoriteById(favMatch._id);
+      } else {
+        await addFavoriteFromItem(item);
+      }
+    },
+    [favoriteItems, addFavoriteFromItem, deleteFavoriteById]
   );
 
   const toggleChecked = useCallback(
@@ -342,6 +432,30 @@ export default function ShoppingScreen() {
   }, [items, filterShopIds]);
 
   /** ===== Render jednoho itemu ===== */
+  const normalizeShops = (shops: any[] | undefined | null) => {
+    if (!Array.isArray(shops)) return "";
+    // shops může být pole stringů nebo objektů { _id, name }
+    const ids = shops
+      .map((s) => (typeof s === "string" ? s : s._id))
+      .filter(Boolean)
+      .map((id) => String(id))
+      .sort(); // aby nezáleželo na pořadí
+    return ids.join("|");
+  };
+
+  const isSameFavorite = (fav: FavoriteItem, item: ShoppingItem) => {
+    const favText = fav.text?.trim().toLowerCase() || "";
+    const itemText = item.text?.trim().toLowerCase() || "";
+
+    if (!favText || !itemText) return false;
+    if (favText !== itemText) return false;
+
+    // porovnat obchody
+    const favShops = normalizeShops(fav.shop as any);
+    const itemShops = normalizeShops(item.shop as any);
+
+    return favShops === itemShops;
+  };
 
   const renderItem = ({
     item,
@@ -354,6 +468,8 @@ export default function ShoppingScreen() {
       item.shop && item.shop.length > 0
         ? item.shop.map((s) => s.name).join(", ")
         : "Shops ▾";
+    const favMatch = favoriteItems.find((fav) => isSameFavorite(fav, item));
+    const isFavorite = !!favMatch;
 
     return (
       <View style={styles.row}>
@@ -378,6 +494,14 @@ export default function ShoppingScreen() {
             <Text style={styles.shopsBtnText}>{shopLabel}</Text>
           </Pressable>
         </View>
+        {/* ❤️ srdce jako na webu */}
+        <Pressable onPress={() => toggleFavoriteForItem(item)}>
+          <FontAwesome
+            name="heart"
+            size={22}
+            color={isFavorite ? "#8f0c0cff" : "#5e5c5cff"}
+          />
+        </Pressable>
       </View>
     );
   };

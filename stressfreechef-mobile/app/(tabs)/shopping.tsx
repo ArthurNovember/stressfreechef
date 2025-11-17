@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { useRouter } from "expo-router";
 
 import {
   ActivityIndicator,
@@ -82,11 +83,11 @@ export default function ShoppingScreen() {
   const [addingShopName, setAddingShopName] = useState("");
   const [addingShopBusy, setAddingShopBusy] = useState(false);
 
-  const [active, setActive] = useState(false);
-
   const [manageShopsVisible, setManageShopsVisible] = useState(false);
 
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
+
+  const router = useRouter();
 
   /** ===== Načtení dat (stejně jako web) ===== */
   const loadAll = useCallback(async () => {
@@ -559,7 +560,7 @@ export default function ShoppingScreen() {
           <>
             {/* Nový item */}
             <View style={styles.newItemCard}>
-              <Pressable onPress={() => setActive(!active)}>
+              <View>
                 <View
                   style={{
                     justifyContent: "space-between",
@@ -571,16 +572,16 @@ export default function ShoppingScreen() {
                   >
                     Add new item
                   </Text>
-                  <Image
-                    source={{
-                      uri: active
-                        ? "https://i.imgur.com/PwVAgWN.png"
-                        : "https://i.imgur.com/DmXZvGl.png",
-                    }}
-                    style={{ width: 70, height: 70 }}
-                  />
+                  <Pressable onPress={() => router.push("/favorites")}>
+                    <Image
+                      source={{
+                        uri: "https://i.imgur.com/DmXZvGl.png",
+                      }}
+                      style={{ width: 70, height: 70 }}
+                    />
+                  </Pressable>
                 </View>
-              </Pressable>
+              </View>
               <TextInput
                 placeholder="Add item…"
                 placeholderTextColor="#777"
@@ -715,12 +716,6 @@ export default function ShoppingScreen() {
                   </Text>
                 </Pressable>
               </ScrollView>
-            )}
-
-            {processedItems.length === 0 && (
-              <Text style={styles.emptyText}>
-                Your shopping list is empty. Add your first item!
-              </Text>
             )}
           </>
         }
@@ -867,7 +862,7 @@ export default function ShoppingScreen() {
               style={[styles.secondaryBtn, { marginTop: 16 }]}
               onPress={() => setManageShopsVisible(false)}
             >
-              <Text style={styles.secondaryBtnText}>Zavřít</Text>
+              <Text style={styles.secondaryBtnText}>Close</Text>
             </Pressable>
           </View>
         </View>

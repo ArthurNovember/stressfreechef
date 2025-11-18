@@ -217,6 +217,7 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
   const [items, setItems] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [selected, setSelected] = useState<any | null>(null);
+  const [saved, setSaved] = useState<any[]>([]); // saved community recipes
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -244,6 +245,16 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
         }
       );
       setItems(Array.isArray(mine?.items) ? mine.items : []);
+      const savedData = await fetchJSON<any[]>(
+        `${API_BASE}/api/saved-community-recipes`,
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setSaved(Array.isArray(savedData) ? savedData : []);
     } catch (e: any) {
       if (isUnauthorizedError(e)) {
         await clearToken();
@@ -324,6 +335,37 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
     ]);
   }, []);
 
+  const handleRemoveSaved = useCallback(async (id: string) => {
+    Alert.alert("Remove saved recipe?", "", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const token = await getToken();
+            const res = await fetch(
+              `${API_BASE}/api/saved-community-recipes/${id}`,
+              {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+            if (!res.ok && res.status !== 204) {
+              const txt = await res.text();
+              throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
+            }
+            setSaved((prev) =>
+              prev.filter((r: any) => String(r?._id || r?.id) !== id)
+            );
+          } catch (e: any) {
+            Alert.alert("Failed to remove", e?.message || String(e));
+          }
+        },
+      },
+    ]);
+  }, []);
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -372,53 +414,104 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
           </Pressable>
         </View>
       </View>
+      <View>
+        <Text style={styles.sectionTitle}>MY RECIPES</Text>
+        {items.length === 0 ? (
+          <Text style={{ opacity: 0.7, paddingHorizontal: 16, color: "white" }}>
+            You don’t have any recipes yet. Add your first one!
+          </Text>
+        ) : null}
 
-      <Text style={styles.sectionTitle}>MY RECIPES</Text>
-      {items.length === 0 ? (
-        <Text style={{ opacity: 0.7, paddingHorizontal: 16, color: "white" }}>
-          You don’t have any recipes yet. Add your first one!
-        </Text>
-      ) : null}
+        <FlatList
+          data={items}
+          horizontal
+          keyExtractor={(r) => String(r?._id || r?.id)}
+          contentContainerStyle={{ padding: 12, gap: 12 }}
+          renderItem={({ item }) => {
+            const { url } = getCover(item);
+            const rid = String(item?._id || item?.id || "");
+            return (
+              <View style={styles.card}>
+                <Pressable
+                  style={{ flex: 1, flexDirection: "row" }}
+                  onPress={() => setSelected({ ...item, imgSrc: url })}
+                >
+                  <Image source={{ uri: url }} style={styles.cardImg} />
+                  <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>
+                      {item?.title || "Untitled"}
+                    </Text>
+                    <Text style={styles.metaText}>
+                      Difficulty: {item?.difficulty || "—"}
+                    </Text>
+                    <Text style={styles.metaText}>
+                      Time: {item?.time || "—"} ⏱️
+                    </Text>
+                  </View>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleDeleteRecipe(String(item?._id))}
+                  style={styles.deleteBtn}
+                >
+                  <Image
+                    source={{ uri: "https://i.imgur.com/aRJEINp.png" }}
+                    style={{ width: 35, height: 35 }}
+                  />
+                </Pressable>
+              </View>
+            );
+          }}
+        />
+        {/* SAVED RECIPES */}
+        <Text style={styles.sectionTitle}>SAVED RECIPES</Text>
+        {saved.length === 0 ? (
+          <Text style={{ opacity: 0.7, paddingHorizontal: 16, color: "white" }}>
+            You haven’t saved any community recipes yet.
+          </Text>
+        ) : null}
 
-      <FlatList
-        data={items}
-        keyExtractor={(r) => String(r?._id || r?.id)}
-        contentContainerStyle={{ padding: 12, gap: 12 }}
-        renderItem={({ item }) => {
-          const { url } = getCover(item);
-          const rid = String(item?._id || item?.id || "");
-          return (
-            <View style={styles.card}>
-              <Pressable
-                style={{ flex: 1, flexDirection: "row" }}
-                onPress={() => setSelected({ ...item, imgSrc: url })}
-              >
-                <Image source={{ uri: url }} style={styles.cardImg} />
-                <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                  <Text style={styles.cardTitle} numberOfLines={1}>
-                    {item?.title || "Untitled"}
-                  </Text>
-                  <Text style={styles.metaText}>
-                    Difficulty: {item?.difficulty || "—"}
-                  </Text>
-                  <Text style={styles.metaText}>
-                    Time: {item?.time || "—"} ⏱️
-                  </Text>
-                </View>
-              </Pressable>
-              <Pressable
-                onPress={() => handleDeleteRecipe(String(item?._id))}
-                style={styles.deleteBtn}
-              >
-                <Image
-                  source={{ uri: "https://i.imgur.com/aRJEINp.png" }}
-                  style={{ width: 35, height: 35 }}
-                />
-              </Pressable>
-            </View>
-          );
-        }}
-      />
+        <FlatList
+          data={saved}
+          horizontal
+          keyExtractor={(r, idx) => String(r?._id || (r as any)?.id || idx)}
+          contentContainerStyle={{ padding: 12, gap: 12 }}
+          renderItem={({ item }) => {
+            const { url } = getCover(item);
+            const rid = String(item?._id || (item as any)?.id || "");
+            return (
+              <View style={styles.card}>
+                <Pressable
+                  style={{ flex: 1, flexDirection: "row" }}
+                  onPress={() => setSelected({ ...item, imgSrc: url })}
+                >
+                  <Image source={{ uri: url }} style={styles.cardImg} />
+                  <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>
+                      {item?.title || "Untitled"}
+                    </Text>
+                    <Text style={styles.metaText}>
+                      Difficulty: {item?.difficulty || "—"}
+                    </Text>
+                    <Text style={styles.metaText}>
+                      Time: {item?.time || "—"} ⏱️
+                    </Text>
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => handleRemoveSaved(rid)}
+                  style={styles.deleteBtn}
+                >
+                  <Image
+                    source={{ uri: "https://i.imgur.com/aRJEINp.png" }}
+                    style={{ width: 35, height: 35 }}
+                  />
+                </Pressable>
+              </View>
+            );
+          }}
+        />
+      </View>
       {/* Modal s náhledem receptu */}
       <Modal
         visible={!!selected}
@@ -587,6 +680,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: 5,
     overflow: "hidden",
+    height: 100,
   },
   cardImg: { width: 96, height: 96, backgroundColor: "#333" },
   cardTitle: { color: "#dcd7d7", fontWeight: "800", fontSize: 14 },

@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   View,
+  Image,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
@@ -582,12 +583,7 @@ export default function FavoritesScreen() {
 
       {/* 🔹 SEZNAM FAVORITES (filtrovaný) */}
       {processedFavorites.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={[styles.centerText, { paddingHorizontal: 16 }]}>
-            You have no favorites (for this filter). Add some above or from your
-            shopping list. ❤️
-          </Text>
-        </View>
+        <View style={styles.center}></View>
       ) : (
         <ScrollView
           contentContainerStyle={{ padding: 12, paddingBottom: 24 }}
@@ -616,11 +612,13 @@ export default function FavoritesScreen() {
                 </View>
 
                 <View style={styles.rowButtons}>
-                  <Pressable
-                    style={[styles.smallBtn, styles.addBtn]}
-                    onPress={() => addToShoppingList(item)}
-                  >
-                    <Text style={styles.smallBtnText}>ADD</Text>
+                  <Pressable onPress={() => addToShoppingList(item)}>
+                    <Image
+                      source={{
+                        uri: "https://i.imgur.com/tOVTmT7.png",
+                      }}
+                      style={{ width: 50, height: 50 }}
+                    />
                   </Pressable>
                   <Pressable
                     style={[styles.smallBtn, styles.deleteBtn]}
@@ -821,8 +819,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     padding: 10,
     borderRadius: 10,
-    backgroundColor: "#420909ff",
-    borderColor: "#4a0505ff",
+    backgroundColor: "#323131ff",
+    borderColor: "#030303ff",
     borderWidth: 1,
   },
   input: {

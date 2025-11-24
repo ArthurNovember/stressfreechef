@@ -6,7 +6,8 @@ import {
   Merienda_400Regular,
   Merienda_700Bold,
 } from "@expo-google-fonts/merienda";
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -17,11 +18,12 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  ImageBackground,
+  Alert,
 } from "react-native";
 import { API_BASE, fetchJSON } from "../../lib/api";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 type Step = {
   type: "image" | "video" | "text";
@@ -41,6 +43,17 @@ type Recipe = {
   createdAt?: string;
 };
 
+const TOKEN_KEY = "token";
+
+async function getToken() {
+  try {
+    const t = await AsyncStorage.getItem(TOKEN_KEY);
+    return t || "";
+  } catch {
+    return "";
+  }
+}
+
 export default function HomeScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +65,17 @@ export default function HomeScreen() {
   const [active, setActive] = useState<
     "EASIEST" | "NEWEST" | "FAVORITE" | "RANDOM"
   >("NEWEST");
+
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+
+  const [savedBaseIds, setSavedBaseIds] = useState<string[]>([]);
+
+  const selectedBaseId = selected
+    ? String(selected._id || selected.id || "")
+    : "";
+  const selectedIsSaved = selectedBaseId
+    ? savedBaseIds.includes(selectedBaseId)
+    : false;
 
   useEffect(() => {
     let aborted = false;
@@ -83,6 +107,131 @@ export default function HomeScreen() {
       aborted = true;
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+
+      (async () => {
+        try {
+          const token = await getToken();
+          if (!token) {
+            if (active) {
+              setSavedIds([]);
+              setSavedBaseIds([]);
+            }
+            return;
+          }
+
+          const saved = await fetchJSON<any[]>(
+            `${API_BASE}/api/saved-community-recipes`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+
+          const communityIds: string[] = [];
+          const baseIds: string[] = [];
+
+          if (Array.isArray(saved)) {
+            for (const r of saved) {
+              // ID community receptu
+              const cid = String((r as any)._id || (r as any).id || "");
+              if (cid) communityIds.push(cid);
+
+              // base ID (Recipe) přes sourceRecipeId – u ofiko receptů
+              const src = (r as any).sourceRecipeId;
+              if (src) {
+                const baseStr = String(
+                  typeof src === "object" && src._id ? src._id : src
+                );
+                if (baseStr) baseIds.push(baseStr);
+              }
+            }
+          }
+
+          if (active) {
+            setSavedIds(communityIds);
+            setSavedBaseIds(baseIds);
+          }
+        } catch {
+          if (active) {
+            setSavedIds([]);
+            setSavedBaseIds([]);
+          }
+        }
+      })();
+
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
+
+  async function toggleSaveOfficial(recipe: Recipe | null) {
+    if (!recipe) return;
+
+    const baseId = String(recipe._id || recipe.id || "");
+    if (!baseId) return;
+
+    const token = await getToken();
+    if (!token) {
+      Alert.alert("Login required", "Please log in to save recipes.");
+      return;
+    }
+
+    // 1) Zajistit community verzi
+    const ensure = await fetchJSON<any>(
+      `${API_BASE}/api/community-recipes/ensure-from-recipe/${baseId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const communityId = String(ensure?._id || "");
+    if (!communityId) return;
+
+    // 2) Pokud už uložený → UNSAVE
+    // UNSAVE větev v toggleSaveOfficial
+    if (savedIds.includes(communityId)) {
+      const res = await fetch(
+        `${API_BASE}/api/saved-community-recipes/${communityId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok && res.status !== 204) {
+        console.warn("Failed to unsave recipe", res.status);
+      }
+
+      setSavedIds((prev) => prev.filter((id) => id !== communityId));
+      setSavedBaseIds((prev) => prev.filter((id) => id !== baseId));
+      return;
+    }
+
+    // 3) Jinak uložit
+    await fetchJSON(`${API_BASE}/api/saved-community-recipes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ recipeId: communityId }),
+    });
+
+    setSavedIds((prev) =>
+      prev.includes(communityId) ? prev : [...prev, communityId]
+    );
+    setSavedBaseIds((prev) =>
+      prev.includes(baseId) ? prev : [...prev, baseId]
+    );
+  }
 
   function sortEasiest(src: Recipe[]) {
     return src
@@ -307,12 +456,29 @@ export default function HomeScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
+            {selected && (
+              <Pressable
+                style={[
+                  styles.saveFloatingBtn,
+                  selectedIsSaved && styles.saveFloatingBtnActive,
+                ]}
+                onPress={() => toggleSaveOfficial(selected)}
+              >
+                <Text style={styles.saveFloatingBtnText}>
+                  {selectedIsSaved ? "Saved" : "Save"}
+                </Text>
+              </Pressable>
+            )}
+
             <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
               <Image
                 source={{ uri: selected?.imgSrc }}
                 style={styles.modalImg}
               />
-              <Text style={styles.modalTitle}>{selected?.title}</Text>
+              <View style={styles.modalHeaderRow}>
+                <Text style={styles.modalTitle}>{selected?.title}</Text>
+              </View>
+
               {selected?.ingredients?.length ? (
                 <>
                   <Text style={styles.section}>Ingredients</Text>
@@ -357,11 +523,6 @@ export default function HomeScreen() {
   );
 }
 const styles = StyleSheet.create({
-  bg: { flex: 1 }, // ← layout pro ImageBackground
-  bgImage: {
-    resizeMode: "cover",
-    opacity: 0.95, // ← vizuál bitmapy (bez flex!)
-  },
   container: { flex: 1 }, // ← odstraněno bílé pozadí
   card: {
     flex: 1,
@@ -400,6 +561,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
     elevation: 4,
+    position: "relative",
   },
   modalImg: {
     width: "100%",
@@ -464,5 +626,34 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: "#ffffff",
+  },
+  modalHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 12,
+    marginBottom: 4,
+  },
+
+  saveFloatingBtn: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    zIndex: 50,
+    backgroundColor: "#222",
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#000000ff",
+  },
+  saveFloatingBtnActive: {
+    backgroundColor: "#5f0000ff",
+    borderColor: "#5f0000ff",
+  },
+  saveFloatingBtnText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
   },
 });

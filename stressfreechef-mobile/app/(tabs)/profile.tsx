@@ -20,6 +20,7 @@ import { API_BASE, fetchJSON } from "../../lib/api";
 const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
 
 import { router } from "expo-router";
+import { Video, ResizeMode } from "expo-av";
 
 /** ===== Helpers ===== */
 const TOKEN_KEY = "token";
@@ -366,6 +367,8 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
     ]);
   }, []);
 
+  const selectedCover = selected ? getCover(selected) : null;
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -415,53 +418,6 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
         </View>
       </View>
       <View>
-        <Text style={styles.sectionTitle}>MY RECIPES</Text>
-        {items.length === 0 ? (
-          <Text style={{ opacity: 0.7, paddingHorizontal: 16, color: "white" }}>
-            You don’t have any recipes yet. Add your first one!
-          </Text>
-        ) : null}
-
-        <FlatList
-          data={items}
-          horizontal
-          keyExtractor={(r) => String(r?._id || r?.id)}
-          contentContainerStyle={{ padding: 12, gap: 12 }}
-          renderItem={({ item }) => {
-            const { url } = getCover(item);
-            const rid = String(item?._id || item?.id || "");
-            return (
-              <View style={styles.card}>
-                <Pressable
-                  style={{ flex: 1, flexDirection: "row" }}
-                  onPress={() => setSelected({ ...item, imgSrc: url })}
-                >
-                  <Image source={{ uri: url }} style={styles.cardImg} />
-                  <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
-                      {item?.title || "Untitled"}
-                    </Text>
-                    <Text style={styles.metaText}>
-                      Difficulty: {item?.difficulty || "—"}
-                    </Text>
-                    <Text style={styles.metaText}>
-                      Time: {item?.time || "—"} ⏱️
-                    </Text>
-                  </View>
-                </Pressable>
-                <Pressable
-                  onPress={() => handleDeleteRecipe(String(item?._id))}
-                  style={styles.deleteBtn}
-                >
-                  <Image
-                    source={{ uri: "https://i.imgur.com/aRJEINp.png" }}
-                    style={{ width: 35, height: 35 }}
-                  />
-                </Pressable>
-              </View>
-            );
-          }}
-        />
         {/* SAVED RECIPES */}
         <Text style={styles.sectionTitle}>SAVED RECIPES</Text>
         {saved.length === 0 ? (
@@ -476,15 +432,27 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
           keyExtractor={(r, idx) => String(r?._id || (r as any)?.id || idx)}
           contentContainerStyle={{ padding: 12, gap: 12 }}
           renderItem={({ item }) => {
-            const { url } = getCover(item);
+            const cover = getCover(item); // sjednocený zdroj
             const rid = String(item?._id || (item as any)?.id || "");
             return (
               <View style={styles.card}>
                 <Pressable
                   style={{ flex: 1, flexDirection: "row" }}
-                  onPress={() => setSelected({ ...item, imgSrc: url })}
+                  onPress={() => setSelected(item)}
                 >
-                  <Image source={{ uri: url }} style={styles.cardImg} />
+                  {cover.isVideo ? (
+                    <Video
+                      source={{ uri: cover.url }}
+                      style={styles.cardImg}
+                      resizeMode={ResizeMode.COVER}
+                      isMuted
+                      isLooping
+                      shouldPlay
+                    />
+                  ) : (
+                    <Image source={{ uri: cover.url }} style={styles.cardImg} />
+                  )}
+
                   <View style={{ flex: 1, paddingHorizontal: 10 }}>
                     <Text style={styles.cardTitle} numberOfLines={1}>
                       {item?.title || "Untitled"}
@@ -511,6 +479,63 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
             );
           }}
         />
+        <Text style={styles.sectionTitle}>MY RECIPES</Text>
+        {items.length === 0 ? (
+          <Text style={{ opacity: 0.7, paddingHorizontal: 16, color: "white" }}>
+            You don’t have any recipes yet. Add your first one!
+          </Text>
+        ) : null}
+
+        <FlatList
+          data={items}
+          keyExtractor={(r) => String(r?._id || r?.id)}
+          contentContainerStyle={{ padding: 12, gap: 12 }}
+          renderItem={({ item }) => {
+            const cover = getCover(item);
+            const rid = String(item?._id || item?.id || "");
+            return (
+              <View style={styles.card}>
+                <Pressable
+                  style={{ flex: 1, flexDirection: "row" }}
+                  onPress={() => setSelected(item)}
+                >
+                  {cover.isVideo ? (
+                    <Video
+                      source={{ uri: cover.url }}
+                      style={styles.cardImg}
+                      resizeMode={ResizeMode.COVER}
+                      isMuted
+                      isLooping
+                      shouldPlay
+                    />
+                  ) : (
+                    <Image source={{ uri: cover.url }} style={styles.cardImg} />
+                  )}
+                  <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>
+                      {item?.title || "Untitled"}
+                    </Text>
+                    <Text style={styles.metaText}>
+                      Difficulty: {item?.difficulty || "—"}
+                    </Text>
+                    <Text style={styles.metaText}>
+                      Time: {item?.time || "—"} ⏱️
+                    </Text>
+                  </View>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleDeleteRecipe(String(item?._id))}
+                  style={styles.deleteBtn}
+                >
+                  <Image
+                    source={{ uri: "https://i.imgur.com/aRJEINp.png" }}
+                    style={{ width: 35, height: 35 }}
+                  />
+                </Pressable>
+              </View>
+            );
+          }}
+        />
       </View>
       {/* Modal s náhledem receptu */}
       <Modal
@@ -522,10 +547,21 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-              <Image
-                source={{ uri: selected?.imgSrc }}
-                style={styles.modalImg}
-              />
+              {selectedCover && selectedCover.isVideo ? (
+                <Video
+                  source={{ uri: selectedCover.url }}
+                  style={styles.modalImg}
+                  resizeMode={ResizeMode.CONTAIN}
+                  useNativeControls
+                  shouldPlay
+                />
+              ) : (
+                <Image
+                  source={{ uri: selectedCover?.url || selected?.imgSrc }}
+                  style={styles.modalImg}
+                />
+              )}
+
               <Text style={styles.modalTitle}>{selected?.title}</Text>
               {selected?.ingredients?.length ? (
                 <>

@@ -1,6 +1,8 @@
 // app/(tabs)/explore.tsx
-import { useEffect, useRef, useState } from "react";
-import { useScrollToTop } from "@react-navigation/native";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useScrollToTop, useFocusEffect } from "@react-navigation/native";
+import { Video, ResizeMode } from "expo-av";
+
 import {
   View,
   Text,
@@ -73,15 +75,21 @@ function findAnyStepSrc(steps: Step[] = []) {
   return s?.src || "";
 }
 
+function isVideo(url = "") {
+  return /(\.mp4|\.webm|\.mov|\.m4v)(\?|#|$)/i.test(url);
+}
+
 function getCover(r: CommunityRecipe | null | undefined) {
-  if (!r) return { url: PLACEHOLDER_IMG };
+  if (!r) return { url: PLACEHOLDER_IMG, isVideo: false };
+
   const url =
     r.image?.url ||
     r.imgSrc ||
     findFirstImageStepSrc(r.steps || []) ||
     findAnyStepSrc(r.steps || []) ||
     PLACEHOLDER_IMG;
-  return { url };
+
+  return { url, isVideo: isVideo(url) };
 }
 
 function StarRatingDisplay({
@@ -115,9 +123,8 @@ export default function ExploreScreen() {
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [page, setPage] = useState(1);
-  const [limit] = useState(12);
-  const [total, setTotal] = useState(0);
-  const [pages, setPages] = useState(1);
+  const limit = 12; // nemusí být useState
+  const [hasMore, setHasMore] = useState(true);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -143,43 +150,56 @@ export default function ExploreScreen() {
     const t = setTimeout(() => {
       setDebouncedQ(q.trim());
       setPage(1);
+      setHasMore(true); // nový search = můžeme znovu načítat další stránky
     }, 300);
     return () => clearTimeout(t);
   }, [q]);
 
   // ===== načtení uložených community recipes (favorites / saved) =====
-  useEffect(() => {
-    if (!API_BASE) return;
+  useFocusEffect(
+    useCallback(() => {
+      if (!API_BASE) return;
 
-    (async () => {
-      try {
-        const token = await getToken();
-        if (!token) {
-          setFavoriteIds([]);
-          return;
-        }
+      let isActive = true;
 
-        const saved = await fetchJSON<CommunityRecipe[]>(
-          `${API_BASE}/api/saved-community-recipes`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
+      (async () => {
+        try {
+          const token = await getToken();
+          if (!token) {
+            if (isActive) setFavoriteIds([]);
+            return;
           }
-        );
 
-        const ids = Array.isArray(saved)
-          ? saved
-              .map((r) => String(r._id || (r as any).id || ""))
-              .filter(Boolean)
-          : [];
-        setFavoriteIds(ids);
-      } catch (e: any) {
-        console.warn(
-          "Failed to load saved community recipes:",
-          e?.message || String(e)
-        );
-      }
-    })();
-  }, []);
+          const saved = await fetchJSON<CommunityRecipe[]>(
+            `${API_BASE}/api/saved-community-recipes`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+
+          const ids = Array.isArray(saved)
+            ? saved
+                .map((r) => String(r._id || (r as any).id || ""))
+                .filter(Boolean)
+            : [];
+
+          if (isActive) setFavoriteIds(ids);
+        } catch (e: any) {
+          if (isActive) {
+            console.warn(
+              "Failed to load saved community recipes:",
+              e?.message || String(e)
+            );
+          }
+        }
+      })();
+
+      // cleanup – když obrazovka ztratí fokus
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   // ===== fetch community recipes =====
   useEffect(() => {
@@ -209,9 +229,11 @@ export default function ExploreScreen() {
         if (aborted) return;
 
         const arr = Array.isArray(data?.items) ? data!.items! : [];
-        setItems(arr);
-        setTotal(Number(data?.total) || arr.length);
-        setPages(Number(data?.pages) || 1);
+
+        setItems((prev) => (page === 1 ? arr : [...prev, ...arr]));
+
+        // pokud přišlo méně než limit, další stránka už není
+        setHasMore(arr.length === limit);
       } catch (e: any) {
         if (!aborted) {
           setErr(e?.message || "Failed to load community recipes.");
@@ -267,15 +289,14 @@ export default function ExploreScreen() {
 
   // ===== GRID: přepočet displayList při změně items/filtru =====
   useEffect(() => {
-    let base: CommunityRecipe[] = items;
-    if (active === "EASIEST") base = sortEasiest(items);
-    else if (active === "FAVORITE") base = sortFavorite(items);
-    else if (active === "RANDOM") base = shuffle(items);
-    else base = sortNewest(items);
-    setDisplayList(base);
+    if (active === "EASIEST") setDisplayList(sortEasiest(items));
+    else if (active === "FAVORITE") setDisplayList(sortFavorite(items));
+    else if (active === "RANDOM") setDisplayList(shuffle(items));
+    else setDisplayList(sortNewest(items));
   }, [items, active]);
 
   // ===== SWIPE: přepočet decku podle items + favoriteIds =====
+
   useEffect(() => {
     const idsSet = new Set(favoriteIds);
     const candidates = items.filter((r) => {
@@ -285,12 +306,18 @@ export default function ExploreScreen() {
       return !idsSet.has(id);
     });
 
-    setSwipeDeck(shuffle(candidates));
-    setSwipeIndex(0);
-  }, [items, favoriteIds]);
+    setSwipeDeck(candidates);
 
-  const canPrev = page > 1;
-  const canNext = page < pages;
+    // když se lista zmenší (třeba kvůli save / novému fetchi),
+    // a index by byl mimo rozsah, stáhneme ho na poslední kartu
+    setSwipeIndex((idx) =>
+      idx >= candidates.length
+        ? candidates.length > 0
+          ? candidates.length - 1
+          : 0
+        : idx
+    );
+  }, [items, favoriteIds]);
 
   if (!API_BASE) {
     return (
@@ -300,16 +327,13 @@ export default function ExploreScreen() {
     );
   }
 
-  // ===== Uložení do favorites (saved-community-recipes) =====
+  // ===== Toggle uložení do favorites (save / unsave) =====
   async function handleSaveFavorite(
     recipe: CommunityRecipe | null | undefined
   ) {
     if (!recipe) return;
     const id = String(recipe._id || recipe.id || "");
     if (!id) return;
-
-    // už uložený? nic nedělej
-    if (favoriteIds.includes(id)) return;
 
     try {
       const token = await getToken();
@@ -318,6 +342,27 @@ export default function ExploreScreen() {
         return;
       }
 
+      const alreadyFav = favoriteIds.includes(id);
+
+      if (alreadyFav) {
+        // UNSAVE – musíme použít obyč fetch (204 No Content)
+        const res = await fetch(
+          `${API_BASE}/api/saved-community-recipes/${id}`,
+          {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        if (!res.ok && res.status !== 204) {
+          console.warn("Failed to unsave recipe", res.status);
+        }
+
+        setFavoriteIds((prev) => prev.filter((x) => x !== id));
+        return;
+      }
+
+      // SAVE
       await fetchJSON(`${API_BASE}/api/saved-community-recipes`, {
         method: "POST",
         headers: {
@@ -327,11 +372,13 @@ export default function ExploreScreen() {
         body: JSON.stringify({ recipeId: id }),
       });
 
-      // úspěch → přidej ID do seznamu uložených
       setFavoriteIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
     } catch (e: any) {
-      console.warn("Saving recipe failed:", e?.message || String(e));
-      Alert.alert("Saving failed", e?.message || "Could not save recipe.");
+      console.warn("Saving/unsaving recipe failed:", e?.message || String(e));
+      Alert.alert(
+        "Saving failed",
+        e?.message || "Could not save or unsave recipe."
+      );
     }
   }
 
@@ -350,7 +397,7 @@ export default function ExploreScreen() {
   }
 
   const renderItem = ({ item }: { item: CommunityRecipe }) => {
-    const { url } = getCover(item);
+    const cover = getCover(item);
     const ratingVal =
       typeof item.ratingAvg === "number" ? item.ratingAvg : item.rating || 0;
 
@@ -358,11 +405,22 @@ export default function ExploreScreen() {
       <Pressable
         style={styles.card}
         onPress={() => {
-          const cover = getCover(item);
-          setSelected({ ...item, imgSrc: cover.url });
+          setSelected(item); // modal si vezme cover přes getCover(selected)
         }}
       >
-        <Image source={{ uri: url }} style={styles.cardImg} />
+        {cover.isVideo ? (
+          <Video
+            source={{ uri: cover.url }}
+            style={styles.cardImg}
+            resizeMode={ResizeMode.COVER}
+            isMuted
+            isLooping
+            shouldPlay
+          />
+        ) : (
+          <Image source={{ uri: cover.url }} style={styles.cardImg} />
+        )}
+
         <Text style={styles.cardTitle} numberOfLines={2}>
           {item.title || "Untitled"}
         </Text>
@@ -380,6 +438,13 @@ export default function ExploreScreen() {
 
   const noCards = swipeDeck.length === 0;
   const allSwiped = swipeDeck.length > 0 && swipeIndex >= swipeDeck.length;
+
+  // „opravdu“ jsme na konci = žádné karty + už není co načítat
+  const isDeckExhausted = allSwiped && !loading && !hasMore;
+
+  const selectedId = selected ? String(selected._id || selected.id || "") : "";
+  const selectedIsSaved = !!(selectedId && favoriteIds.includes(selectedId));
+  const selectedCover = selected ? getCover(selected) : null;
 
   return (
     <View style={styles.screen}>
@@ -530,26 +595,17 @@ export default function ExploreScreen() {
             contentContainerStyle={{ padding: 12, paddingBottom: 80 }}
             keyboardShouldPersistTaps="handled"
             renderItem={renderItem}
+            onEndReachedThreshold={0.5}
+            onEndReached={() => {
+              if (!loading && hasMore) {
+                setPage((p) => p + 1);
+              }
+            }}
             ListFooterComponent={
-              pages > 1 || total > limit ? (
-                <View style={styles.pagination}>
-                  <Pressable
-                    style={[styles.pageBtn, !canPrev && styles.pageBtnDisabled]}
-                    disabled={!canPrev}
-                    onPress={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    <Text style={styles.pageBtnText}>◀ Previous</Text>
-                  </Pressable>
-                  <Text style={styles.pageInfo}>
-                    Page {page} / {pages} · {total} results
-                  </Text>
-                  <Pressable
-                    style={[styles.pageBtn, !canNext && styles.pageBtnDisabled]}
-                    disabled={!canNext}
-                    onPress={() => setPage((p) => Math.min(pages, p + 1))}
-                  >
-                    <Text style={styles.pageBtnText}>Next ▶</Text>
-                  </Pressable>
+              loading && items.length > 0 ? (
+                <View style={styles.listFooter}>
+                  <ActivityIndicator />
+                  <Text style={styles.loadingText}>Loading more…</Text>
                 </View>
               ) : null
             }
@@ -559,10 +615,15 @@ export default function ExploreScreen() {
         <View style={styles.swipeContainer}>
           {noCards ? (
             <Text style={styles.emptyText}>No recipes to swipe.</Text>
-          ) : allSwiped ? (
-            <Text style={styles.emptyText}>
-              No more new recipes to swipe. 🎉
-            </Text>
+          ) : isDeckExhausted ? (
+            // opravdu jsme na konci, backend už nic dalšího neposílá
+            <Text style={styles.emptyText}>No more new recipes to swipe.</Text>
+          ) : allSwiped && loading && hasMore ? (
+            // jsme na poslední kartě, ale zrovna se načítá další stránka → ukaž loader místo „no more“
+            <View style={styles.center}>
+              <ActivityIndicator />
+              <Text style={styles.loadingText}>Loading more recipes…</Text>
+            </View>
           ) : (
             <Swiper
               cards={swipeDeck}
@@ -571,14 +632,23 @@ export default function ExploreScreen() {
               stackSize={3}
               infinite={false}
               verticalSwipe={false}
-              onSwiped={(index) => setSwipeIndex(index + 1)}
+              onSwiped={(index) => {
+                const next = index + 1;
+                setSwipeIndex(next);
+
+                const remaining = swipeDeck.length - next;
+                if (remaining <= 3 && hasMore && !loading) {
+                  setPage((p) => p + 1);
+                }
+              }}
               onSwipedRight={async (index) => {
                 const card = swipeDeck[index];
                 await handleSaveFavorite(card);
               }}
               renderCard={(card) => {
-                if (!card) return null;
-                const { url } = getCover(card);
+                if (!card) return null; // ⬅️ přidat jako první řádek
+
+                const cover = getCover(card);
                 const ratingVal =
                   typeof card.ratingAvg === "number"
                     ? card.ratingAvg
@@ -589,21 +659,32 @@ export default function ExploreScreen() {
                 return (
                   <View style={styles.swipeCard}>
                     <ScrollView contentContainerStyle={styles.swipeCardContent}>
-                      <Image source={{ uri: url }} style={styles.swipeImg} />
+                      {cover.isVideo ? (
+                        <Video
+                          source={{ uri: cover.url }}
+                          style={styles.swipeImg}
+                          resizeMode={ResizeMode.CONTAIN}
+                          isLooping
+                          shouldPlay
+                          isMuted
+                        />
+                      ) : (
+                        <Image
+                          source={{ uri: cover.url }}
+                          style={styles.swipeImg}
+                        />
+                      )}
                       <Text style={styles.swipeTitle}>{card.title}</Text>
-
                       <StarRatingDisplay
                         value={ratingVal}
                         count={card.ratingCount ?? undefined}
                       />
-
                       <Text style={styles.swipeMeta}>
                         Difficulty: {card.difficulty || "—"}
                       </Text>
                       <Text style={styles.swipeMeta}>
                         Time: {card.time || "—"} ⏱️
                       </Text>
-
                       {card.ingredients?.length ? (
                         <>
                           <Text style={styles.section}>Ingredients</Text>
@@ -614,13 +695,11 @@ export default function ExploreScreen() {
                           ))}
                         </>
                       ) : null}
-
                       {isFav ? (
                         <Text style={styles.savedLabel}>
                           Saved to favorites
                         </Text>
                       ) : null}
-
                       <Pressable
                         style={styles.primaryBtn}
                         onPress={() => openRecipe(card)}
@@ -632,11 +711,16 @@ export default function ExploreScreen() {
                     <View style={styles.swipeActionsRow}>
                       <Pressable
                         style={[styles.swipeActionBtn, styles.swipeActionSkip]}
-                        onPress={() =>
-                          setSwipeIndex((i) =>
-                            i + 1 < swipeDeck.length ? i + 1 : i
-                          )
-                        }
+                        onPress={() => {
+                          setSwipeIndex((i) => {
+                            const next = i + 1 < swipeDeck.length ? i + 1 : i;
+                            const remaining = swipeDeck.length - next;
+                            if (remaining <= 3 && hasMore && !loading) {
+                              setPage((p) => p + 1);
+                            }
+                            return next;
+                          });
+                        }}
                       >
                         <Text style={styles.swipeActionText}>Skip</Text>
                       </Pressable>
@@ -645,9 +729,14 @@ export default function ExploreScreen() {
                         style={[styles.swipeActionBtn, styles.swipeActionSave]}
                         onPress={async () => {
                           await handleSaveFavorite(card);
-                          setSwipeIndex((i) =>
-                            i + 1 < swipeDeck.length ? i + 1 : i
-                          );
+                          setSwipeIndex((i) => {
+                            const next = i + 1 < swipeDeck.length ? i + 1 : i;
+                            const remaining = swipeDeck.length - next;
+                            if (remaining <= 3 && hasMore && !loading) {
+                              setPage((p) => p + 1);
+                            }
+                            return next;
+                          });
                         }}
                       >
                         <Text style={styles.swipeActionText}>Save ❤️</Text>
@@ -670,11 +759,35 @@ export default function ExploreScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
+            {selected && (
+              <Pressable
+                style={[
+                  styles.modalSaveBtn,
+                  selectedIsSaved && styles.modalSaveBtnActive,
+                ]}
+                onPress={() => handleSaveFavorite(selected)}
+              >
+                <Text style={styles.modalSaveBtnText}>
+                  {selectedIsSaved ? "Saved" : "Save"}
+                </Text>
+              </Pressable>
+            )}
             <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-              <Image
-                source={{ uri: getCover(selected).url }}
-                style={styles.modalImg}
-              />
+              {selectedCover && selectedCover.isVideo ? (
+                <Video
+                  source={{ uri: selectedCover.url }}
+                  style={styles.modalImg}
+                  resizeMode={ResizeMode.CONTAIN}
+                  useNativeControls
+                  shouldPlay
+                />
+              ) : (
+                <Image
+                  source={{ uri: selectedCover?.url || PLACEHOLDER_IMG }}
+                  style={styles.modalImg}
+                />
+              )}
+
               <Text style={styles.modalTitle}>{selected?.title}</Text>
               <StarRatingDisplay
                 value={
@@ -752,13 +865,13 @@ const styles = StyleSheet.create({
   },
   viewModeRow: {
     flexDirection: "row",
-    gap: 8,
+
     justifyContent: "flex-start",
   },
   viewModeBtn: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 999,
+
     borderWidth: 1,
     borderColor: "#444",
   },
@@ -872,33 +985,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#ccc",
   },
-  pagination: {
-    marginTop: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#333",
-    alignItems: "center",
-    gap: 8,
-  },
-  pageBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#555",
-    marginHorizontal: 4,
-  },
-  pageBtnDisabled: {
-    opacity: 0.4,
-  },
-  pageBtnText: {
-    color: "#eee",
-    fontSize: 12,
-  },
-  pageInfo: {
-    color: "#ccc",
-    fontSize: 12,
-  },
+
   swipeContainer: {
     flex: 1,
     paddingHorizontal: 12,
@@ -971,7 +1058,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#212121ff",
     borderRadius: 16,
     padding: 12,
+    position: "relative",
   },
+
   modalImg: {
     width: "100%",
     aspectRatio: 1.4,
@@ -1003,6 +1092,7 @@ const styles = StyleSheet.create({
   primaryBtn: {
     marginTop: 16,
     paddingVertical: 10,
+    paddingHorizontal: 10,
     borderRadius: 10,
     backgroundColor: "#b00020",
     alignItems: "center",
@@ -1021,5 +1111,30 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     color: "#ddd",
+  },
+  modalSaveBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#333",
+    borderWidth: 1,
+    borderColor: "#555",
+    zIndex: 999,
+  },
+  modalSaveBtnActive: {
+    backgroundColor: "#b00020",
+    borderColor: "#b00020",
+  },
+  modalSaveBtnText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  listFooter: {
+    paddingVertical: 12,
+    alignItems: "center",
   },
 });

@@ -23,7 +23,7 @@ export default function Layout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: "Explore",
+          title: "Community",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search-outline" size={size} color={color} />
           ),

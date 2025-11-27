@@ -520,19 +520,6 @@ export default function ExploreScreen() {
 
             <View style={styles.chipsRow}>
               <Pressable
-                style={[styles.chip, active === "EASIEST" && styles.chipActive]}
-                onPress={() => setActive("EASIEST")}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    active === "EASIEST" && styles.chipTextActive,
-                  ]}
-                >
-                  EASIEST
-                </Text>
-              </Pressable>
-              <Pressable
                 style={[styles.chip, active === "NEWEST" && styles.chipActive]}
                 onPress={() => setActive("NEWEST")}
               >
@@ -543,6 +530,19 @@ export default function ExploreScreen() {
                   ]}
                 >
                   NEWEST
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.chip, active === "EASIEST" && styles.chipActive]}
+                onPress={() => setActive("EASIEST")}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    active === "EASIEST" && styles.chipTextActive,
+                  ]}
+                >
+                  EASIEST
                 </Text>
               </Pressable>
               <Pressable
@@ -695,11 +695,7 @@ export default function ExploreScreen() {
                           ))}
                         </>
                       ) : null}
-                      {isFav ? (
-                        <Text style={styles.savedLabel}>
-                          Saved to favorites
-                        </Text>
-                      ) : null}
+
                       <Pressable
                         style={styles.primaryBtn}
                         onPress={() => openRecipe(card)}

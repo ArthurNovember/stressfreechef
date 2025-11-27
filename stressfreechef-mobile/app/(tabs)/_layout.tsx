@@ -31,6 +31,16 @@ export default function Layout() {
       />
 
       <Tabs.Screen
+        name="NewRecipe"
+        options={{
+          title: "Add Recipe",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="add-circle-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="shopping"
         options={{
           title: "Shopping list",

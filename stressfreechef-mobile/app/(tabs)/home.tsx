@@ -25,6 +25,36 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 
+import type { ComponentProps } from "react"; // ⬅️ nový typ
+import { MaterialIcons } from "@expo/vector-icons"; // ⬅️ ikony
+
+type MaterialIconName = ComponentProps<typeof MaterialIcons>["name"];
+
+function StarRatingDisplay({
+  value,
+  count,
+}: {
+  value: number;
+  count?: number;
+}) {
+  const val = Math.max(0, Math.min(5, value || 0));
+  const full = Math.round(val);
+
+  const stars = Array.from({ length: 5 }, (_, i) =>
+    i < full ? "★" : "☆"
+  ).join("");
+
+  return (
+    <View style={styles.ratingRow}>
+      <Text style={styles.ratingStars}>{stars}</Text>
+      <Text style={styles.ratingValue}>
+        {val.toFixed(1)}
+        {typeof count === "number" && count > 0 ? ` (${count})` : ""}
+      </Text>
+    </View>
+  );
+}
+
 type Step = {
   type: "image" | "video" | "text";
   src?: string;
@@ -40,6 +70,8 @@ type Recipe = {
   ingredients?: string[];
   steps?: Step[];
   rating?: number;
+  ratingAvg?: number; // ⬅️ přidej
+  ratingCount?: number; // ⬅️ přidej
   createdAt?: string;
 };
 
@@ -70,9 +102,32 @@ export default function HomeScreen() {
 
   const [savedBaseIds, setSavedBaseIds] = useState<string[]>([]);
 
+  const [communityStats, setCommunityStats] = useState<
+    Record<string, { id: string; avg: number; count: number }>
+  >({});
+
   const selectedBaseId = selected
-    ? String(selected._id || selected.id || "")
+    ? String((selected as any)._id || (selected as any).id || "")
     : "";
+
+  const selectedStats = selectedBaseId
+    ? communityStats[selectedBaseId]
+    : undefined;
+
+  const selectedRatingVal =
+    selectedStats && typeof selectedStats.avg === "number"
+      ? selectedStats.avg
+      : selected && typeof selected.ratingAvg === "number"
+      ? selected.ratingAvg
+      : selected?.rating || 0;
+
+  const selectedRatingCount =
+    selectedStats && typeof selectedStats.count === "number"
+      ? selectedStats.count
+      : selected && typeof selected.ratingCount === "number"
+      ? selected.ratingCount
+      : undefined;
+
   const selectedIsSaved = selectedBaseId
     ? savedBaseIds.includes(selectedBaseId)
     : false;
@@ -107,6 +162,69 @@ export default function HomeScreen() {
       aborted = true;
     };
   }, []);
+
+  // ⭐ Stejné jako na webu – zajistíme community kopie + ratingy pro všechny ofiko recepty
+  useEffect(() => {
+    const ids = Array.from(
+      new Set(
+        (recipes || [])
+          .map((r) => String(r?._id || r?.id || ""))
+          .filter(Boolean)
+      )
+    );
+
+    if (ids.length === 0) {
+      setCommunityStats({});
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const pairs = await Promise.all(
+          ids.map(async (rid) => {
+            try {
+              const data = await fetchJSON<any>(
+                `${API_BASE}/api/community-recipes/ensure-from-recipe/${rid}`,
+                { method: "POST" }
+              );
+
+              if (!data?._id) return null;
+
+              return [
+                rid,
+                {
+                  id: String(data._id),
+                  avg: Number(data.ratingAvg || 0),
+                  count: Number(data.ratingCount || 0),
+                },
+              ] as const;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        if (cancelled) return;
+
+        const next: Record<string, { id: string; avg: number; count: number }> =
+          {};
+        for (const pair of pairs) {
+          if (!pair) continue;
+          const [rid, stats] = pair;
+          next[rid] = stats;
+        }
+        setCommunityStats(next);
+      } catch {
+        if (!cancelled) setCommunityStats({});
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [recipes]);
 
   useFocusEffect(
     useCallback(() => {
@@ -252,8 +370,32 @@ export default function HomeScreen() {
       );
   }
   function sortFavorite(src: Recipe[]) {
-    return src.slice().sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    return src.slice().sort((a, b) => {
+      const ridA = String(a._id || a.id || "");
+      const ridB = String(b._id || b.id || "");
+
+      const statsA = ridA ? communityStats[ridA] : undefined;
+      const statsB = ridB ? communityStats[ridB] : undefined;
+
+      const ratingA =
+        typeof statsA?.avg === "number"
+          ? statsA.avg
+          : typeof a.ratingAvg === "number"
+          ? a.ratingAvg
+          : a.rating || 0;
+
+      const ratingB =
+        typeof statsB?.avg === "number"
+          ? statsB.avg
+          : typeof b.ratingAvg === "number"
+          ? b.ratingAvg
+          : b.rating || 0;
+
+      // seřadit od nejvyššího ratingu po nejnižší
+      return ratingB - ratingA;
+    });
   }
+
   function shuffle(src: Recipe[]) {
     const arr = src.slice();
     for (let i = arr.length - 1; i > 0; i--) {
@@ -436,16 +578,39 @@ export default function HomeScreen() {
             </View>
           </View>
         }
-        renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => setSelected(item)}>
-            <Image source={{ uri: item.imgSrc }} style={styles.img} />
-            <Text style={styles.title} numberOfLines={2}>
-              {item.title}
-            </Text>
-            <Text style={styles.meta}>Difficulty: {item.difficulty}</Text>
-            <Text style={styles.meta}>Time: {item.time} ⏱️</Text>
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const rid = String(item._id || item.id || "");
+          const stats = rid ? communityStats[rid] : undefined;
+
+          const ratingVal =
+            typeof stats?.avg === "number"
+              ? stats.avg
+              : typeof item.ratingAvg === "number"
+              ? item.ratingAvg
+              : item.rating || 0;
+
+          const ratingCount =
+            typeof stats?.count === "number"
+              ? stats.count
+              : typeof item.ratingCount === "number"
+              ? item.ratingCount
+              : undefined;
+
+          return (
+            <Pressable style={styles.card} onPress={() => setSelected(item)}>
+              <Image source={{ uri: item.imgSrc }} style={styles.img} />
+              <Text style={styles.title} numberOfLines={2}>
+                {item.title}
+              </Text>
+
+              {/* ⭐ hvězdy + 4.3 (12) z communityStats */}
+              <StarRatingDisplay value={ratingVal} count={ratingCount} />
+
+              <Text style={styles.meta}>Difficulty: {item.difficulty}</Text>
+              <Text style={styles.meta}>Time: {item.time} ⏱️</Text>
+            </Pressable>
+          );
+        }}
       />
       {/* Modal s náhledem receptu */}
       <Modal
@@ -479,6 +644,13 @@ export default function HomeScreen() {
                 <Text style={styles.modalTitle}>{selected?.title}</Text>
               </View>
 
+              {selected && (
+                <StarRatingDisplay
+                  value={selectedRatingVal}
+                  count={selectedRatingCount}
+                />
+              )}
+
               {selected?.ingredients?.length ? (
                 <>
                   <Text style={styles.section}>Ingredients</Text>
@@ -493,17 +665,31 @@ export default function HomeScreen() {
               <Pressable
                 style={styles.primaryBtn}
                 onPress={() => {
-                  // přejít na detail se „steps“
-                  const rid = String(selected?._id || selected?.id || "");
+                  if (!selected) return;
+
+                  const rid = String(
+                    (selected as any)._id || (selected as any).id || ""
+                  );
+                  if (!rid) return;
+
+                  // stejné jako na webu – najdeme community kopii
+                  const stats =
+                    communityStats && rid in communityStats
+                      ? communityStats[rid]
+                      : undefined;
+
                   router.push({
                     pathname: "/recipe/[id]",
                     params: {
                       id: rid,
-                      // POZN: dočasně předáme i celý recipe (kvůli rychlosti),
-                      // později uděláme fetch na detail podle id:
                       recipe: JSON.stringify(selected),
+                      // mobilní ekvivalent state.communityRecipeId z Home.jsx
+                      communityRecipeId: stats?.id
+                        ? String(stats.id)
+                        : undefined,
                     },
                   });
+
                   setSelected(null);
                 }}
               >
@@ -655,5 +841,19 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     fontWeight: "700",
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  ratingStars: {
+    fontSize: 12,
+    color: "#ffd54f",
+  },
+  ratingValue: {
+    fontSize: 11,
+    color: "#ccc",
   },
 });

@@ -11,6 +11,8 @@ import {
 } from "react-native";
 import { Video, ResizeMode } from "expo-av";
 import { useKeepAwake } from "expo-keep-awake";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_BASE } from "../../lib/api";
 
 type Step = {
   type: "image" | "video" | "text";
@@ -28,12 +30,20 @@ type Recipe = {
   steps?: Step[];
   image?: { url?: string };
 };
+
+const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
+const TOKEN_KEY = "token";
+async function getToken() {
+  return (await AsyncStorage.getItem(TOKEN_KEY)) || "";
+}
+
 export default function RecipeStepsScreen() {
   useKeepAwake();
   const router = useRouter();
   const params = useLocalSearchParams<{
     id: string;
     recipe?: string; // JSON předaný z Home (dočasně)
+    communityRecipeId?: string; // volitelně, když se bude posílat z Explore
   }>();
 
   // ⚠️ Dočasný zdroj dat ze stringu (rychlá integrace)
@@ -51,6 +61,47 @@ export default function RecipeStepsScreen() {
   const [accumulated, setAccumulated] = useState(0);
   const [justFinished, setJustFinished] = useState(false);
   const steps = recipe?.steps || [];
+
+  const paramsCommunityId =
+    (params as any)?.communityRecipeId || (params as any)?.communityId;
+
+  const [communityId, setCommunityId] = useState<string | null>(() => {
+    if (paramsCommunityId) return String(paramsCommunityId);
+
+    const anyRecipe = recipe as any;
+    if (!anyRecipe) return null;
+
+    const hasCommunityFields =
+      typeof anyRecipe.ratingAvg === "number" ||
+      typeof anyRecipe.ratingCount === "number";
+
+    // ✅ Recept už má ratingAvg / ratingCount → je to community recipe
+    // → jeho _id je to, co posíláme do /api/community-recipes/:id/rate
+    if (hasCommunityFields) {
+      return String(anyRecipe._id || anyRecipe.id || "");
+    }
+
+    // ✅ Další pojistka: community recepty často mají sourceRecipeId / owner / ratings
+    if (anyRecipe.sourceRecipeId || anyRecipe.owner || anyRecipe.ratings) {
+      return String(anyRecipe._id || anyRecipe.id || "");
+    }
+
+    // ❌ Ofiko recept → community kopii později zajistí useEffect (ensure-from-recipe)
+    return null;
+  });
+
+  const [ensuring, setEnsuring] = useState(false);
+  const [myRating, setMyRating] = useState(0);
+  const [rateMsg, setRateMsg] = useState<{
+    type: "ok" | "error";
+    text: string;
+  } | null>(null);
+  const [community, setCommunity] = useState({
+    avg: Number((recipe as any)?.ratingAvg ?? 0) || 0,
+    count: Number((recipe as any)?.ratingCount ?? 0) || 0,
+  });
+  const [ratingBusy, setRatingBusy] = useState(false);
+  const canRateCommunity = Boolean(communityId) && !ensuring;
 
   useEffect(() => {
     const currentStep = steps[current];
@@ -129,6 +180,71 @@ export default function RecipeStepsScreen() {
     return () => clearInterval(id);
   }, [isRunning, startedAt, accumulated, current]);
 
+  useEffect(() => {
+    if (!recipe || !recipe._id) return;
+    // pokud už communityId máme (community recipe nebo z params), hotovo
+    if (communityId) return;
+    const anyRecipe = recipe as any;
+    const hasCommunityFields =
+      typeof anyRecipe.ratingAvg === "number" ||
+      typeof anyRecipe.ratingCount === "number";
+    // pokud už v receptu jsou ratingAvg / ratingCount, taky to necháme být
+    if (hasCommunityFields) return;
+    let aborted = false;
+    (async () => {
+      try {
+        setEnsuring(true);
+        const res = await fetch(
+          `${BASE}/api/community-recipes/ensure-from-recipe/${recipe!._id}`,
+          { method: "POST" }
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || "ensure failed");
+        if (!aborted) {
+          setCommunityId(String(data._id));
+          setCommunity({
+            avg: Number(data.ratingAvg || 0),
+            count: Number(data.ratingCount || 0),
+          });
+        }
+      } catch (e) {
+        console.warn("ensure community failed:", e);
+      } finally {
+        if (!aborted) setEnsuring(false);
+      }
+    })();
+    return () => {
+      aborted = true;
+    };
+  }, [recipe?._id, communityId]);
+
+  useEffect(() => {
+    if (!communityId) return;
+    let aborted = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/community-recipes/${communityId}`);
+        const data = await res.json();
+        if (!res.ok)
+          throw new Error(data?.error || "Failed to load community stats");
+        if (!aborted) {
+          setCommunity({
+            avg: Number(data.ratingAvg || 0),
+            count: Number(data.ratingCount || 0),
+          });
+        }
+      } catch (e: any) {
+        console.warn(
+          "Failed to fetch community recipe:",
+          e?.message || String(e)
+        );
+      }
+    })();
+    return () => {
+      aborted = true;
+    };
+  }, [communityId]);
+
   const formatTime = (totalSeconds: number) => {
     const safe = Math.max(0, Math.floor(totalSeconds || 0));
     const minutes = Math.floor(safe / 60);
@@ -201,6 +317,58 @@ export default function RecipeStepsScreen() {
     }
   };
 
+  async function submitRating(intValue: number) {
+    try {
+      setRateMsg(null);
+      if (!canRateCommunity || !communityId) {
+        setRateMsg({
+          type: "error",
+          text: "Rating not available for this recipe.",
+        });
+        return;
+      }
+      const token = await getToken();
+      if (!token) {
+        setRateMsg({
+          type: "error",
+          text: "You must be logged in to rate.",
+        });
+        return;
+      }
+      setRatingBusy(true);
+      const res = await fetch(
+        `${BASE}/api/community-recipes/${communityId}/rate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ value: intValue }), // 1..5
+        }
+      );
+      const raw = await res.text();
+      if (!res.ok) throw new Error(raw || "Failed to rate.");
+      const data = JSON.parse(raw);
+      setMyRating(intValue);
+      setCommunity({
+        avg: data.ratingAvg,
+        count: data.ratingCount,
+      });
+      setRateMsg({
+        type: "ok",
+        text: `Thanks! ★${data.ratingAvg.toFixed(2)} (${data.ratingCount})`,
+      });
+    } catch (e: any) {
+      setRateMsg({
+        type: "error",
+        text: e?.message || "Rating failed.",
+      });
+    } finally {
+      setRatingBusy(false);
+    }
+  }
+
   return (
     <View style={s.wrapper}>
       {/* Obsah */}
@@ -210,7 +378,6 @@ export default function RecipeStepsScreen() {
           <Text style={s.meta}>
             Step {current + 1} / {steps.length}
           </Text>
-
           {step.type === "image" && (
             <Image source={{ uri: step.src }} style={s.stepImg} />
           )}
@@ -228,7 +395,6 @@ export default function RecipeStepsScreen() {
               isLooping
             />
           )}
-
           <Text style={s.description}>{step.description}</Text>
           {/* ⏱ Timer – zobrazí se jen když krok má timerSeconds */}
           {hasTimer && (
@@ -236,11 +402,9 @@ export default function RecipeStepsScreen() {
               <View style={s.timerCircle}>
                 <Text style={s.timerValue}>{formatTime(displaySeconds)}</Text>
               </View>
-
               {justFinished && (
                 <Text style={s.timerFinishedLabel}>Timer completed ✔</Text>
               )}
-
               <View style={s.timerRow}>
                 <Pressable style={s.timerBtn} onPress={handleStartPause}>
                   <Text
@@ -249,7 +413,6 @@ export default function RecipeStepsScreen() {
                     {isRunning ? "❚❚" : "▶"}
                   </Text>
                 </Pressable>
-
                 <Pressable
                   style={s.timerBtn}
                   onPress={() => {
@@ -270,6 +433,60 @@ export default function RecipeStepsScreen() {
             </View>
           )}
         </View>
+        {/* ⭐ Rating jen na posledním kroku, nad tlačítky */}
+        {current === steps.length - 1 && (
+          <View style={s.ratingBox}>
+            <Text style={s.completedLabel}>RECIPE COMPLETED</Text>
+            <Text style={s.ratingLabel}>Rate this recipe:</Text>
+            <View style={s.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => {
+                const baseValue = myRating || community.avg;
+                const filled = baseValue >= star - 0.5;
+                return (
+                  <Pressable
+                    key={star}
+                    disabled={!canRateCommunity || ratingBusy}
+                    onPress={() => submitRating(star)}
+                    style={s.starPressable}
+                  >
+                    <Text
+                      style={[
+                        s.star,
+                        filled && s.starFilled,
+                        (!canRateCommunity || ratingBusy) && { opacity: 0.4 },
+                      ]}
+                    >
+                      ★
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {community.count > 0 && (
+              <Text style={s.ratingMeta}>
+                {community.avg.toFixed(1)} ({community.count})
+              </Text>
+            )}
+            {rateMsg && (
+              <Text
+                style={[
+                  s.ratingMsg,
+                  rateMsg.type === "ok" ? s.ratingMsgOk : s.ratingMsgErr,
+                ]}
+              >
+                {rateMsg.text}
+              </Text>
+            )}
+            {!canRateCommunity && (
+              <Text style={s.ratingDisabled}>
+                {ensuring
+                  ? "Preparing rating…"
+                  : "This recipe cannot be rated."}
+              </Text>
+            )}
+          </View>
+        )}
+        {/* 🔽 Tlačítka dole – layout jako dřív */}
         <View style={s.row}>
           <Pressable
             disabled={current === 0}
@@ -415,5 +632,57 @@ const s = StyleSheet.create({
     textAlign: "center",
     color: "#ff5555",
     fontWeight: "800",
+  },
+  ratingBox: {
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  completedLabel: {
+    color: "#dcd7d7ff",
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  ratingLabel: {
+    color: "#dcd7d7ff",
+    marginBottom: 6,
+  },
+  starsRow: {
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  starPressable: {
+    padding: 2,
+  },
+  star: {
+    fontSize: 28,
+    color: "#555",
+  },
+  starFilled: {
+    color: "#ffd700",
+  },
+  ratingMeta: {
+    color: "#dcd7d7ff",
+    fontSize: 12,
+    marginTop: 2,
+  },
+  ratingMsg: {
+    marginTop: 4,
+    fontSize: 12,
+    textAlign: "center",
+  },
+  ratingMsgOk: {
+    color: "limegreen",
+  },
+  ratingMsgErr: {
+    color: "tomato",
+  },
+  ratingDisabled: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#aaaaaa",
+    textAlign: "center",
   },
 });

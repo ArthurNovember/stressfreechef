@@ -22,6 +22,53 @@ const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
 import { router } from "expo-router";
 import { Video, ResizeMode } from "expo-av";
 
+import { MaterialIcons } from "@expo/vector-icons";
+
+type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
+
+function StarRatingDisplay({
+  value,
+  size = 16,
+  count,
+}: {
+  value: number;
+  size?: number;
+  count?: number;
+}) {
+  const val = Math.max(0, Math.min(5, value || 0));
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      <View style={{ flexDirection: "row" }}>
+        {Array.from({ length: 5 }, (_, i) => {
+          const diff = val - i;
+
+          let icon: MaterialIconName = "star-border";
+
+          if (diff >= 0.75) icon = "star";
+          else if (diff >= 0.25) icon = "star-half";
+
+          return (
+            <MaterialIcons
+              key={i}
+              name={icon}
+              size={size}
+              color="#ffd54f"
+              style={{ marginRight: 1 }}
+            />
+          );
+        })}
+      </View>
+
+      {typeof count === "number" ? (
+        <Text style={{ color: "#dcd7d7ff", fontSize: 12, opacity: 0.8 }}>
+          {val.toFixed(1)} ({count})
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 /** ===== Helpers ===== */
 const TOKEN_KEY = "token";
 async function getToken() {
@@ -373,7 +420,7 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 8 }}>Loading…</Text>
+        <Text style={{ marginTop: 8, color: "white" }}>Loading…</Text>
       </View>
     );
   }
@@ -463,6 +510,10 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
                     <Text style={styles.metaText}>
                       Time: {item?.time || "—"} ⏱️
                     </Text>
+                    <StarRatingDisplay
+                      value={item?.ratingAvg ?? item?.rating ?? 0}
+                      count={item?.ratingCount}
+                    />
                   </View>
                 </Pressable>
 
@@ -521,6 +572,10 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
                     <Text style={styles.metaText}>
                       Time: {item?.time || "—"} ⏱️
                     </Text>
+                    <StarRatingDisplay
+                      value={item?.ratingAvg ?? item?.rating ?? 0}
+                      count={item?.ratingCount}
+                    />
                   </View>
                 </Pressable>
                 <Pressable
@@ -563,6 +618,14 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
               )}
 
               <Text style={styles.modalTitle}>{selected?.title}</Text>
+              {typeof selected?.ratingAvg === "number" && (
+                <StarRatingDisplay
+                  value={selected.ratingAvg}
+                  count={selected.ratingCount}
+                  size={20}
+                />
+              )}
+
               {selected?.ingredients?.length ? (
                 <>
                   <Text style={styles.section}>Ingredients</Text>

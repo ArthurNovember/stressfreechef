@@ -74,7 +74,7 @@ async function pickMediaFromLibrary(): Promise<{
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.All,
+    mediaTypes: ["images", "videos"],
     quality: 1,
   });
 
@@ -506,7 +506,7 @@ export default function NewRecipeScreen() {
                 placeholderTextColor="#999"
                 value={step.timerInput}
                 onChangeText={(val) => updateStepTimer(index, val)}
-                keyboardType="numeric"
+                keyboardType="numbers-and-punctuation"
               />
             </View>
           </View>

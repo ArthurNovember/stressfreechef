@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useScrollToTop, useFocusEffect } from "@react-navigation/native";
 import { Video, ResizeMode } from "expo-av";
+import { MaterialIcons } from "@expo/vector-icons";
 
 import {
   View,
@@ -20,6 +21,8 @@ import Swiper from "react-native-deck-swiper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE, fetchJSON } from "../../lib/api";
 import { router } from "expo-router";
+
+type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
 type Step = {
   type: "image" | "video" | "text";
@@ -95,19 +98,37 @@ function getCover(r: CommunityRecipe | null | undefined) {
 function StarRatingDisplay({
   value,
   count,
+  size = 16,
 }: {
   value: number;
   count?: number;
+  size?: number;
 }) {
   const val = Math.max(0, Math.min(5, value || 0));
-  const full = Math.round(val);
-  const stars = Array.from({ length: 5 }, (_, i) =>
-    i < full ? "★" : "☆"
-  ).join("");
 
   return (
     <View style={styles.ratingRow}>
-      <Text style={styles.ratingStars}>{stars}</Text>
+      <View style={{ flexDirection: "row" }}>
+        {Array.from({ length: 5 }, (_, i) => {
+          const diff = val - i;
+
+          let icon: MaterialIconName = "star-border"; // ✅ správný typ
+
+          if (diff >= 0.75) icon = "star";
+          else if (diff >= 0.25) icon = "star-half";
+
+          return (
+            <MaterialIcons
+              key={i}
+              name={icon}
+              size={size}
+              color="#ffd54f"
+              style={{ marginRight: 1 }}
+            />
+          );
+        })}
+      </View>
+
       <Text style={styles.ratingValue}>
         {val.toFixed(1)}
         {typeof count === "number" && count > 0 ? ` (${count})` : ""}

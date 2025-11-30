@@ -13,6 +13,8 @@ import { Video, ResizeMode } from "expo-av";
 import { useKeepAwake } from "expo-keep-awake";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE } from "../../lib/api";
+import { MaterialIcons } from "@expo/vector-icons";
+type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
 type Step = {
   type: "image" | "video" | "text";
@@ -369,6 +371,57 @@ export default function RecipeStepsScreen() {
     }
   }
 
+  function RenderStarsForRecipe({
+    avg,
+    myRating,
+    onRate,
+    disabled,
+  }: {
+    avg: number;
+    myRating: number;
+    onRate: (value: number) => void;
+    disabled: boolean;
+  }) {
+    const effective = myRating || avg; // když user hodnotil → plné hvězdy
+
+    return (
+      <View style={s.starsRow}>
+        {[1, 2, 3, 4, 5].map((star) => {
+          const diff = effective - (star - 1);
+          // diff = kolik hvězdy zaplníme (0–1)
+
+          let icon: MaterialIconName = "star-border";
+
+          if (diff >= 1) {
+            icon = "star"; // 100% plná
+          } else if (diff >= 0.75) {
+            icon = "star"; // stále plná
+          } else if (diff >= 0.25) {
+            icon = "star-half"; // půl hvězda
+          } else {
+            icon = "star-border"; // prázdná
+          }
+
+          return (
+            <Pressable
+              key={star}
+              disabled={disabled}
+              onPress={() => onRate(star)}
+              style={s.starPressable}
+            >
+              <MaterialIcons
+                name={icon}
+                size={32}
+                color={icon === "star-border" ? "#555" : "#ffd700"}
+                style={disabled && { opacity: 0.4 }}
+              />
+            </Pressable>
+          );
+        })}
+      </View>
+    );
+  }
+
   return (
     <View style={s.wrapper}>
       {/* Obsah */}
@@ -438,30 +491,13 @@ export default function RecipeStepsScreen() {
           <View style={s.ratingBox}>
             <Text style={s.completedLabel}>RECIPE COMPLETED</Text>
             <Text style={s.ratingLabel}>Rate this recipe:</Text>
-            <View style={s.starsRow}>
-              {[1, 2, 3, 4, 5].map((star) => {
-                const baseValue = myRating || community.avg;
-                const filled = baseValue >= star - 0.5;
-                return (
-                  <Pressable
-                    key={star}
-                    disabled={!canRateCommunity || ratingBusy}
-                    onPress={() => submitRating(star)}
-                    style={s.starPressable}
-                  >
-                    <Text
-                      style={[
-                        s.star,
-                        filled && s.starFilled,
-                        (!canRateCommunity || ratingBusy) && { opacity: 0.4 },
-                      ]}
-                    >
-                      ★
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <RenderStarsForRecipe
+              avg={community.avg}
+              myRating={myRating}
+              onRate={(value) => submitRating(value)}
+              disabled={!canRateCommunity || ratingBusy}
+            />
+
             {community.count > 0 && (
               <Text style={s.ratingMeta}>
                 {community.avg.toFixed(1)} ({community.count})

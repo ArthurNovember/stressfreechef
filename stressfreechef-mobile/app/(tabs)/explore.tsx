@@ -66,6 +66,44 @@ async function getToken() {
   }
 }
 
+async function addIngredientToShopping(ingredient: string) {
+  const trimmed = ingredient.trim();
+  if (!trimmed) return;
+
+  try {
+    const token = await getToken();
+    if (!token) {
+      Alert.alert("Login required", "Please log in to use your shopping list.");
+      return;
+    }
+
+    const res = await fetch(`${API_BASE}/api/shopping-list`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        text: trimmed,
+        shop: [],
+      }),
+    });
+
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {}
+
+    if (!res.ok) {
+      throw new Error(data?.error || `HTTP ${res.status}`);
+    }
+
+    Alert.alert("Added", `"${trimmed}" was added to your shopping list.`);
+  } catch (e: any) {
+    Alert.alert("Failed to add", e?.message || String(e));
+  }
+}
+
 function findFirstImageStepSrc(steps: Step[] = []) {
   if (!Array.isArray(steps)) return "";
   const s = steps.find((x) => x?.type === "image" && x?.src);
@@ -820,14 +858,24 @@ export default function ExploreScreen() {
               <Text style={styles.modalMeta}>
                 Time: {selected?.time || "—"} ⏱️
               </Text>
-
               {selected?.ingredients?.length ? (
                 <>
                   <Text style={styles.section}>Ingredients</Text>
                   {selected.ingredients.map((ing, i) => (
-                    <Text key={i} style={styles.ingredient}>
-                      • {ing}
-                    </Text>
+                    <View key={i} style={styles.ingredientRow}>
+                      <Text style={styles.ingredient}>• {ing}</Text>
+
+                      <Pressable
+                        style={styles.ingredientAddBtn}
+                        onPress={() => addIngredientToShopping(ing)}
+                      >
+                        <MaterialIcons
+                          name="add-shopping-cart"
+                          size={18}
+                          color="#ffffff"
+                        />
+                      </Pressable>
+                    </View>
                   ))}
                 </>
               ) : null}
@@ -1153,5 +1201,21 @@ const styles = StyleSheet.create({
   listFooter: {
     paddingVertical: 12,
     alignItems: "center",
+  },
+  ingredientRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderColor: "#363636ff",
+  },
+
+  ingredientAddBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#171111ff",
   },
 });

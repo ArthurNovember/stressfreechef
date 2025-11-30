@@ -351,6 +351,50 @@ export default function HomeScreen() {
     );
   }
 
+  async function addIngredientToShopping(ingredient: string) {
+    const trimmed = ingredient.trim();
+    if (!trimmed) return;
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        Alert.alert(
+          "Not logged in",
+          "Please log in on the MyProfile tab to use your shopping list."
+        );
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/api/shopping-list`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          text: trimmed,
+          shop: [], // žádné shopy zatím – jen text
+        }),
+      });
+
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // klidně ignoruj – backend může někdy vracet prázdné tělo
+      }
+
+      if (!res.ok) {
+        const msg = data?.error || `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
+
+      Alert.alert("Added", `"${trimmed}" was added to your shopping list.`);
+    } catch (e: any) {
+      Alert.alert("Failed to add", e?.message || String(e));
+    }
+  }
+
   function sortEasiest(src: Recipe[]) {
     return src
       .slice()
@@ -460,7 +504,7 @@ export default function HomeScreen() {
                   alignItems: "center",
                   backgroundColor: "#760101",
                   height: 100,
-                  width: "25%",
+                  width: "26%",
                   borderColor: "black",
                   borderWidth: 4,
                   borderLeftWidth: 0,
@@ -655,9 +699,20 @@ export default function HomeScreen() {
                 <>
                   <Text style={styles.section}>Ingredients</Text>
                   {selected!.ingredients!.map((ing, i) => (
-                    <Text key={i} style={styles.ingredient}>
-                      • {ing}
-                    </Text>
+                    <View key={i} style={styles.ingredientRow}>
+                      <Text style={styles.ingredient}>• {ing}</Text>
+
+                      <Pressable
+                        style={styles.ingredientAddBtn}
+                        onPress={() => addIngredientToShopping(ing)}
+                      >
+                        <MaterialIcons
+                          name="add-shopping-cart"
+                          size={18}
+                          color="#ffffff"
+                        />
+                      </Pressable>
+                    </View>
                   ))}
                 </>
               ) : null}
@@ -855,5 +910,23 @@ const styles = StyleSheet.create({
   ratingValue: {
     fontSize: 11,
     color: "#ccc",
+  },
+  ingredientRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginVertical: 2,
+    borderBottomWidth: 1,
+    borderColor: "#363636ff",
+    padding: 5,
+  },
+  ingredientAddBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#444",
+    backgroundColor: "#171111ff",
   },
 });

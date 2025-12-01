@@ -539,30 +539,26 @@ export default function HomeScreen() {
                 flexDirection: "row",
               }}
             >
-              <View
+              {/* SETTINGS / MENU BUTTON VLEVO */}
+              <Pressable
+                onPress={() => router.push("/settings")}
                 style={{
-                  alignItems: "center",
-                  backgroundColor: "#760101",
+                  paddingHorizontal: 12,
                   height: 100,
-                  width: "26%",
+                  justifyContent: "center",
+                  backgroundColor: "#760101",
                   borderColor: "black",
                   borderWidth: 4,
-                  borderLeftWidth: 0,
+                  borderRightWidth: 0,
                 }}
               >
-                <Image
-                  style={{
-                    flex: 0.8,
-                    aspectRatio: 1.3,
-                    justifyContent: "center",
-                    top: 5,
-                  }}
-                  source={{ uri: "https://i.imgur.com/EdgU8NN.png" }}
-                />
-              </View>
+                <MaterialIcons name="menu" size={28} color="#edededff" />
+              </Pressable>
+
+              {/* NADPIS */}
               <Text
                 style={{
-                  width: "75%",
+                  flex: 1,
                   fontSize: 33,
                   lineHeight: 100,
                   borderWidth: 4,
@@ -570,15 +566,16 @@ export default function HomeScreen() {
                   borderRightWidth: 0,
                   height: 100,
                   textAlign: "center",
-
                   backgroundColor: "#111111ff",
                   color: "#edededff",
                   fontFamily: "Merienda_400Regular",
+                  zIndex: 1000,
                 }}
               >
                 Stress Free Chef
               </Text>
             </View>
+
             <View>
               <View style={{ flexDirection: "row" }}>
                 <Pressable

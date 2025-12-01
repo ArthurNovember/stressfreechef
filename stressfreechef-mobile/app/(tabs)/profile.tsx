@@ -366,37 +366,6 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
     onLoggedOut();
   }, [onLoggedOut]);
 
-  const handleDeleteAccount = useCallback(async () => {
-    Alert.alert(
-      "Delete account",
-      "This will permanently delete your account, recipes, shopping list and favorites. This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const token = await getToken();
-              const res = await fetch(`${API_BASE}/api/account`, {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              if (!res.ok && res.status !== 204) {
-                const txt = await res.text();
-                throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
-              }
-              await clearToken();
-              onLoggedOut();
-            } catch (e: any) {
-              Alert.alert("Account deletion failed", e?.message || String(e));
-            }
-          },
-        },
-      ]
-    );
-  }, [onLoggedOut]);
-
   const handleDeleteRecipe = useCallback(async (id: string) => {
     Alert.alert("Delete recipe?", "This cannot be undone.", [
       { text: "Cancel", style: "cancel" },
@@ -482,25 +451,10 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
   return (
     <View style={{ flex: 1, backgroundColor: "#0f0f0fff", paddingTop: 15 }}>
       <View style={styles.profileHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.welcome}>
-            Welcome{user?.username ? `, ${user.username}` : ""}!
-          </Text>
-          {user?.email ? (
-            <Text style={styles.metaText}>Email: {user.email}</Text>
-          ) : null}
-        </View>
+        <View style={{ flex: 1 }}></View>
         <View style={{ flexDirection: "row", gap: 8 }}>
           <Pressable onPress={handleLogout} style={styles.secondaryBtn}>
             <Text style={styles.secondaryBtnText}>Logout</Text>
-          </Pressable>
-          <Pressable
-            onPress={handleDeleteAccount}
-            style={[styles.secondaryBtn, { borderColor: "#b00020" }]}
-          >
-            <Text style={[styles.secondaryBtnText, { color: "#ff6666" }]}>
-              Delete Account
-            </Text>
           </Pressable>
         </View>
       </View>
@@ -799,8 +753,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     alignItems: "center",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#ccc",
-    backgroundColor: "#434343",
+    marginRight: 10,
+    backgroundColor: "#660c0cff",
   },
   secondaryBtnText: { color: "#e0e0e0", fontWeight: "700" },
 

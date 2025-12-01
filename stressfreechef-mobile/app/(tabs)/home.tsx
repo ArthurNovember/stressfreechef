@@ -38,15 +38,33 @@ function StarRatingDisplay({
   count?: number;
 }) {
   const val = Math.max(0, Math.min(5, value || 0));
-  const full = Math.round(val);
-
-  const stars = Array.from({ length: 5 }, (_, i) =>
-    i < full ? "★" : "☆"
-  ).join("");
 
   return (
     <View style={styles.ratingRow}>
-      <Text style={styles.ratingStars}>{stars}</Text>
+      <View style={{ flexDirection: "row" }}>
+        {Array.from({ length: 5 }, (_, i) => {
+          const diff = val - i;
+
+          let icon: MaterialIconName = "star-border";
+
+          if (diff >= 0.75) {
+            icon = "star"; // plná hvězda
+          } else if (diff >= 0.25) {
+            icon = "star-half"; // půl hvězda
+          } // jinak zůstane star-border
+
+          return (
+            <MaterialIcons
+              key={i}
+              name={icon}
+              size={14} // klidně si doladíš (16 jako v Explore)
+              color="#ffd54f"
+              style={{ marginRight: 1 }}
+            />
+          );
+        })}
+      </View>
+
       <Text style={styles.ratingValue}>
         {val.toFixed(1)}
         {typeof count === "number" && count > 0 ? ` (${count})` : ""}

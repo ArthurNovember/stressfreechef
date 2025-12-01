@@ -52,9 +52,18 @@ type FavoriteItem = {
 
 /** ===== Helpers ===== */
 const TOKEN_KEY = "token";
+const GUEST_ITEMS_KEY = "shopping_guest_items";
 
 async function getToken() {
   return (await AsyncStorage.getItem(TOKEN_KEY)) || "";
+}
+
+async function saveGuestItems(items: ShoppingItem[]) {
+  try {
+    await AsyncStorage.setItem(GUEST_ITEMS_KEY, JSON.stringify(items));
+  } catch (e) {
+    console.warn("Failed to save guest shopping list", e);
+  }
 }
 
 const isUnauthorizedError = (e: any) => {
@@ -87,6 +96,8 @@ export default function ShoppingScreen() {
 
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
 
+  const [hasToken, setHasToken] = useState(false);
+
   const router = useRouter();
 
   /** ===== Načtení dat (stejně jako web) ===== */
@@ -95,6 +106,28 @@ export default function ShoppingScreen() {
     setErr(null);
     try {
       const token = await getToken();
+      const loggedIn = !!token;
+      setHasToken(loggedIn);
+
+      if (!loggedIn) {
+        const stored = await AsyncStorage.getItem(GUEST_ITEMS_KEY);
+
+        if (stored) {
+          try {
+            setItems(JSON.parse(stored));
+          } catch {
+            setItems([]);
+          }
+        } else {
+          setItems([]);
+        }
+
+        setShopOptions([]);
+        setFavoriteItems([]);
+
+        return; // ← důležité
+      }
+
       if (!token) {
         throw new Error(
           "You are not logged in. Please log in on the MyProfile tab first."
@@ -142,6 +175,27 @@ export default function ShoppingScreen() {
     try {
       const token = await getToken();
       if (!token) {
+        const newItem: ShoppingItem = {
+          _id: `guest-${Date.now()}`,
+          text: trimmed,
+          shop: [],
+          checked: false,
+          createdAt: new Date().toISOString(),
+        };
+
+        setItems((prev) => {
+          const updated = [...prev, newItem];
+          saveGuestItems(updated);
+          return updated;
+        });
+
+        setNewText("");
+        setNewItemShopIds([]);
+
+        return; // důležité
+      }
+
+      if (!token) {
         Alert.alert("Not logged in", "Log in to save your shopping list.");
         return;
       }
@@ -177,6 +231,33 @@ export default function ShoppingScreen() {
     async (id: string, updates: ShoppingItemUpdate) => {
       try {
         const token = await getToken();
+        if (!token) {
+          setItems((prev) => {
+            const updated = prev.map((it) => {
+              if (it._id !== id) return it;
+
+              // převod shop: string[] → ShopOption[]
+              let fixedShops = it.shop;
+              if (updates.shop) {
+                fixedShops = updates.shop.map((sid) => ({
+                  _id: sid,
+                  name: sid, // guest nemá názvy shopů → placeholder
+                }));
+              }
+
+              return {
+                ...it,
+                ...updates,
+                shop: fixedShops,
+              };
+            });
+
+            saveGuestItems(updated);
+            return updated;
+          });
+          return;
+        }
+
         const res = await fetch(`${BASE}/api/shopping-list/${id}`, {
           method: "PATCH",
           headers: {
@@ -203,7 +284,17 @@ export default function ShoppingScreen() {
 
   const deleteItem = useCallback(
     (id: string) => {
-      // 1) Nastavit rychlou animaci pro následující layout změnu
+      (async () => {
+        const token = await getToken();
+        if (!token) {
+          setItems((prev) => {
+            const updated = prev.filter((it) => it._id !== id);
+            saveGuestItems(updated);
+            return updated;
+          });
+          return;
+        }
+      })();
 
       // 2) Okamžitě upravit state – tady se animace aplikuje
       setItems((prev) => prev.filter((it) => it._id !== id));
@@ -490,7 +581,13 @@ export default function ShoppingScreen() {
           </Text>
           <Pressable
             style={styles.shopsBtn}
-            onPress={() => setEditingItemId(item._id)}
+            onPress={() => {
+              if (!hasToken) {
+                Alert.alert("Log in to unlock store assignment");
+                return;
+              }
+              setEditingItemId(item._id);
+            }}
           >
             <Text style={styles.shopsBtnText}>{shopLabel}</Text>
           </Pressable>
@@ -572,7 +669,19 @@ export default function ShoppingScreen() {
                   >
                     Add new item
                   </Text>
-                  <Pressable onPress={() => router.push("/favorites")}>
+                  <Pressable
+                    onPress={() => {
+                      if (!hasToken) {
+                        Alert.alert(
+                          "Login required",
+                          "Log in to access your favorite items."
+                        );
+                        return;
+                      }
+
+                      router.push("/favorites");
+                    }}
+                  >
                     <Image
                       source={{
                         uri: "https://i.imgur.com/DmXZvGl.png",
@@ -590,7 +699,7 @@ export default function ShoppingScreen() {
                 style={styles.input}
               />
 
-              {shopOptions.length > 0 && (
+              {hasToken && shopOptions.length > 0 && (
                 <View style={{ marginTop: 8 }}>
                   <Text style={styles.label}>Shops for this item:</Text>
                   <View style={styles.shopsRow}>
@@ -626,24 +735,30 @@ export default function ShoppingScreen() {
                 </View>
               )}
 
-              <Pressable
-                style={styles.manageShopsBtn}
-                onPress={() => setManageShopsVisible(true)}
-              >
-                <Text style={styles.manageShopsText}>
-                  {shopOptions.length > 0 ? "Manage shops" : "Add shops"}
-                </Text>
-              </Pressable>
+              {hasToken && (
+                <Pressable
+                  style={styles.manageShopsBtn}
+                  onPress={() => setManageShopsVisible(true)}
+                >
+                  <Text style={styles.manageShopsText}>
+                    {shopOptions.length > 0 ? "Manage shops" : "Add shops"}
+                  </Text>
+                </Pressable>
+              )}
 
               <Pressable style={styles.primaryBtn} onPress={handleAddItem}>
                 <Text style={styles.primaryBtnText}>Send to list</Text>
               </Pressable>
             </View>
-            <Text style={{ color: "#d9d8d8ff", fontSize: 20, paddingTop: 10 }}>
-              Filter by shop:
-            </Text>
+            {hasToken && (
+              <Text
+                style={{ color: "#d9d8d8ff", fontSize: 20, paddingTop: 10 }}
+              >
+                Filter by shop:
+              </Text>
+            )}
             {/* Filtrování podle shopů */}
-            {shopOptions.length > 0 && (
+            {hasToken && shopOptions.length > 0 && (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}

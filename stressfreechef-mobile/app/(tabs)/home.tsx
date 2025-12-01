@@ -375,14 +375,38 @@ export default function HomeScreen() {
 
     try {
       const token = await getToken();
+
+      // ⭐⭐⭐ GUEST MODE – stejný princip jako shopping.tsx ⭐⭐⭐
       if (!token) {
-        Alert.alert(
-          "Not logged in",
-          "Please log in on the MyProfile tab to use your shopping list."
-        );
+        const GUEST_KEY = "shopping_guest_items";
+
+        const stored = await AsyncStorage.getItem(GUEST_KEY);
+        let list: any[] = [];
+
+        if (stored) {
+          try {
+            list = JSON.parse(stored);
+          } catch {
+            list = [];
+          }
+        }
+
+        const newItem = {
+          _id: `guest-${Date.now()}`,
+          text: trimmed,
+          shop: [],
+          checked: false,
+          createdAt: new Date().toISOString(),
+        };
+
+        const updated = [...list, newItem];
+        await AsyncStorage.setItem(GUEST_KEY, JSON.stringify(updated));
+
+        Alert.alert("Added", `"${trimmed}" was added to your shopping list.`);
         return;
       }
 
+      // ⭐⭐⭐ NORMAL BACKEND MODE (beze změn) ⭐⭐⭐
       const res = await fetch(`${API_BASE}/api/shopping-list`, {
         method: "POST",
         headers: {
@@ -391,16 +415,14 @@ export default function HomeScreen() {
         },
         body: JSON.stringify({
           text: trimmed,
-          shop: [], // žádné shopy zatím – jen text
+          shop: [],
         }),
       });
 
       let data: any = null;
       try {
         data = await res.json();
-      } catch {
-        // klidně ignoruj – backend může někdy vracet prázdné tělo
-      }
+      } catch {}
 
       if (!res.ok) {
         const msg = data?.error || `HTTP ${res.status}`;

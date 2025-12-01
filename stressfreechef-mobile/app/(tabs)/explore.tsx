@@ -72,11 +72,38 @@ async function addIngredientToShopping(ingredient: string) {
 
   try {
     const token = await getToken();
+
+    // ⭐ Guest mód – uložíme do AsyncStorage
     if (!token) {
-      Alert.alert("Login required", "Please log in to use your shopping list.");
+      const GUEST_KEY = "shopping_guest_items";
+
+      const stored = await AsyncStorage.getItem(GUEST_KEY);
+      let list: any[] = [];
+
+      if (stored) {
+        try {
+          list = JSON.parse(stored);
+        } catch {
+          list = [];
+        }
+      }
+
+      const newItem = {
+        _id: `guest-${Date.now()}`,
+        text: trimmed,
+        shop: [],
+        checked: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      const updated = [...list, newItem];
+      await AsyncStorage.setItem(GUEST_KEY, JSON.stringify(updated));
+
+      Alert.alert("Added", `"${trimmed}" was added to your shopping list.`);
       return;
     }
 
+    // ⭐ Přihlášený user → backend POST
     const res = await fetch(`${API_BASE}/api/shopping-list`, {
       method: "POST",
       headers: {

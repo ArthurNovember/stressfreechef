@@ -7,11 +7,13 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Appearance,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { API_BASE } from "../lib/api";
+import { getLocales } from "expo-localization";
 
 const THEME_KEY = "app_theme"; // "light" | "dark"
 const LANG_KEY = "app_lang"; // "en" | "cs"
@@ -53,37 +55,48 @@ export default function SettingsScreen() {
           | "cs"
           | null;
 
-        // nastav theme / lang
-        if (storedTheme) setTheme(storedTheme);
-        if (storedLang) setLang(storedLang);
-
-        // 🔥 načtení tokenu
-        const token = await AsyncStorage.getItem(TOKEN_KEY);
-        setHasToken(!!token);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const storedTheme = (await AsyncStorage.getItem(THEME_KEY)) as
-          | "light"
-          | "dark"
-          | null;
-        const storedLang = (await AsyncStorage.getItem(LANG_KEY)) as
-          | "en"
-          | "cs"
-          | null;
+        // 🎨 THEME – nejdřív uložený, jinak systém
+        let nextTheme: "light" | "dark" = "dark";
 
         if (storedTheme === "light" || storedTheme === "dark") {
-          setTheme(storedTheme);
+          nextTheme = storedTheme;
+        } else {
+          const systemScheme = Appearance.getColorScheme(); // "light" | "dark" | null
+          if (systemScheme === "light" || systemScheme === "dark") {
+            nextTheme = systemScheme;
+          } else {
+            nextTheme = "dark"; // fallback
+          }
+          // poprvé uložíme odvozený theme podle systému
+          await AsyncStorage.setItem(THEME_KEY, nextTheme);
         }
+
+        setTheme(nextTheme);
+
+        // 🌍 LANGUAGE – nejdřív uložený, jinak systém
+        const locales = getLocales();
+        const primary = locales[0];
+
+        const tag = (
+          primary?.languageTag ||
+          primary?.languageCode ||
+          ""
+        ).toLowerCase();
+        const systemLang: "en" | "cs" = tag.startsWith("cs") ? "cs" : "en";
+
+        let nextLang: "en" | "cs" = systemLang;
+
         if (storedLang === "en" || storedLang === "cs") {
-          setLang(storedLang);
+          nextLang = storedLang;
+        } else {
+          await AsyncStorage.setItem(LANG_KEY, systemLang);
         }
+
+        setLang(nextLang);
+
+        // 🔐 jestli je user přihlášen
+        const token = await AsyncStorage.getItem(TOKEN_KEY);
+        setHasToken(!!token);
       } finally {
         setLoading(false);
       }

@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { useScrollToTop } from "@react-navigation/native"; // ← tohle přidej
+import { t, Lang, LANG_KEY } from "../../i18n/strings";
 
 import {
   useFonts,
@@ -123,6 +124,42 @@ export default function HomeScreen() {
   const [communityStats, setCommunityStats] = useState<
     Record<string, { id: string; avg: number; count: number }>
   >({});
+
+  const [lang, setLang] = useState<Lang>("en");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(LANG_KEY);
+        if (stored === "en" || stored === "cs") {
+          setLang(stored);
+        }
+      } catch {
+        // když něco selže, necháme default "en"
+      }
+    })();
+  }, []);
+
+  function getRecipeTitle(r: Recipe, lang: Lang) {
+    if (lang === "cs" && (r as any).titleCs) {
+      return (r as any).titleCs;
+    }
+    return r.title;
+  }
+
+  function getRecipeIngredients(r: Recipe, lang: Lang): string[] {
+    if (lang === "cs" && (r as any).ingredientsCs?.length) {
+      return (r as any).ingredientsCs as string[];
+    }
+    return r.ingredients || [];
+  }
+
+  function getStepDescription(step: any, lang: Lang): string {
+    if (lang === "cs" && step.descriptionCs) {
+      return step.descriptionCs;
+    }
+    return step.description;
+  }
 
   const selectedBaseId = selected
     ? String((selected as any)._id || (selected as any).id || "")
@@ -312,7 +349,10 @@ export default function HomeScreen() {
 
     const token = await getToken();
     if (!token) {
-      Alert.alert("Login required", "Please log in to save recipes.");
+      Alert.alert(
+        t(lang, "home", "loginRequiredTitle"),
+        t(lang, "home", "loginRequiredMsg")
+      );
       return;
     }
 
@@ -402,7 +442,13 @@ export default function HomeScreen() {
         const updated = [...list, newItem];
         await AsyncStorage.setItem(GUEST_KEY, JSON.stringify(updated));
 
-        Alert.alert("Added", `"${trimmed}" was added to your shopping list.`);
+        Alert.alert(
+          lang === "cs" ? "Přidáno" : "Added",
+          lang === "cs"
+            ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
+            : `"${trimmed}" was added to your shopping list.`
+        );
+
         return;
       }
 
@@ -429,9 +475,14 @@ export default function HomeScreen() {
         throw new Error(msg);
       }
 
-      Alert.alert("Added", `"${trimmed}" was added to your shopping list.`);
+      Alert.alert(
+        lang === "cs" ? "Přidáno" : "Added",
+        lang === "cs"
+          ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
+          : `"${trimmed}" was added to your shopping list.`
+      );
     } catch (e: any) {
-      Alert.alert("Failed to add", e?.message || String(e));
+      Alert.alert(t(lang, "home", "addFailedTitle"), e?.message || String(e));
     }
   }
 
@@ -497,6 +548,17 @@ export default function HomeScreen() {
     Merienda_700Bold,
   });
 
+  const ingredients = selected ? getRecipeIngredients(selected, lang) : [];
+
+  function translateDifficulty(lang: Lang, diff: string) {
+    if (lang === "cs") {
+      if (diff === "Beginner") return "Začátečník";
+      if (diff === "Intermediate") return "Pokročilý";
+      if (diff === "Hard") return "Pokročilý";
+    }
+    return diff;
+  }
+
   if (!API_BASE) {
     return (
       <View style={styles.center}>
@@ -508,7 +570,10 @@ export default function HomeScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 8, color: "white" }}>Loading recipes…</Text>
+        <Text style={{ marginTop: 8, color: "white" }}>
+          {" "}
+          {t(lang, "home", "loadingRecipes")}
+        </Text>
       </View>
     );
   }
@@ -594,7 +659,7 @@ export default function HomeScreen() {
                       active === "NEWEST" && styles.chipTextActive,
                     ]}
                   >
-                    NEWEST
+                    {t(lang, "home", "newest")}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -613,7 +678,7 @@ export default function HomeScreen() {
                       active === "EASIEST" && styles.chipTextActive,
                     ]}
                   >
-                    EASIEST
+                    {t(lang, "home", "easiest")}
                   </Text>
                 </Pressable>
 
@@ -633,7 +698,7 @@ export default function HomeScreen() {
                       active === "FAVORITE" && styles.chipTextActive,
                     ]}
                   >
-                    FAVORITE
+                    {t(lang, "home", "favorite")}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -652,7 +717,7 @@ export default function HomeScreen() {
                       active === "RANDOM" && styles.chipTextActive,
                     ]}
                   >
-                    RANDOM
+                    {t(lang, "home", "random")}
                   </Text>
                 </Pressable>
               </View>
@@ -681,14 +746,22 @@ export default function HomeScreen() {
             <Pressable style={styles.card} onPress={() => setSelected(item)}>
               <Image source={{ uri: item.imgSrc }} style={styles.img} />
               <Text style={styles.title} numberOfLines={2}>
-                {item.title}
+                {getRecipeTitle(item, lang)}
               </Text>
 
               {/* ⭐ hvězdy + 4.3 (12) z communityStats */}
               <StarRatingDisplay value={ratingVal} count={ratingCount} />
 
-              <Text style={styles.meta}>Difficulty: {item.difficulty}</Text>
-              <Text style={styles.meta}>Time: {item.time} ⏱️</Text>
+              <Text style={styles.meta}>
+                <Text style={styles.meta}>
+                  {t(lang, "home", "difficulty")}:{" "}
+                  {translateDifficulty(lang, item.difficulty)}
+                </Text>
+              </Text>
+              <Text style={styles.meta}>
+                {" "}
+                {t(lang, "home", "time")}: {item.time} ⏱️
+              </Text>
             </Pressable>
           );
         }}
@@ -711,7 +784,9 @@ export default function HomeScreen() {
                 onPress={() => toggleSaveOfficial(selected)}
               >
                 <Text style={styles.saveFloatingBtnText}>
-                  {selectedIsSaved ? "Saved" : "Save"}
+                  {selectedIsSaved
+                    ? t(lang, "home", "saved")
+                    : t(lang, "home", "save")}
                 </Text>
               </Pressable>
             )}
@@ -722,7 +797,9 @@ export default function HomeScreen() {
                 style={styles.modalImg}
               />
               <View style={styles.modalHeaderRow}>
-                <Text style={styles.modalTitle}>{selected?.title}</Text>
+                <Text style={styles.modalTitle}>
+                  {selected ? getRecipeTitle(selected, lang) : ""}
+                </Text>
               </View>
 
               {selected && (
@@ -732,10 +809,12 @@ export default function HomeScreen() {
                 />
               )}
 
-              {selected?.ingredients?.length ? (
+              {ingredients.length ? (
                 <>
-                  <Text style={styles.section}>Ingredients</Text>
-                  {selected!.ingredients!.map((ing, i) => (
+                  <Text style={styles.section}>
+                    {t(lang, "home", "ingredients")}
+                  </Text>
+                  {ingredients.map((ing, i) => (
                     <View key={i} style={styles.ingredientRow}>
                       <Text style={styles.ingredient}>• {ing}</Text>
 
@@ -785,13 +864,18 @@ export default function HomeScreen() {
                   setSelected(null);
                 }}
               >
-                <Text style={styles.primaryBtnText}>GET STARTED</Text>
+                <Text style={styles.primaryBtnText}>
+                  {t(lang, "home", "getStarted")}
+                </Text>
               </Pressable>
               <Pressable
                 style={styles.secondaryBtn}
                 onPress={() => setSelected(null)}
               >
-                <Text style={styles.secondaryBtnText}>Close</Text>
+                <Text style={styles.secondaryBtnText}>
+                  {" "}
+                  {t(lang, "home", "close")}
+                </Text>
               </Pressable>
             </ScrollView>
           </View>
@@ -885,14 +969,15 @@ const styles = StyleSheet.create({
   secondaryBtnText: { color: "#a8a3a3ff", fontWeight: "700" },
 
   chip: {
-    paddingHorizontal: 15,
-    paddingVertical: 15,
+    paddingHorizontal: 8,
+    paddingVertical: 16,
     flex: 1,
     borderWidth: 1,
     borderTopWidth: 0,
     borderColor: "#000000ff",
     backgroundColor: "#1a1919ff",
   },
+
   chipActive: {
     backgroundColor: "#660202ff",
     borderColor: "#570303ff",
@@ -901,7 +986,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#d0d0d0",
     letterSpacing: 0.3,
+    fontSize: 13, // menší text
+    textAlign: "center", // zarovnání doprostřed
   },
+
   chipTextActive: {
     color: "#ffffff",
   },

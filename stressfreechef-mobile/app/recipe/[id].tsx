@@ -1,3 +1,5 @@
+import { t, Lang, LANG_KEY } from "../../i18n/strings";
+
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import {
@@ -20,12 +22,14 @@ type Step = {
   type: "image" | "video" | "text";
   src?: string;
   description: string;
+  descriptionCs?: string;
   timerSeconds?: number;
 };
 type Recipe = {
   _id?: string;
   id?: string;
   title: string;
+  titleCs?: string;
   imgSrc: string;
   difficulty: string;
   time: string;
@@ -63,6 +67,30 @@ export default function RecipeStepsScreen() {
   const [accumulated, setAccumulated] = useState(0);
   const [justFinished, setJustFinished] = useState(false);
   const steps = recipe?.steps || [];
+
+  const [lang, setLang] = useState<Lang>("en");
+
+  useEffect(() => {
+    (async () => {
+      const stored = await AsyncStorage.getItem(LANG_KEY);
+      if (stored === "cs" || stored === "en") setLang(stored);
+    })();
+  }, []);
+
+  function getRecipeTitle(r: Recipe, lang: Lang) {
+    if (lang === "cs" && (r as any).titleCs) {
+      return (r as any).titleCs as string;
+    }
+    return r.title;
+  }
+
+  function getStepDescription(step: any, lang: Lang): string {
+    if (!step) return "";
+    if (lang === "cs" && step.descriptionCs) {
+      return step.descriptionCs as string;
+    }
+    return step.description || "";
+  }
 
   const paramsCommunityId =
     (params as any)?.communityRecipeId || (params as any)?.communityId;
@@ -259,9 +287,9 @@ export default function RecipeStepsScreen() {
   if (!recipe || steps.length === 0) {
     return (
       <View style={s.center}>
-        <Text style={s.err}>Recipe steps not available.</Text>
+        <Text style={s.err}>{t(lang, "recipe", "stepsUnavailable")}</Text>
         <Pressable style={s.primary} onPress={() => router.back()}>
-          <Text style={s.primaryText}>Back</Text>
+          <Text style={s.primaryText}>{t(lang, "recipe", "back")}</Text>
         </Pressable>
       </View>
     );
@@ -325,7 +353,7 @@ export default function RecipeStepsScreen() {
       if (!canRateCommunity || !communityId) {
         setRateMsg({
           type: "error",
-          text: "Rating not available for this recipe.",
+          text: t(lang, "recipe", "ratingNotAvailable"),
         });
         return;
       }
@@ -333,7 +361,7 @@ export default function RecipeStepsScreen() {
       if (!token) {
         setRateMsg({
           type: "error",
-          text: "You must be logged in to rate.",
+          text: t(lang, "recipe", "loginRequired"),
         });
         return;
       }
@@ -359,12 +387,14 @@ export default function RecipeStepsScreen() {
       });
       setRateMsg({
         type: "ok",
-        text: `Thanks! ★${data.ratingAvg.toFixed(2)} (${data.ratingCount})`,
+        text: `${t(lang, "recipe", "ratingThanks")} ★${data.ratingAvg.toFixed(
+          2
+        )} (${data.ratingCount})`,
       });
     } catch (e: any) {
       setRateMsg({
         type: "error",
-        text: e?.message || "Rating failed.",
+        text: t(lang, "recipe", "ratingFailed"),
       });
     } finally {
       setRatingBusy(false);
@@ -427,16 +457,19 @@ export default function RecipeStepsScreen() {
       {/* Obsah */}
       <View style={[s.card, { justifyContent: "space-between" }]}>
         <View>
-          <Text style={s.title}>{recipe.title}</Text>
+          <Text style={s.title}>{getRecipeTitle(recipe, lang)}</Text>
           <Text style={s.meta}>
-            Step {current + 1} / {steps.length}
+            {t(lang, "recipe", "step")} {current + 1} / {steps.length}
           </Text>
           {step.type === "image" && (
             <Image source={{ uri: step.src }} style={s.stepImg} />
           )}
           {step.type === "text" && (
             <View style={s.textStep}>
-              <Text style={{ fontSize: 16 }}>{step.description}</Text>
+              <Text style={{ fontSize: 16 }}>
+                {" "}
+                {getStepDescription(step, lang)}
+              </Text>
             </View>
           )}
           {step.type === "video" && (
@@ -448,7 +481,8 @@ export default function RecipeStepsScreen() {
               isLooping
             />
           )}
-          <Text style={s.description}>{step.description}</Text>
+          <Text style={s.description}>{getStepDescription(step, lang)}</Text>
+
           {/* ⏱ Timer – zobrazí se jen když krok má timerSeconds */}
           {hasTimer && (
             <View style={s.timerBox}>
@@ -456,7 +490,10 @@ export default function RecipeStepsScreen() {
                 <Text style={s.timerValue}>{formatTime(displaySeconds)}</Text>
               </View>
               {justFinished && (
-                <Text style={s.timerFinishedLabel}>Timer completed ✔</Text>
+                <Text style={s.timerFinishedLabel}>
+                  {" "}
+                  {t(lang, "recipe", "timerDone")}
+                </Text>
               )}
               <View style={s.timerRow}>
                 <Pressable style={s.timerBtn} onPress={handleStartPause}>
@@ -489,8 +526,10 @@ export default function RecipeStepsScreen() {
         {/* ⭐ Rating jen na posledním kroku, nad tlačítky */}
         {current === steps.length - 1 && (
           <View style={s.ratingBox}>
-            <Text style={s.completedLabel}>RECIPE COMPLETED</Text>
-            <Text style={s.ratingLabel}>Rate this recipe:</Text>
+            <Text style={s.completedLabel}>
+              {t(lang, "recipe", "completed")}
+            </Text>
+            <Text style={s.ratingLabel}>{t(lang, "recipe", "rateThis")}</Text>
             <RenderStarsForRecipe
               avg={community.avg}
               myRating={myRating}
@@ -516,8 +555,8 @@ export default function RecipeStepsScreen() {
             {!canRateCommunity && (
               <Text style={s.ratingDisabled}>
                 {ensuring
-                  ? "Preparing rating…"
-                  : "This recipe cannot be rated."}
+                  ? t(lang, "recipe", "preparing")
+                  : t(lang, "recipe", "cannotRate")}
               </Text>
             )}
           </View>
@@ -529,7 +568,7 @@ export default function RecipeStepsScreen() {
             onPress={() => setCurrent((p) => Math.max(0, p - 1))}
             style={[s.btn, current === 0 && s.btnDisabled]}
           >
-            <Text style={s.btnText}>PREVIOUS</Text>
+            <Text style={s.btnText}>{t(lang, "recipe", "previous")}</Text>
           </Pressable>
           {current < steps.length - 1 ? (
             <Pressable
@@ -538,14 +577,20 @@ export default function RecipeStepsScreen() {
               }
               style={[s.btn, s.btnPrimary]}
             >
-              <Text style={[s.btnText, { color: "#fff" }]}>NEXT STEP</Text>
+              <Text style={[s.btnText, { color: "#fff" }]}>
+                {t(lang, "recipe", "next")}
+              </Text>
             </Pressable>
           ) : (
             <Pressable
               onPress={() => router.back()}
               style={[s.btn, s.btnPrimary, { backgroundColor: "#410101ff" }]}
             >
-              <Text style={[s.btnText, { color: "#fff" }]}>FINISH</Text>
+              <Text style={[s.btnText, { color: "#fff" }]}>
+                <Text style={[s.btnText, { color: "#fff" }]}>
+                  {t(lang, "recipe", "finish")}
+                </Text>
+              </Text>
             </Pressable>
           )}
         </View>

@@ -65,6 +65,9 @@ app.use("/api/community-recipes", communityRatingsRouter);
 const uploadRoutes = require("./routes/uploadRoutes");
 app.use("/api/uploads", uploadRoutes);
 
+const savedCommunityRecipesRouter = require("./routes/savedCommunityRecipes");
+app.use("/api/saved-community-recipes", savedCommunityRecipesRouter);
+
 app.get("/api/ping", (req, res) => {
   res.type("text").status(200).send("OK");
 });

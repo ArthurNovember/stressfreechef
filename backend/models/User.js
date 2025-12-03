@@ -32,6 +32,9 @@ const userSchema = new mongoose.Schema({
       shop: [{ type: mongoose.Schema.Types.ObjectId, ref: "Shop" }],
     },
   ],
+  savedCommunityRecipes: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "CommunityRecipe" },
+  ],
 
   itemSuggestions: { type: [String], default: [] },
 });

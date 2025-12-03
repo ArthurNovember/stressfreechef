@@ -14,9 +14,10 @@ import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { API_BASE } from "../lib/api";
 import { getLocales } from "expo-localization";
+import { t, Lang, LANG_KEY } from "../i18n/strings";
 
 const THEME_KEY = "app_theme"; // "light" | "dark"
-const LANG_KEY = "app_lang"; // "en" | "cs"
+
 const TOKEN_KEY = "token";
 
 async function getToken() {
@@ -38,7 +39,7 @@ async function clearToken() {
 
 export default function SettingsScreen() {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
-  const [lang, setLang] = useState<"en" | "cs">("en");
+  const [lang, setLang] = useState<Lang>("en");
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [hasToken, setHasToken] = useState(false);
@@ -117,8 +118,8 @@ export default function SettingsScreen() {
 
   function confirmDeleteProfile() {
     Alert.alert(
-      "Delete account",
-      "This will permanently delete your account, recipes, shopping list and favorites. This action cannot be undone.",
+      t(lang, "settings", "confirmDeleteTitle"),
+      t(lang, "settings", "confirmDeleteMessage"),
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -135,8 +136,8 @@ export default function SettingsScreen() {
       const token = await getToken();
       if (!token) {
         Alert.alert(
-          "Not logged in",
-          "You must be logged in to delete account."
+          t(lang, "settings", "notLoggedInTitle"),
+          t(lang, "settings", "notLoggedInMsg")
         );
         return;
       }
@@ -153,12 +154,18 @@ export default function SettingsScreen() {
 
       await clearToken();
 
-      Alert.alert("Account deleted", "Your account has been deleted.");
+      Alert.alert(
+        t(lang, "settings", "deletedTitle"),
+        t(lang, "settings", "deletedMsg")
+      );
 
       // po smazání tě hodíme „domů“ – klidně si cestu uprav
       router.replace("/(tabs)/home");
     } catch (e: any) {
-      Alert.alert("Account deletion failed", e?.message || String(e));
+      Alert.alert(
+        t(lang, "settings", "deleteFailedTitle"),
+        e?.message || String(e)
+      );
     }
   }
 
@@ -167,7 +174,7 @@ export default function SettingsScreen() {
       <View style={styles.center}>
         <ActivityIndicator size="large" />
         <Text style={{ marginTop: 8, color: "#e0e0e0" }}>
-          Loading settings…
+          {t(lang, "settings", "loading")}
         </Text>
       </View>
     );
@@ -180,12 +187,17 @@ export default function SettingsScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <MaterialIcons name="arrow-back" size={24} color="#ffffff" />
         </Pressable>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>
+          {t(lang, "settings", "headerTitle")}
+        </Text>
       </View>
 
       {/* THEME */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Theme</Text>
+        <Text style={styles.sectionTitle}>
+          {" "}
+          {t(lang, "settings", "themeTitle")}
+        </Text>
         <View style={styles.row}>
           <Pressable
             style={[styles.pill, theme === "dark" && styles.pillActive]}
@@ -197,7 +209,7 @@ export default function SettingsScreen() {
                 theme === "dark" && styles.pillTextActive,
               ]}
             >
-              Dark
+              {t(lang, "settings", "themeDark")}
             </Text>
           </Pressable>
           <Pressable
@@ -210,7 +222,7 @@ export default function SettingsScreen() {
                 theme === "light" && styles.pillTextActive,
               ]}
             >
-              Light
+              {t(lang, "settings", "themeLight")}
             </Text>
           </Pressable>
         </View>
@@ -222,7 +234,9 @@ export default function SettingsScreen() {
 
       {/* LANGUAGE */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Language</Text>
+        <Text style={styles.sectionTitle}>
+          {t(lang, "settings", "langTitle")}
+        </Text>
         <View style={styles.row}>
           <Pressable
             style={[styles.pill, lang === "en" && styles.pillActive]}
@@ -254,7 +268,9 @@ export default function SettingsScreen() {
       {/* DELETE PROFILE */}
       {hasToken && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Danger zone</Text>
+          <Text style={styles.sectionTitle}>
+            {t(lang, "settings", "dangerTitle")}
+          </Text>
 
           <Pressable
             style={styles.deleteBtn}
@@ -266,13 +282,16 @@ export default function SettingsScreen() {
             ) : (
               <>
                 <MaterialIcons name="delete-forever" size={20} color="#fff" />
-                <Text style={styles.deleteBtnText}>Delete account</Text>
+                <Text style={styles.deleteBtnText}>
+                  {" "}
+                  {t(lang, "settings", "deleteBtn")}
+                </Text>
               </>
             )}
           </Pressable>
 
           <Text style={styles.helper}>
-            This will permanently delete your account.
+            {t(lang, "settings", "dangerHelper")}
           </Text>
         </View>
       )}

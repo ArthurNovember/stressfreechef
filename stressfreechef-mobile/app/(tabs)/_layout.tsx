@@ -1,7 +1,20 @@
+import React, { useEffect, useState } from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { t, Lang, LANG_KEY } from "../../i18n/strings";
 
 export default function Layout() {
+  const [lang, setLang] = useState<Lang>("en");
+
+  useEffect(() => {
+    (async () => {
+      const stored = await AsyncStorage.getItem(LANG_KEY);
+      if (stored === "cs" || stored === "en") {
+        setLang(stored);
+      }
+    })();
+  }, []);
   return (
     <Tabs
       screenOptions={{
@@ -13,7 +26,7 @@ export default function Layout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: "Home",
+          title: t(lang, "tabs", "home"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -23,7 +36,7 @@ export default function Layout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: "Community",
+          title: t(lang, "tabs", "community"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search-outline" size={size} color={color} />
           ),
@@ -33,7 +46,7 @@ export default function Layout() {
       <Tabs.Screen
         name="NewRecipe"
         options={{
-          title: "Add Recipe",
+          title: t(lang, "tabs", "addRecipe"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="add-circle-outline" size={size} color={color} />
           ),
@@ -43,7 +56,7 @@ export default function Layout() {
       <Tabs.Screen
         name="shopping"
         options={{
-          title: "Shopping list",
+          title: t(lang, "tabs", "shopping"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cart-outline" size={size} color={color} />
           ),
@@ -53,7 +66,7 @@ export default function Layout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t(lang, "tabs", "profile"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),

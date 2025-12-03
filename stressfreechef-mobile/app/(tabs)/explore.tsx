@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useScrollToTop, useFocusEffect } from "@react-navigation/native";
 import { Video, ResizeMode } from "expo-av";
 import { MaterialIcons } from "@expo/vector-icons";
+import { t, Lang, LANG_KEY } from "../../i18n/strings";
 
 import {
   View,
@@ -66,7 +67,7 @@ async function getToken() {
   }
 }
 
-async function addIngredientToShopping(ingredient: string) {
+async function addIngredientToShopping(ingredient: string, lang: Lang) {
   const trimmed = ingredient.trim();
   if (!trimmed) return;
 
@@ -99,7 +100,12 @@ async function addIngredientToShopping(ingredient: string) {
       const updated = [...list, newItem];
       await AsyncStorage.setItem(GUEST_KEY, JSON.stringify(updated));
 
-      Alert.alert("Added", `"${trimmed}" was added to your shopping list.`);
+      Alert.alert(
+        lang === "cs" ? "Přidáno" : "Added",
+        lang === "cs"
+          ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
+          : `"${trimmed}" was added to your shopping list.`
+      );
       return;
     }
 
@@ -125,7 +131,12 @@ async function addIngredientToShopping(ingredient: string) {
       throw new Error(data?.error || `HTTP ${res.status}`);
     }
 
-    Alert.alert("Added", `"${trimmed}" was added to your shopping list.`);
+    Alert.alert(
+      lang === "cs" ? "Přidáno" : "Added",
+      lang === "cs"
+        ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
+        : `"${trimmed}" was added to your shopping list.`
+    );
   } catch (e: any) {
     Alert.alert("Failed to add", e?.message || String(e));
   }
@@ -227,6 +238,24 @@ export default function ExploreScreen() {
 
   // IDs receptů, které už mám uložené v backendu (savedCommunityRecipes)
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+
+  const [lang, setLang] = useState<Lang>("en");
+
+  useEffect(() => {
+    (async () => {
+      const stored = await AsyncStorage.getItem(LANG_KEY);
+      if (stored === "cs" || stored === "en") setLang(stored);
+    })();
+  }, []);
+
+  function translateDifficulty(lang: Lang, diff: string) {
+    if (lang === "cs") {
+      if (diff === "Beginner") return "Začátečník";
+      if (diff === "Intermediate") return "Střední";
+      if (diff === "Hard") return "Pokročilý";
+    }
+    return diff;
+  }
 
   const listRef = useRef<FlatList<CommunityRecipe>>(null);
   useScrollToTop(listRef);
@@ -424,7 +453,10 @@ export default function ExploreScreen() {
     try {
       const token = await getToken();
       if (!token) {
-        Alert.alert("Login required", "Log in to save recipes.");
+        Alert.alert(
+          t(lang, "home", "loginRequiredTitle"),
+          t(lang, "home", "loginRequiredMsg")
+        );
         return;
       }
 
@@ -461,10 +493,7 @@ export default function ExploreScreen() {
       setFavoriteIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
     } catch (e: any) {
       console.warn("Saving/unsaving recipe failed:", e?.message || String(e));
-      Alert.alert(
-        "Saving failed",
-        e?.message || "Could not save or unsave recipe."
-      );
+      Alert.alert(t(lang, "home", "addFailedTitle"), e?.message || String(e));
     }
   }
 
@@ -515,9 +544,13 @@ export default function ExploreScreen() {
           count={item.ratingCount ?? undefined}
         />
         <Text style={styles.cardMeta}>
-          Difficulty: {item.difficulty || "—"}
+          {t(lang, "home", "difficulty")}:{" "}
+          {translateDifficulty(lang, item.difficulty || "—")}
         </Text>
-        <Text style={styles.cardMeta}>Time: {item.time || "—"} ⏱️</Text>
+        <Text style={styles.cardMeta}>
+          {" "}
+          {t(lang, "home", "time")}: {item.time || "—"} ⏱️
+        </Text>
       </Pressable>
     );
   };
@@ -550,7 +583,7 @@ export default function ExploreScreen() {
                 viewMode === "GRID" && styles.viewModeTextActive,
               ]}
             >
-              GRID
+              {t(lang, "explore", "grid")}
             </Text>
           </Pressable>
           <Pressable
@@ -569,10 +602,10 @@ export default function ExploreScreen() {
                 viewMode === "SWIPE" && styles.viewModeTextActive,
               ]}
             >
-              SWIPE
+              {t(lang, "explore", "swipe")}
             </Text>
           </Pressable>
-          <Text style={styles.screenTitle}>EXPLORE RECIPES</Text>
+          <Text style={styles.screenTitle}> {t(lang, "explore", "title")}</Text>
         </View>
 
         {/* GRID header – nadpis, search, filtry (v SWIPE módu skryté) */}
@@ -581,7 +614,7 @@ export default function ExploreScreen() {
             <View style={styles.searchRow}>
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search recipes…"
+                placeholder={t(lang, "explore", "searchPlaceholder")}
                 placeholderTextColor="#777"
                 value={q}
                 onChangeText={setQ}
@@ -594,13 +627,16 @@ export default function ExploreScreen() {
             ) : loading && items.length === 0 ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator />
-                <Text style={styles.loadingText}>Loading recipes…</Text>
+                <Text style={styles.loadingText}>
+                  {" "}
+                  {t(lang, "explore", "loading")}
+                </Text>
               </View>
             ) : null}
 
             {!loading && !err && items.length === 0 ? (
               <Text style={styles.emptyText}>
-                No results found. Try a different keyword.
+                {t(lang, "explore", "empty")}
               </Text>
             ) : null}
 
@@ -615,7 +651,7 @@ export default function ExploreScreen() {
                     active === "NEWEST" && styles.chipTextActive,
                   ]}
                 >
-                  NEWEST
+                  {t(lang, "explore", "newest")}
                 </Text>
               </Pressable>
               <Pressable
@@ -628,7 +664,7 @@ export default function ExploreScreen() {
                     active === "EASIEST" && styles.chipTextActive,
                   ]}
                 >
-                  EASIEST
+                  {t(lang, "explore", "easiest")}
                 </Text>
               </Pressable>
               <Pressable
@@ -644,7 +680,7 @@ export default function ExploreScreen() {
                     active === "FAVORITE" && styles.chipTextActive,
                   ]}
                 >
-                  FAVORITE
+                  {t(lang, "explore", "favorite")}
                 </Text>
               </Pressable>
               <Pressable
@@ -657,7 +693,7 @@ export default function ExploreScreen() {
                     active === "RANDOM" && styles.chipTextActive,
                   ]}
                 >
-                  RANDOM
+                  {t(lang, "explore", "random")}
                 </Text>
               </Pressable>
             </View>
@@ -691,7 +727,9 @@ export default function ExploreScreen() {
               loading && items.length > 0 ? (
                 <View style={styles.listFooter}>
                   <ActivityIndicator />
-                  <Text style={styles.loadingText}>Loading more…</Text>
+                  <Text style={styles.loadingText}>
+                    {t(lang, "explore", "loadingMore")}
+                  </Text>
                 </View>
               ) : null
             }
@@ -700,15 +738,23 @@ export default function ExploreScreen() {
       ) : (
         <View style={styles.swipeContainer}>
           {noCards ? (
-            <Text style={styles.emptyText}>No recipes to swipe.</Text>
+            <Text style={styles.emptyText}>
+              {t(lang, "explore", "noSwipe")}
+            </Text>
           ) : isDeckExhausted ? (
             // opravdu jsme na konci, backend už nic dalšího neposílá
-            <Text style={styles.emptyText}>No more new recipes to swipe.</Text>
+            <Text style={styles.emptyText}>
+              {" "}
+              {t(lang, "explore", "noMoreSwipe")}
+            </Text>
           ) : allSwiped && loading && hasMore ? (
             // jsme na poslední kartě, ale zrovna se načítá další stránka → ukaž loader místo „no more“
             <View style={styles.center}>
               <ActivityIndicator />
-              <Text style={styles.loadingText}>Loading more recipes…</Text>
+              <Text style={styles.loadingText}>
+                {" "}
+                {t(lang, "explore", "loadingMoreSwipe")}
+              </Text>
             </View>
           ) : (
             <Swiper
@@ -766,14 +812,18 @@ export default function ExploreScreen() {
                         count={card.ratingCount ?? undefined}
                       />
                       <Text style={styles.swipeMeta}>
-                        Difficulty: {card.difficulty || "—"}
+                        {t(lang, "home", "difficulty")}:{" "}
+                        {translateDifficulty(lang, card.difficulty || "—")}
                       </Text>
                       <Text style={styles.swipeMeta}>
-                        Time: {card.time || "—"} ⏱️
+                        {t(lang, "home", "time")}: {card.time || "—"} ⏱️
                       </Text>
                       {card.ingredients?.length ? (
                         <>
-                          <Text style={styles.section}>Ingredients</Text>
+                          <Text style={styles.section}>
+                            {" "}
+                            {t(lang, "explore", "ingredients")}
+                          </Text>
                           {card.ingredients.map((ing, i) => (
                             <Text key={i} style={styles.ingredient}>
                               • {ing}
@@ -786,7 +836,9 @@ export default function ExploreScreen() {
                         style={styles.primaryBtn}
                         onPress={() => openRecipe(card)}
                       >
-                        <Text style={styles.primaryBtnText}>GET STARTED</Text>
+                        <Text style={styles.primaryBtnText}>
+                          {t(lang, "explore", "getStarted")}
+                        </Text>
                       </Pressable>
                     </ScrollView>
 
@@ -804,7 +856,10 @@ export default function ExploreScreen() {
                           });
                         }}
                       >
-                        <Text style={styles.swipeActionText}>Skip</Text>
+                        <Text style={styles.swipeActionText}>
+                          {" "}
+                          {t(lang, "explore", "skip")}
+                        </Text>
                       </Pressable>
 
                       <Pressable
@@ -821,7 +876,10 @@ export default function ExploreScreen() {
                           });
                         }}
                       >
-                        <Text style={styles.swipeActionText}>Save ❤️</Text>
+                        <Text style={styles.swipeActionText}>
+                          {" "}
+                          {t(lang, "explore", "save")}
+                        </Text>
                       </Pressable>
                     </View>
                   </View>
@@ -880,21 +938,25 @@ export default function ExploreScreen() {
                 count={selected?.ratingCount}
               />
               <Text style={styles.modalMeta}>
-                Difficulty: {selected?.difficulty || "—"}
+                {t(lang, "home", "difficulty")}:{" "}
+                {translateDifficulty(lang, selected?.difficulty || "—")}
               </Text>
               <Text style={styles.modalMeta}>
-                Time: {selected?.time || "—"} ⏱️
+                {t(lang, "home", "time")}: {selected?.time || "—"} ⏱️
               </Text>
               {selected?.ingredients?.length ? (
                 <>
-                  <Text style={styles.section}>Ingredients</Text>
+                  <Text style={styles.section}>
+                    {" "}
+                    {t(lang, "explore", "ingredients")}
+                  </Text>
                   {selected.ingredients.map((ing, i) => (
                     <View key={i} style={styles.ingredientRow}>
                       <Text style={styles.ingredient}>• {ing}</Text>
 
                       <Pressable
                         style={styles.ingredientAddBtn}
-                        onPress={() => addIngredientToShopping(ing)}
+                        onPress={() => addIngredientToShopping(ing, lang)}
                       >
                         <MaterialIcons
                           name="add-shopping-cart"
@@ -914,13 +976,18 @@ export default function ExploreScreen() {
                   setSelected(null);
                 }}
               >
-                <Text style={styles.primaryBtnText}>GET STARTED</Text>
+                <Text style={styles.primaryBtnText}>
+                  {t(lang, "explore", "getStarted")}
+                </Text>
               </Pressable>
               <Pressable
                 style={styles.secondaryBtn}
                 onPress={() => setSelected(null)}
               >
-                <Text style={styles.secondaryBtnText}>Close</Text>
+                <Text style={styles.secondaryBtnText}>
+                  {" "}
+                  {t(lang, "explore", "close")}
+                </Text>
               </Pressable>
             </ScrollView>
           </View>

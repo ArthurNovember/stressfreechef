@@ -1,6 +1,7 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
+import { t, Lang, LANG_KEY } from "../../i18n/strings";
 
 import {
   ActivityIndicator,
@@ -96,6 +97,8 @@ export default function ShoppingScreen() {
 
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
 
+  const [lang, setLang] = useState<Lang>("en");
+
   const [hasToken, setHasToken] = useState(false);
 
   const router = useRouter();
@@ -151,13 +154,20 @@ export default function ShoppingScreen() {
       setFavoriteItems(Array.isArray(favorites) ? favorites : []);
     } catch (e: any) {
       if (isUnauthorizedError(e)) {
-        setErr("Your session has expired. Please log in again on MyProfile.");
+        setErr(t(lang, "shopping", "sessionExpired"));
       } else {
         setErr(e?.message || String(e));
       }
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const stored = await AsyncStorage.getItem(LANG_KEY);
+      if (stored === "cs" || stored === "en") setLang(stored);
+    })();
   }, []);
 
   useFocusEffect(
@@ -195,11 +205,6 @@ export default function ShoppingScreen() {
         return; // důležité
       }
 
-      if (!token) {
-        Alert.alert("Not logged in", "Log in to save your shopping list.");
-        return;
-      }
-
       const res = await fetch(`${BASE}/api/shopping-list`, {
         method: "POST",
         headers: {
@@ -223,7 +228,10 @@ export default function ShoppingScreen() {
       setNewText("");
       setNewItemShopIds([]);
     } catch (e: any) {
-      Alert.alert("Failed to add item", e?.message || String(e));
+      Alert.alert(
+        t(lang, "shopping", "failedAddItem"),
+        e?.message || String(e)
+      );
     }
   }, [newText, newItemShopIds]);
 
@@ -276,7 +284,10 @@ export default function ShoppingScreen() {
 
         setItems(updatedList);
       } catch (e: any) {
-        Alert.alert("Update failed", e?.message || String(e));
+        Alert.alert(
+          t(lang, "shopping", "updateFailed"),
+          e?.message || String(e)
+        );
       }
     },
     []
@@ -327,7 +338,11 @@ export default function ShoppingScreen() {
     try {
       const token = await getToken();
       if (!token) {
-        Alert.alert("Not logged in", "Log in to use favorites.");
+        Alert.alert(
+          t(lang, "shopping", "loginRequiredFavoritesTitle"),
+          t(lang, "shopping", "loginRequiredFavoritesMsg")
+        );
+
         return;
       }
 
@@ -356,7 +371,10 @@ export default function ShoppingScreen() {
 
       setFavoriteItems(Array.isArray(updated) ? updated : []);
     } catch (e: any) {
-      Alert.alert("Failed to add favorite", e?.message || String(e));
+      Alert.alert(
+        t(lang, "shopping", "failedAddFavorite"),
+        e?.message || String(e)
+      );
     }
   }, []);
 
@@ -364,7 +382,10 @@ export default function ShoppingScreen() {
     try {
       const token = await getToken();
       if (!token) {
-        Alert.alert("Not logged in", "Log in to use favorites.");
+        Alert.alert(
+          t(lang, "shopping", "loginRequiredFavoritesTitle"),
+          t(lang, "shopping", "loginRequiredFavoritesMsg")
+        );
         return;
       }
 
@@ -382,7 +403,10 @@ export default function ShoppingScreen() {
 
       setFavoriteItems(Array.isArray(updated) ? updated : []);
     } catch (e: any) {
-      Alert.alert("Failed to update favorites", e?.message || String(e));
+      Alert.alert(
+        t(lang, "shopping", "failedUpdateFavorites"),
+        e?.message || String(e)
+      );
     }
   }, []);
 
@@ -426,7 +450,7 @@ export default function ShoppingScreen() {
     if (
       shopOptions.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())
     ) {
-      Alert.alert("Shop already exists");
+      Alert.alert(t(lang, "shopping", "shopAlreadyExists"));
       return;
     }
 
@@ -450,7 +474,10 @@ export default function ShoppingScreen() {
       setShopOptions((prev) => [...prev, newShop]);
       setAddingShopName("");
     } catch (e: any) {
-      Alert.alert("Failed to add shop", e?.message || String(e));
+      Alert.alert(
+        t(lang, "shopping", "failedAddShop"),
+        e?.message || String(e)
+      );
     } finally {
       setAddingShopBusy(false);
     }
@@ -458,12 +485,12 @@ export default function ShoppingScreen() {
 
   const deleteShopOption = useCallback(async (shopToDeleteId: string) => {
     Alert.alert(
-      "Delete shop",
-      "This will remove this shop from all items. Continue?",
+      t(lang, "shopping", "deleteShopTitle"),
+      t(lang, "shopping", "deleteShopMsg"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t(lang, "shopping", "cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t(lang, "shopping", "delete"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -496,7 +523,10 @@ export default function ShoppingScreen() {
                 }))
               );
             } catch (e: any) {
-              Alert.alert("Failed to delete shop", e?.message || String(e));
+              Alert.alert(
+                t(lang, "shopping", "failedDeleteShop"),
+                e?.message || String(e)
+              );
             }
           },
         },
@@ -559,7 +589,8 @@ export default function ShoppingScreen() {
     const shopLabel =
       item.shop && item.shop.length > 0
         ? item.shop.map((s) => s.name).join(", ")
-        : "Shops ▾";
+        : t(lang, "shopping", "shopsTitle") + " ▾";
+
     const favMatch = favoriteItems.find((fav) => isSameFavorite(fav, item));
     const isFavorite = !!favMatch;
 
@@ -583,7 +614,10 @@ export default function ShoppingScreen() {
             style={styles.shopsBtn}
             onPress={() => {
               if (!hasToken) {
-                Alert.alert("Log in to unlock store assignment");
+                Alert.alert(
+                  t(lang, "shopping", "loginRequiredFavoritesTitle"),
+                  t(lang, "shopping", "loginRequiredStoresMsg")
+                );
                 return;
               }
               setEditingItemId(item._id);
@@ -611,7 +645,7 @@ export default function ShoppingScreen() {
       <View style={styles.center}>
         <ActivityIndicator size="large" />
         <Text style={{ color: "#fff", marginTop: 8 }}>
-          Loading shopping list…
+          {t(lang, "shopping", "loading")}
         </Text>
       </View>
     );
@@ -625,7 +659,10 @@ export default function ShoppingScreen() {
           onPress={loadAll}
           style={[styles.primaryBtn, { marginTop: 12 }]}
         >
-          <Text style={styles.primaryBtnText}>Retry</Text>
+          <Text style={styles.primaryBtnText}>
+            {" "}
+            {t(lang, "shopping", "retry")}
+          </Text>
         </Pressable>
       </View>
     );
@@ -667,14 +704,14 @@ export default function ShoppingScreen() {
                   <Text
                     style={{ color: "white", fontSize: 35, paddingTop: 10 }}
                   >
-                    Add new item
+                    {t(lang, "shopping", "addNewItemTitle")}
                   </Text>
                   <Pressable
                     onPress={() => {
                       if (!hasToken) {
                         Alert.alert(
-                          "Login required",
-                          "Log in to access your favorite items."
+                          t(lang, "shopping", "loginRequiredFavoritesTitle"),
+                          t(lang, "shopping", "loginRequiredFavoritesMsg")
                         );
                         return;
                       }
@@ -692,7 +729,7 @@ export default function ShoppingScreen() {
                 </View>
               </View>
               <TextInput
-                placeholder="Add item…"
+                placeholder={t(lang, "shopping", "addItemPlaceholder")}
                 placeholderTextColor="#777"
                 value={newText}
                 onChangeText={setNewText}
@@ -701,7 +738,9 @@ export default function ShoppingScreen() {
 
               {hasToken && shopOptions.length > 0 && (
                 <View style={{ marginTop: 8 }}>
-                  <Text style={styles.label}>Shops for this item:</Text>
+                  <Text style={styles.label}>
+                    {t(lang, "shopping", "shopsForItem")}
+                  </Text>
                   <View style={styles.shopsRow}>
                     {shopOptions.map((shop) => {
                       const active = newItemShopIds.includes(shop._id);
@@ -741,20 +780,24 @@ export default function ShoppingScreen() {
                   onPress={() => setManageShopsVisible(true)}
                 >
                   <Text style={styles.manageShopsText}>
-                    {shopOptions.length > 0 ? "Manage shops" : "Add shops"}
+                    {shopOptions.length > 0
+                      ? t(lang, "shopping", "manageShops")
+                      : t(lang, "shopping", "addShops")}
                   </Text>
                 </Pressable>
               )}
 
               <Pressable style={styles.primaryBtn} onPress={handleAddItem}>
-                <Text style={styles.primaryBtnText}>Send to list</Text>
+                <Text style={styles.primaryBtnText}>
+                  {t(lang, "shopping", "sendToList")}
+                </Text>
               </Pressable>
             </View>
             {hasToken && (
               <Text
                 style={{ color: "#d9d8d8ff", fontSize: 20, paddingTop: 10 }}
               >
-                Filter by shop:
+                {t(lang, "shopping", "filterByShop")}
               </Text>
             )}
             {/* Filtrování podle shopů */}
@@ -777,7 +820,7 @@ export default function ShoppingScreen() {
                       filterShopIds.length === 0 && styles.chipTextActive,
                     ]}
                   >
-                    All
+                    {t(lang, "shopping", "all")}
                   </Text>
                 </Pressable>
                 {shopOptions.map((shop) => {
@@ -827,7 +870,7 @@ export default function ShoppingScreen() {
                         styles.chipTextActive,
                     ]}
                   >
-                    No Shop
+                    {t(lang, "shopping", "noShop")}
                   </Text>
                 </Pressable>
               </ScrollView>
@@ -845,8 +888,13 @@ export default function ShoppingScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{editingItem?.text || "Item"}</Text>
-            <Text style={styles.modalSubtitle}>Shops</Text>
+            <Text style={styles.modalTitle}>
+              {editingItem?.text || t(lang, "shopping", "itemFallback")}
+            </Text>
+            <Text style={styles.modalSubtitle}>
+              {" "}
+              {t(lang, "shopping", "shopsTitle")}
+            </Text>
 
             <ScrollView style={{ maxHeight: 260, marginTop: 8 }}>
               {shopOptions.map((shop) => {
@@ -881,12 +929,15 @@ export default function ShoppingScreen() {
             </ScrollView>
 
             <View style={{ marginTop: 12 }}>
-              <Text style={styles.label}>Add new shop</Text>
+              <Text style={styles.label}>
+                {" "}
+                {t(lang, "shopping", "addNewShopLabel")}
+              </Text>
               <View style={styles.addShopRow}>
                 <TextInput
                   value={addingShopName}
                   onChangeText={setAddingShopName}
-                  placeholder="New shop name"
+                  placeholder={t(lang, "shopping", "newShopPlaceholder")}
                   placeholderTextColor="#777"
                   style={[styles.input, { flex: 1, marginBottom: 0 }]}
                 />
@@ -909,7 +960,10 @@ export default function ShoppingScreen() {
               style={[styles.secondaryBtn, { marginTop: 16 }]}
               onPress={() => setEditingItemId(null)}
             >
-              <Text style={styles.secondaryBtnText}>Close</Text>
+              <Text style={styles.secondaryBtnText}>
+                {" "}
+                {t(lang, "shopping", "close")}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -923,7 +977,10 @@ export default function ShoppingScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Manage shops</Text>
+            <Text style={styles.modalTitle}>
+              {" "}
+              {t(lang, "shopping", "manageShopsTitle")}
+            </Text>
 
             {/* seznam shopů s mazáním */}
             <ScrollView style={{ maxHeight: 260, marginTop: 8 }}>
@@ -942,19 +999,22 @@ export default function ShoppingScreen() {
 
               {shopOptions.length === 0 && (
                 <Text style={{ color: "#aaa", marginTop: 4 }}>
-                  No shops yet.
+                  {t(lang, "shopping", "noShopsYet")}
                 </Text>
               )}
             </ScrollView>
 
             {/* přidání nového shopu */}
             <View style={{ marginTop: 12 }}>
-              <Text style={styles.label}>Add new shop</Text>
+              <Text style={styles.label}>
+                {" "}
+                {t(lang, "shopping", "addNewShopLabel")}
+              </Text>
               <View style={styles.addShopRow}>
                 <TextInput
                   value={addingShopName}
                   onChangeText={setAddingShopName}
-                  placeholder="New shop name"
+                  placeholder={t(lang, "shopping", "newShopPlaceholder")}
                   placeholderTextColor="#777"
                   style={[styles.input, { flex: 1, marginBottom: 0 }]}
                 />
@@ -977,7 +1037,10 @@ export default function ShoppingScreen() {
               style={[styles.secondaryBtn, { marginTop: 16 }]}
               onPress={() => setManageShopsVisible(false)}
             >
-              <Text style={styles.secondaryBtnText}>Close</Text>
+              <Text style={styles.secondaryBtnText}>
+                {" "}
+                {t(lang, "shopping", "close")}
+              </Text>
             </Pressable>
           </View>
         </View>

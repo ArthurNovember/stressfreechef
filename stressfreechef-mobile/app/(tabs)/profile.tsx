@@ -1,3 +1,4 @@
+import { t, Lang, LANG_KEY } from "../../i18n/strings";
 import Constants from "expo-constants";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -95,14 +96,26 @@ function getCover(r: any) {
   return { url, isVideo: isVideo(url) };
 }
 
-async function addIngredientToShopping(ingredient: string) {
+function translateDifficulty(lang: Lang, diff: string) {
+  if (lang === "cs") {
+    if (diff === "Beginner") return "Začátečník";
+    if (diff === "Intermediate") return "Střední";
+    if (diff === "Hard") return "Pokročilý";
+  }
+  return diff;
+}
+
+async function addIngredientToShopping(ingredient: string, lang: Lang) {
   const trimmed = ingredient.trim();
   if (!trimmed) return;
 
   try {
     const token = await getToken();
     if (!token) {
-      Alert.alert("Login required", "Please log in to use your shopping list.");
+      Alert.alert(
+        t(lang, "home", "loginRequiredTitle"),
+        t(lang, "home", "loginRequiredMsg")
+      );
       return;
     }
 
@@ -129,7 +142,12 @@ async function addIngredientToShopping(ingredient: string) {
       throw new Error(data?.error || `HTTP ${res.status}`);
     }
 
-    Alert.alert("Added", `"${trimmed}" was added to your shopping list.`);
+    Alert.alert(
+      t(lang, "profile", "addedTitle"),
+      lang === "cs"
+        ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
+        : `"${trimmed}" was added to your shopping list.`
+    );
   } catch (e: any) {
     Alert.alert("Failed to add", e?.message || String(e));
   }
@@ -147,7 +165,13 @@ const isUnauthorizedError = (e: any) => {
 };
 
 /** ===== AuthForm (RN) ===== */
-function AuthFormRN({ onLoggedIn }: { onLoggedIn: () => void }) {
+function AuthFormRN({
+  onLoggedIn,
+  lang,
+}: {
+  onLoggedIn: () => void;
+  lang: Lang;
+}) {
   const [mode, setMode] = useState<"signup" | "login">("signup");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -157,7 +181,7 @@ function AuthFormRN({ onLoggedIn }: { onLoggedIn: () => void }) {
 
   async function handleSignup() {
     if (password !== confirm) {
-      Alert.alert("Passwords do not match.");
+      Alert.alert(t(lang, "profile", "passwordsDontMatch"));
       return;
     }
     try {
@@ -170,10 +194,16 @@ function AuthFormRN({ onLoggedIn }: { onLoggedIn: () => void }) {
       const data = await res.json();
       if (!res.ok)
         throw new Error(String(data?.error || "Registration error."));
-      Alert.alert("Registration successful", "You can log in now.");
+      Alert.alert(
+        t(lang, "profile", "registrationSuccessfulTitle"),
+        t(lang, "profile", "registrationSuccessfulMsg")
+      );
       setMode("login");
     } catch (e: any) {
-      Alert.alert("Registration failed", e?.message || String(e));
+      Alert.alert(
+        t(lang, "profile", "registrationFailedTitle"),
+        e?.message || String(e)
+      );
     } finally {
       setBusy(false);
     }
@@ -191,10 +221,14 @@ function AuthFormRN({ onLoggedIn }: { onLoggedIn: () => void }) {
       if (!res.ok || !data?.token)
         throw new Error(String(data?.error || "Login error."));
       await setToken(String(data.token));
-      Alert.alert("Login successful");
+      Alert.alert(t(lang, "profile", "loginSuccessfulTitle"));
+
       onLoggedIn();
     } catch (e: any) {
-      Alert.alert("Login failed", e?.message || String(e));
+      Alert.alert(
+        t(lang, "profile", "loginFailedTitle"),
+        e?.message || String(e)
+      );
     } finally {
       setBusy(false);
     }
@@ -213,19 +247,25 @@ function AuthFormRN({ onLoggedIn }: { onLoggedIn: () => void }) {
             mode === "signup" && styles.switchBtnActive,
           ]}
         >
-          <Text style={styles.switchText}>SIGN UP</Text>
+          <Text style={styles.switchText}>
+            {" "}
+            {t(lang, "profile", "authSignUp")}
+          </Text>
         </Pressable>
         <Pressable
           onPress={() => setMode("login")}
           style={[styles.switchBtn, mode === "login" && styles.switchBtnActive]}
         >
-          <Text style={styles.switchText}>LOG IN</Text>
+          <Text style={styles.switchText}>
+            {" "}
+            {t(lang, "profile", "authLogin")}
+          </Text>
         </Pressable>
       </View>
 
       {mode === "signup" && (
         <View style={styles.form}>
-          <Text style={styles.label}>Username</Text>
+          <Text style={styles.label}>{t(lang, "profile", "username")}</Text>
           <TextInput
             style={styles.input}
             value={username}
@@ -260,7 +300,9 @@ function AuthFormRN({ onLoggedIn }: { onLoggedIn: () => void }) {
             style={[styles.primaryBtn, busy && { opacity: 0.7 }]}
           >
             <Text style={styles.primaryBtnText}>
-              {busy ? "Please wait…" : "SIGN UP"}
+              {busy
+                ? t(lang, "profile", "pleaseWait")
+                : t(lang, "profile", "authSignUp")}
             </Text>
           </Pressable>
         </View>
@@ -289,7 +331,11 @@ function AuthFormRN({ onLoggedIn }: { onLoggedIn: () => void }) {
             style={[styles.primaryBtn, busy && { opacity: 0.7 }]}
           >
             <Text style={styles.primaryBtnText}>
-              {busy ? "Please wait…" : "LOG IN"}
+              <Text style={styles.primaryBtnText}>
+                {busy
+                  ? t(lang, "profile", "pleaseWait")
+                  : t(lang, "profile", "authLogin")}
+              </Text>
             </Text>
           </Pressable>
         </View>
@@ -299,7 +345,13 @@ function AuthFormRN({ onLoggedIn }: { onLoggedIn: () => void }) {
 }
 
 /** ===== MyProfile (RN) ===== */
-function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
+function MyProfileRN({
+  onLoggedOut,
+  lang,
+}: {
+  onLoggedOut: () => void;
+  lang: Lang;
+}) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [items, setItems] = useState<any[]>([]);
@@ -367,36 +419,40 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
   }, [onLoggedOut]);
 
   const handleDeleteRecipe = useCallback(async (id: string) => {
-    Alert.alert("Delete recipe?", "This cannot be undone.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const token = await getToken();
-            const res = await fetch(`${API_BASE}/api/my-recipes/${id}`, {
-              method: "DELETE",
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) {
-              const txt = await res.text();
-              throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
+    Alert.alert(
+      t(lang, "profile", "deleteRecipeTitle"),
+      t(lang, "profile", "deleteRecipeMsg"),
+      [
+        { text: t(lang, "profile", "cancel"), style: "cancel" },
+        {
+          text: t(lang, "profile", "delete"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await getToken();
+              const res = await fetch(`${API_BASE}/api/my-recipes/${id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!res.ok) {
+                const txt = await res.text();
+                throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
+              }
+              setItems((prev) => prev.filter((r) => r?._id !== id));
+            } catch (e: any) {
+              Alert.alert("Deletion failed", e?.message || String(e));
             }
-            setItems((prev) => prev.filter((r) => r?._id !== id));
-          } catch (e: any) {
-            Alert.alert("Deletion failed", e?.message || String(e));
-          }
+          },
         },
-      },
-    ]);
+      ]
+    );
   }, []);
 
   const handleRemoveSaved = useCallback(async (id: string) => {
-    Alert.alert("Remove saved recipe?", "", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t(lang, "profile", "removeSavedTitle"), "", [
+      { text: t(lang, "profile", "cancel"), style: "cancel" },
       {
-        text: "Remove",
+        text: t(lang, "profile", "remove"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -416,7 +472,10 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
               prev.filter((r: any) => String(r?._id || r?.id) !== id)
             );
           } catch (e: any) {
-            Alert.alert("Failed to remove", e?.message || String(e));
+            Alert.alert(
+              t(lang, "profile", "removeFailedTitle"),
+              e?.message || String(e)
+            );
           }
         },
       },
@@ -429,7 +488,10 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 8, color: "white" }}>Loading…</Text>
+        <Text style={{ marginTop: 8, color: "white" }}>
+          {" "}
+          {t(lang, "profile", "loading")}
+        </Text>
       </View>
     );
   }
@@ -437,12 +499,18 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
   if (err) {
     return (
       <View style={styles.center}>
-        <Text style={styles.err}>Error: {err}</Text>
+        <Text style={styles.err}>
+          {" "}
+          {t(lang, "profile", "errorPrefix")}: {err}
+        </Text>
         <Pressable
           onPress={loadAll}
           style={[styles.primaryBtn, { marginTop: 12 }]}
         >
-          <Text style={styles.primaryBtnText}>Retry</Text>
+          <Text style={styles.primaryBtnText}>
+            {" "}
+            {t(lang, "profile", "retry")}
+          </Text>
         </Pressable>
       </View>
     );
@@ -454,16 +522,21 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
         <View style={{ flex: 1 }}></View>
         <View style={{ flexDirection: "row", gap: 8 }}>
           <Pressable onPress={handleLogout} style={styles.secondaryBtn}>
-            <Text style={styles.secondaryBtnText}>Logout</Text>
+            <Text style={styles.secondaryBtnText}>
+              {" "}
+              {t(lang, "profile", "logout")}
+            </Text>
           </Pressable>
         </View>
       </View>
       <View>
         {/* SAVED RECIPES */}
-        <Text style={styles.sectionTitle}>SAVED RECIPES</Text>
+        <Text style={styles.sectionTitle}>
+          {t(lang, "profile", "savedRecipesTitle")}
+        </Text>
         {saved.length === 0 ? (
           <Text style={{ opacity: 0.7, paddingHorizontal: 16, color: "white" }}>
-            You haven’t saved any community recipes yet.
+            {t(lang, "profile", "savedEmpty")}
           </Text>
         ) : null}
 
@@ -499,10 +572,11 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
                       {item?.title || "Untitled"}
                     </Text>
                     <Text style={styles.metaText}>
-                      Difficulty: {item?.difficulty || "—"}
+                      {t(lang, "home", "difficulty")}:{" "}
+                      {translateDifficulty(lang, item?.difficulty || "—")}
                     </Text>
                     <Text style={styles.metaText}>
-                      Time: {item?.time || "—"} ⏱️
+                      {t(lang, "home", "time")}: {item?.time || "—"} ⏱️
                     </Text>
                     <StarRatingDisplay
                       value={item?.ratingAvg ?? item?.rating ?? 0}
@@ -524,7 +598,10 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
             );
           }}
         />
-        <Text style={styles.sectionTitle}>MY RECIPES</Text>
+        <Text style={styles.sectionTitle}>
+          {" "}
+          {t(lang, "profile", "myRecipesTitle")}
+        </Text>
         {items.length === 0 ? (
           <Text style={{ opacity: 0.7, paddingHorizontal: 16, color: "white" }}>
             You don’t have any recipes yet. Add your first one!
@@ -561,10 +638,11 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
                       {item?.title || "Untitled"}
                     </Text>
                     <Text style={styles.metaText}>
-                      Difficulty: {item?.difficulty || "—"}
+                      {t(lang, "home", "difficulty")}:{" "}
+                      {translateDifficulty(lang, item?.difficulty || "—")}
                     </Text>
                     <Text style={styles.metaText}>
-                      Time: {item?.time || "—"} ⏱️
+                      {t(lang, "home", "time")}: {item?.time || "—"} ⏱️
                     </Text>
                     <StarRatingDisplay
                       value={item?.ratingAvg ?? item?.rating ?? 0}
@@ -622,14 +700,16 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
 
               {selected?.ingredients?.length ? (
                 <>
-                  <Text style={styles.section}>Ingredients</Text>
+                  <Text style={styles.section}>
+                    {t(lang, "profile", "ingredients")}
+                  </Text>
                   {selected!.ingredients!.map((ing: string, i: number) => (
                     <View key={i} style={styles.ingredientRow}>
                       <Text style={styles.ingredient}>• {ing}</Text>
 
                       <Pressable
                         style={styles.ingredientAddBtn}
-                        onPress={() => addIngredientToShopping(ing)}
+                        onPress={() => addIngredientToShopping(ing, lang)}
                       >
                         <MaterialIcons
                           name="add-shopping-cart"
@@ -659,13 +739,18 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
                   setSelected(null);
                 }}
               >
-                <Text style={styles.primaryBtnText}>GET STARTED</Text>
+                <Text style={styles.primaryBtnText}>
+                  {t(lang, "profile", "getStarted")}
+                </Text>
               </Pressable>
               <Pressable
                 style={styles.secondaryBtn}
                 onPress={() => setSelected(null)}
               >
-                <Text style={styles.secondaryBtnText}>Close</Text>
+                <Text style={styles.secondaryBtnText}>
+                  {" "}
+                  {t(lang, "profile", "close")}
+                </Text>
               </Pressable>
             </ScrollView>
           </View>
@@ -678,7 +763,7 @@ function MyProfileRN({ onLoggedOut }: { onLoggedOut: () => void }) {
 /** ===== Profile root ===== */
 export default function ProfileScreen() {
   const [hasToken, setHasToken] = useState<boolean | null>(null);
-
+  const [lang, setLang] = useState<Lang>("en");
   const refreshAuth = useCallback(async () => {
     const t = await getToken();
     setHasToken(Boolean(t));
@@ -687,6 +772,13 @@ export default function ProfileScreen() {
   useEffect(() => {
     refreshAuth();
   }, [refreshAuth]);
+
+  useEffect(() => {
+    (async () => {
+      const stored = await AsyncStorage.getItem(LANG_KEY);
+      if (stored === "cs" || stored === "en") setLang(stored);
+    })();
+  }, []);
 
   if (hasToken === null) {
     return (
@@ -697,9 +789,9 @@ export default function ProfileScreen() {
   }
 
   return hasToken ? (
-    <MyProfileRN onLoggedOut={refreshAuth} />
+    <MyProfileRN onLoggedOut={refreshAuth} lang={lang} />
   ) : (
-    <AuthFormRN onLoggedIn={refreshAuth} />
+    <AuthFormRN onLoggedIn={refreshAuth} lang={lang} />
   );
 }
 

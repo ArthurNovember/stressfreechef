@@ -22,12 +22,17 @@ const stepSchema = new mongoose.Schema(
       },
     },
     description: { type: String, required: true },
+    timerSeconds: {
+      type: Number,
+      min: 0,
+    },
     // ↓↓↓ NOVÉ – pro čisté mazání a užitečná metadata
     mediaPublicId: { type: String },
     mediaWidth: Number,
     mediaHeight: Number,
     mediaFormat: String,
   },
+
   { _id: false }
 );
 

@@ -15,6 +15,11 @@ function validateSteps(steps = []) {
     if (!["image", "video", "text"].includes(s.type)) return false;
     if ((s.type === "image" || s.type === "video") && !s.src) return false;
     if (!s.description || typeof s.description !== "string") return false;
+    if ("timerSeconds" in s && s.timerSeconds != null) {
+      if (typeof s.timerSeconds !== "number" || s.timerSeconds < 0) {
+        return false;
+      }
+    }
   }
   return true;
 }

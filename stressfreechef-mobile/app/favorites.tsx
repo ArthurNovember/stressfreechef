@@ -1,5 +1,7 @@
 // app/favorites.tsx
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
+import { t, Lang, LANG_KEY } from "../i18n/strings";
+
 import {
   ActivityIndicator,
   Alert,
@@ -76,6 +78,16 @@ export default function FavoritesScreen() {
   // filtrování jako v shopping.tsx
   const [filterShopIds, setFilterShopIds] = useState<string[]>([]);
 
+  // 👉 přidej:
+  const [lang, setLang] = useState<Lang>("en");
+
+  useEffect(() => {
+    (async () => {
+      const stored = await AsyncStorage.getItem(LANG_KEY);
+      if (stored === "cs" || stored === "en") setLang(stored);
+    })();
+  }, []);
+
   /** ==== HW back tlačítko → vždy zpět na shopping tab ==== */
   useFocusEffect(
     useCallback(() => {
@@ -99,11 +111,6 @@ export default function FavoritesScreen() {
     setErr(null);
     try {
       const token = await getToken();
-      if (!token) {
-        throw new Error(
-          "You are not logged in. Please log in on the MyProfile tab first."
-        );
-      }
 
       const [favoritesRes, shopsRes] = await Promise.all([
         fetchJSON<FavoriteItem[]>(`${BASE}/api/favorites`, {
@@ -118,7 +125,7 @@ export default function FavoritesScreen() {
       setShopOptions(Array.isArray(shopsRes) ? shopsRes : []);
     } catch (e: any) {
       if (isUnauthorizedError(e)) {
-        setErr("Your session has expired. Please log in again on MyProfile.");
+        setErr(t(lang, "shopping", "sessionExpired"));
       } else {
         setErr(e?.message || String(e));
       }
@@ -172,7 +179,10 @@ export default function FavoritesScreen() {
 
         setFavorites(Array.isArray(updated) ? updated : []);
       } catch (e: any) {
-        Alert.alert("Failed to update favorite", e?.message || String(e));
+        Alert.alert(
+          t(lang, "shopping", "failedUpdateFavorites"),
+          e?.message || String(e)
+        );
       }
     },
     []
@@ -187,7 +197,10 @@ export default function FavoritesScreen() {
       setSavingFavorite(true);
       const token = await getToken();
       if (!token) {
-        Alert.alert("Not logged in", "Log in to use favorites.");
+        Alert.alert(
+          t(lang, "shopping", "loginRequiredFavoritesTitle"),
+          t(lang, "shopping", "loginRequiredFavoritesMsg")
+        );
         return;
       }
 
@@ -212,7 +225,10 @@ export default function FavoritesScreen() {
       setNewText("");
       setNewFavoriteShopIds([]);
     } catch (e: any) {
-      Alert.alert("Failed to add favorite", e?.message || String(e));
+      Alert.alert(
+        t(lang, "shopping", "failedAddFavorite"),
+        e?.message || String(e)
+      );
     } finally {
       setSavingFavorite(false);
     }
@@ -223,7 +239,10 @@ export default function FavoritesScreen() {
     try {
       const token = await getToken();
       if (!token) {
-        Alert.alert("Not logged in", "Log in to save your shopping list.");
+        Alert.alert(
+          t(lang, "shopping", "loginRequiredFavoritesTitle"),
+          t(lang, "shopping", "loginRequiredFavoritesMsg")
+        );
         return;
       }
 
@@ -248,9 +267,15 @@ export default function FavoritesScreen() {
         throw new Error(updatedList?.error || `HTTP ${res.status}`);
       }
 
-      Alert.alert("Added", "Item was added to your shopping list.");
+      Alert.alert(
+        t(lang, "favorites", "addedToShoppingTitle"),
+        t(lang, "favorites", "addedToShoppingMsg")
+      );
     } catch (e: any) {
-      Alert.alert("Failed to add item", e?.message || String(e));
+      Alert.alert(
+        t(lang, "shopping", "failedAddItem"),
+        e?.message || String(e)
+      );
     }
   }, []);
 
@@ -259,7 +284,10 @@ export default function FavoritesScreen() {
     try {
       const token = await getToken();
       if (!token) {
-        Alert.alert("Not logged in", "Log in to use favorites.");
+        Alert.alert(
+          t(lang, "shopping", "loginRequiredFavoritesTitle"),
+          t(lang, "shopping", "loginRequiredFavoritesMsg")
+        );
         return;
       }
 
@@ -277,7 +305,10 @@ export default function FavoritesScreen() {
 
       setFavorites(Array.isArray(updated) ? updated : []);
     } catch (e: any) {
-      Alert.alert("Failed to update favorites", e?.message || String(e));
+      Alert.alert(
+        t(lang, "shopping", "failedUpdateFavorites"),
+        e?.message || String(e)
+      );
     }
   }, []);
 
@@ -305,7 +336,7 @@ export default function FavoritesScreen() {
     if (
       shopOptions.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())
     ) {
-      Alert.alert("Shop already exists");
+      Alert.alert(t(lang, "shopping", "shopAlreadyExists"));
       return;
     }
 
@@ -329,7 +360,10 @@ export default function FavoritesScreen() {
       setShopOptions((prev) => [...prev, newShop]);
       setAddingShopName("");
     } catch (e: any) {
-      Alert.alert("Failed to add shop", e?.message || String(e));
+      Alert.alert(
+        t(lang, "shopping", "failedAddShop"),
+        e?.message || String(e)
+      );
     } finally {
       setAddingShopBusy(false);
     }
@@ -337,12 +371,12 @@ export default function FavoritesScreen() {
 
   const deleteShopOption = useCallback((shopToDeleteId: string) => {
     Alert.alert(
-      "Delete shop",
-      "This will remove this shop from all favorite items. Continue?",
+      t(lang, "shopping", "deleteShopTitle"),
+      t(lang, "shopping", "deleteShopMsg"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t(lang, "shopping", "cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t(lang, "shopping", "delete"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -391,7 +425,10 @@ export default function FavoritesScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
-        <Text style={styles.centerText}>Loading favorites…</Text>
+        <Text style={styles.centerText}>
+          {" "}
+          {t(lang, "favorites", "loading")}
+        </Text>
       </View>
     );
   }
@@ -404,7 +441,10 @@ export default function FavoritesScreen() {
           style={[styles.primaryBtn, { marginTop: 12 }]}
           onPress={loadAll}
         >
-          <Text style={styles.primaryBtnText}>Retry</Text>
+          <Text style={styles.primaryBtnText}>
+            {" "}
+            {t(lang, "shopping", "retry")}
+          </Text>
         </Pressable>
       </View>
     );
@@ -420,7 +460,9 @@ export default function FavoritesScreen() {
     <View style={styles.screen}>
       <View style={styles.headerRow}>
         <Pressable onPress={() => router.replace("/(tabs)/shopping")}>
-          <Text style={styles.backText}>← Back to shopping list</Text>
+          <Text style={styles.backText}>
+            {t(lang, "favorites", "backToShopping")}
+          </Text>
         </Pressable>
       </View>
 
@@ -435,11 +477,11 @@ export default function FavoritesScreen() {
               marginBottom: 6,
             }}
           >
-            Add favorite item
+            {t(lang, "favorites", "addFavoriteTitle")}
           </Text>
 
           <TextInput
-            placeholder="Add favorite item…"
+            placeholder={t(lang, "favorites", "addFavoritePlaceholder")}
             placeholderTextColor="#777"
             value={newText}
             onChangeText={setNewText}
@@ -448,7 +490,9 @@ export default function FavoritesScreen() {
 
           {shopOptions.length > 0 && (
             <View style={{ marginTop: 8 }}>
-              <Text style={styles.label}>Shops for this item:</Text>
+              <Text style={styles.label}>
+                {t(lang, "shopping", "shopsForItem")}
+              </Text>
               <View style={styles.shopsRow}>
                 {shopOptions.map((shop) => {
                   const active = newFavoriteShopIds.includes(shop._id);
@@ -484,7 +528,9 @@ export default function FavoritesScreen() {
             onPress={() => setManageShopsVisible(true)}
           >
             <Text style={styles.manageShopsText}>
-              {shopOptions.length > 0 ? "Manage shops" : "Add shops"}
+              {shopOptions.length > 0
+                ? t(lang, "shopping", "manageShops")
+                : t(lang, "shopping", "addShops")}
             </Text>
           </Pressable>
 
@@ -497,14 +543,16 @@ export default function FavoritesScreen() {
             disabled={!newText.trim() || savingFavorite}
           >
             <Text style={styles.primaryBtnText}>
-              {savingFavorite ? "Saving…" : "Add favorite"}
+              {savingFavorite
+                ? t(lang, "favorites", "saving")
+                : t(lang, "favorites", "addFavoriteBtn")}
             </Text>
           </Pressable>
         </View>
 
         {/* 🔹 FILTR JAKO V SHOPPINGLISTU */}
         <Text style={{ color: "#d9d8d8ff", fontSize: 20, paddingTop: 10 }}>
-          Filter by shop:
+          {t(lang, "shopping", "filterByShop")}
         </Text>
         {shopOptions.length > 0 && (
           <ScrollView
@@ -593,7 +641,7 @@ export default function FavoritesScreen() {
             const shopLabel =
               item.shop && item.shop.length > 0
                 ? item.shop.map((s) => s.name).join(", ")
-                : "Shops ▾";
+                : t(lang, "shopping", "shopsTitle") + " ▾";
 
             return (
               <View key={item._id} style={styles.row}>
@@ -643,9 +691,11 @@ export default function FavoritesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>
-              {editingFavorite?.text || "Item"}
+              {editingFavorite?.text || t(lang, "shopping", "itemFallback")}
             </Text>
-            <Text style={styles.modalSubtitle}>Shops</Text>
+            <Text style={styles.modalSubtitle}>
+              {t(lang, "shopping", "shopsTitle")}
+            </Text>
 
             <ScrollView style={{ maxHeight: 260, marginTop: 8 }}>
               {shopOptions.map((shop) => {
@@ -680,12 +730,15 @@ export default function FavoritesScreen() {
             </ScrollView>
 
             <View style={{ marginTop: 12 }}>
-              <Text style={styles.label}>Add new shop</Text>
+              <Text style={styles.label}>
+                {" "}
+                {t(lang, "shopping", "addNewShopLabel")}
+              </Text>
               <View style={styles.addShopRow}>
                 <TextInput
                   value={addingShopName}
                   onChangeText={setAddingShopName}
-                  placeholder="New shop name"
+                  placeholder={t(lang, "shopping", "newShopPlaceholder")}
                   placeholderTextColor="#777"
                   style={[styles.input, { flex: 1, marginBottom: 0 }]}
                 />
@@ -708,7 +761,10 @@ export default function FavoritesScreen() {
               style={[styles.secondaryBtn, { marginTop: 16 }]}
               onPress={() => setEditingFavoriteId(null)}
             >
-              <Text style={styles.secondaryBtnText}>Close</Text>
+              <Text style={styles.secondaryBtnText}>
+                {" "}
+                {t(lang, "shopping", "close")}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -723,7 +779,10 @@ export default function FavoritesScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Manage shops</Text>
+            <Text style={styles.modalTitle}>
+              {" "}
+              {t(lang, "shopping", "manageShopsTitle")}
+            </Text>
 
             <ScrollView style={{ maxHeight: 260, marginTop: 8 }}>
               {shopOptions.map((shop) => (
@@ -740,7 +799,7 @@ export default function FavoritesScreen() {
 
               {shopOptions.length === 0 && (
                 <Text style={{ color: "#aaa", marginTop: 4 }}>
-                  No shops yet.
+                  {t(lang, "shopping", "noShopsYet")}
                 </Text>
               )}
             </ScrollView>

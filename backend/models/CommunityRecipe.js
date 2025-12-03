@@ -22,6 +22,11 @@ const stepSchema = new mongoose.Schema(
       },
     },
     description: { type: String, required: true },
+
+    timerSeconds: {
+      type: Number,
+      min: 0,
+    },
   },
   { _id: false }
 );

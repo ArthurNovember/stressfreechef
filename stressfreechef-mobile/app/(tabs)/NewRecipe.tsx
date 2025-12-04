@@ -208,8 +208,8 @@ export default function NewRecipeScreen() {
   function translateDifficulty(lang: Lang, diff: string) {
     if (lang === "cs") {
       if (diff === "Beginner") return "Začátečník";
-      if (diff === "Intermediate") return "Střední";
-      if (diff === "Hard") return "Pokročilý";
+      if (diff === "Intermediate") return "Pokročílý";
+      if (diff === "Hard") return "Expert";
     }
     return diff;
   }

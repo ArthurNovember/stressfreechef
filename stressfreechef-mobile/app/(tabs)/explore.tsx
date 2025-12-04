@@ -253,8 +253,8 @@ export default function ExploreScreen() {
   function translateDifficulty(lang: Lang, diff: string) {
     if (lang === "cs") {
       if (diff === "Beginner") return "Začátečník";
-      if (diff === "Intermediate") return "Střední";
-      if (diff === "Hard") return "Pokročilý";
+      if (diff === "Intermediate") return "Pokročilý";
+      if (diff === "Hard") return "Expert";
     }
     return diff;
   }
@@ -625,7 +625,12 @@ export default function ExploreScreen() {
               {t(lang, "explore", "swipe")}
             </Text>
           </Pressable>
-          <Text style={[styles.screenTitle, { color: colors.text }]}>
+          <Text
+            style={[
+              styles.screenTitle,
+              { color: colors.text, fontFamily: "MetropolisBold" },
+            ]}
+          >
             {" "}
             {t(lang, "explore", "title")}
           </Text>

@@ -556,7 +556,7 @@ export default function HomeScreen() {
     if (lang === "cs") {
       if (diff === "Beginner") return "Začátečník";
       if (diff === "Intermediate") return "Pokročilý";
-      if (diff === "Hard") return "Pokročilý";
+      if (diff === "Hard") return "Expert";
     }
     return diff;
   }
@@ -614,11 +614,12 @@ export default function HomeScreen() {
                   paddingHorizontal: 12,
                   height: 100,
                   justifyContent: "center",
-                  backgroundColor: colors.pillActive,
+                  backgroundColor: "#640505ff",
                   borderColor: colors.border,
                   borderWidth: 4,
                   borderRightWidth: 0,
                   borderLeftWidth: 0,
+                  borderBottomWidth: 0,
                 }}
               >
                 <MaterialIcons name="menu" size={28} color="#edededff" />
@@ -628,9 +629,9 @@ export default function HomeScreen() {
               <Text
                 style={{
                   flex: 1,
-                  fontSize: 33,
+                  fontSize: 38,
                   lineHeight: 100,
-                  borderWidth: 3,
+                  borderWidth: 4,
                   borderLeftWidth: 0,
                   borderRightWidth: 0,
                   height: 100,
@@ -638,8 +639,9 @@ export default function HomeScreen() {
                   backgroundColor: colors.card,
                   color: colors.text,
                   borderColor: colors.border,
-                  fontFamily: "Merienda_400Regular",
+                  fontFamily: "Metropolis",
                   zIndex: 1000,
+                  borderBottomWidth: 0,
                 }}
               >
                 Stress Free Chef
@@ -651,6 +653,8 @@ export default function HomeScreen() {
                 style={{
                   flexDirection: "row",
                   paddingBottom: 1,
+                  borderTopWidth: 4,
+                  borderColor: colors.border,
                 }}
               >
                 <Pressable

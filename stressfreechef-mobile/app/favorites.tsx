@@ -2,7 +2,7 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { t, Lang, LANG_KEY } from "../i18n/strings";
 import { useTheme } from "../theme/ThemeContext";
-
+import { MaterialIcons } from "@expo/vector-icons"; // ⬅️ ikony
 import {
   ActivityIndicator,
   Alert,
@@ -491,6 +491,7 @@ export default function FavoritesScreen() {
               fontSize: 18,
               fontWeight: "700",
               marginBottom: 6,
+              fontFamily: "MetropolisBold",
             }}
           >
             {t(lang, "favorites", "addFavoriteTitle")}
@@ -742,7 +743,7 @@ export default function FavoritesScreen() {
                     style={[
                       styles.shopsBtn,
                       {
-                        backgroundColor: colors.card,
+                        backgroundColor: colors.shop,
                         borderColor: colors.border,
                       },
                     ]}
@@ -760,12 +761,21 @@ export default function FavoritesScreen() {
                 </View>
 
                 <View style={styles.rowButtons}>
-                  <Pressable onPress={() => addToShoppingList(item)}>
-                    <Image
-                      source={{
-                        uri: "https://i.imgur.com/tOVTmT7.png",
-                      }}
-                      style={{ width: 50, height: 50 }}
+                  <Pressable
+                    onPress={() => addToShoppingList(item)}
+                    style={[
+                      styles.smallBtn,
+                      {
+                        backgroundColor: colors.reverseText,
+                        borderWidth: 1,
+                        top: 2,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons
+                      name="add-shopping-cart"
+                      size={18}
+                      color={colors.text}
                     />
                   </Pressable>
                   <Pressable
@@ -1133,7 +1143,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "center",
     flexDirection: "row",
-    gap: 5,
+    gap: 10,
   },
   smallBtn: {
     borderRadius: 8,

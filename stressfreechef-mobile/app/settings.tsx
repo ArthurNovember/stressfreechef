@@ -350,7 +350,7 @@ export default function SettingsScreen() {
           </Text>
 
           <Pressable
-            style={[styles.deleteBtn, { backgroundColor: colors.danger }]}
+            style={[styles.deleteBtn, { backgroundColor: "#962626ff" }]}
             onPress={confirmDeleteProfile}
             disabled={deleting}
           >

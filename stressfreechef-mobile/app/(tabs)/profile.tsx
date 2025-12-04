@@ -104,8 +104,8 @@ function getCover(r: any) {
 function translateDifficulty(lang: Lang, diff: string) {
   if (lang === "cs") {
     if (diff === "Beginner") return "Začátečník";
-    if (diff === "Intermediate") return "Střední";
-    if (diff === "Hard") return "Pokročilý";
+    if (diff === "Intermediate") return "Pokročilý";
+    if (diff === "Hard") return "Expert";
   }
   return diff;
 }
@@ -684,10 +684,7 @@ function MyProfileRN({
                   onPress={() => handleRemoveSaved(rid)}
                   style={styles.deleteBtn}
                 >
-                  <Image
-                    source={{ uri: "https://i.imgur.com/aRJEINp.png" }}
-                    style={{ width: 35, height: 35 }}
-                  />
+                  <MaterialIcons name="close" size={18} color={colors.text} />
                 </Pressable>
               </View>
             );
@@ -765,10 +762,7 @@ function MyProfileRN({
                   onPress={() => handleDeleteRecipe(String(item?._id))}
                   style={styles.deleteBtn}
                 >
-                  <Image
-                    source={{ uri: "https://i.imgur.com/aRJEINp.png" }}
-                    style={{ width: 35, height: 35 }}
-                  />
+                  <MaterialIcons name="close" size={18} color={colors.text} />
                 </Pressable>
               </View>
             );

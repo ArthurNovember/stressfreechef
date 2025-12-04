@@ -1,4 +1,5 @@
 import { t, Lang, LANG_KEY } from "../../i18n/strings";
+import { useTheme } from "../../theme/ThemeContext";
 
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState, useEffect } from "react";
@@ -45,6 +46,7 @@ async function getToken() {
 
 export default function RecipeStepsScreen() {
   useKeepAwake();
+  const { colors } = useTheme(); // 🎨 tady máš theme barvy
   const router = useRouter();
   const params = useLocalSearchParams<{
     id: string;
@@ -286,10 +288,23 @@ export default function RecipeStepsScreen() {
 
   if (!recipe || steps.length === 0) {
     return (
-      <View style={s.center}>
-        <Text style={s.err}>{t(lang, "recipe", "stepsUnavailable")}</Text>
-        <Pressable style={s.primary} onPress={() => router.back()}>
-          <Text style={s.primaryText}>{t(lang, "recipe", "back")}</Text>
+      <View style={[s.center, { backgroundColor: colors.background }]}>
+        <Text style={[s.err, { color: colors.danger }]}>
+          {t(lang, "recipe", "stepsUnavailable")}
+        </Text>
+        <Pressable
+          style={[
+            s.primary,
+            {
+              backgroundColor: colors.pillActive,
+              borderColor: colors.pillActive,
+            },
+          ]}
+          onPress={() => router.back()}
+        >
+          <Text style={[s.primaryText, { color: colors.text }]}>
+            {t(lang, "recipe", "back")}
+          </Text>
         </Pressable>
       </View>
     );
@@ -453,20 +468,32 @@ export default function RecipeStepsScreen() {
   }
 
   return (
-    <View style={s.wrapper}>
+    <View style={[s.wrapper, { backgroundColor: colors.background }]}>
       {/* Obsah */}
-      <View style={[s.card, { justifyContent: "space-between" }]}>
+      <View
+        style={[
+          s.card,
+          { justifyContent: "space-between", backgroundColor: colors.card },
+        ]}
+      >
         <View>
-          <Text style={s.title}>{getRecipeTitle(recipe, lang)}</Text>
-          <Text style={s.meta}>
+          <Text style={[s.title, { color: colors.text }]}>
+            {getRecipeTitle(recipe, lang)}
+          </Text>
+          <Text style={[s.meta, { color: colors.secondaryText }]}>
             {t(lang, "recipe", "step")} {current + 1} / {steps.length}
           </Text>
           {step.type === "image" && (
             <Image source={{ uri: step.src }} style={s.stepImg} />
           )}
           {step.type === "text" && (
-            <View style={s.textStep}>
-              <Text style={{ fontSize: 16 }}>
+            <View
+              style={[
+                s.textStep,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Text style={{ fontSize: 16, color: colors.text }}>
                 {" "}
                 {getStepDescription(step, lang)}
               </Text>
@@ -481,30 +508,54 @@ export default function RecipeStepsScreen() {
               isLooping
             />
           )}
-          <Text style={s.description}>{getStepDescription(step, lang)}</Text>
+          <Text style={[s.description, { color: colors.text }]}>
+            {getStepDescription(step, lang)}
+          </Text>
 
           {/* ⏱ Timer – zobrazí se jen když krok má timerSeconds */}
           {hasTimer && (
-            <View style={s.timerBox}>
-              <View style={s.timerCircle}>
-                <Text style={s.timerValue}>{formatTime(displaySeconds)}</Text>
+            <View style={[s.timerBox, { borderColor: colors.border }]}>
+              <View style={[s.timerCircle, { borderColor: colors.text }]}>
+                <Text style={[s.timerValue, { color: colors.text }]}>
+                  {formatTime(displaySeconds)}
+                </Text>
               </View>
               {justFinished && (
-                <Text style={s.timerFinishedLabel}>
+                <Text style={[s.timerFinishedLabel, { color: colors.danger }]}>
                   {" "}
                   {t(lang, "recipe", "timerDone")}
                 </Text>
               )}
               <View style={s.timerRow}>
-                <Pressable style={s.timerBtn} onPress={handleStartPause}>
+                <Pressable
+                  style={[
+                    s.timerBtn,
+                    {
+                      borderColor: colors.text,
+                      backgroundColor: colors.card,
+                    },
+                    isRunning && s.timerBtnActive,
+                  ]}
+                  onPress={handleStartPause}
+                >
                   <Text
-                    style={[s.timerBtnText, isRunning && s.timerBtnActiveText]}
+                    style={[
+                      s.timerBtnText,
+                      { color: colors.pillActive },
+                      isRunning && s.timerBtnActiveText,
+                    ]}
                   >
                     {isRunning ? "❚❚" : "▶"}
                   </Text>
                 </Pressable>
                 <Pressable
-                  style={s.timerBtn}
+                  style={[
+                    s.timerBtn,
+                    {
+                      borderColor: colors.text,
+                      backgroundColor: colors.card,
+                    },
+                  ]}
                   onPress={() => {
                     setIsRunning(false);
                     setStartedAt(null);
@@ -517,7 +568,9 @@ export default function RecipeStepsScreen() {
                     }
                   }}
                 >
-                  <Text style={s.timerBtnText}>■</Text>
+                  <Text style={[s.timerBtnText, { color: colors.pillActive }]}>
+                    ■
+                  </Text>
                 </Pressable>
               </View>
             </View>
@@ -526,10 +579,12 @@ export default function RecipeStepsScreen() {
         {/* ⭐ Rating jen na posledním kroku, nad tlačítky */}
         {current === steps.length - 1 && (
           <View style={s.ratingBox}>
-            <Text style={s.completedLabel}>
+            <Text style={[s.completedLabel, { color: colors.text }]}>
               {t(lang, "recipe", "completed")}
             </Text>
-            <Text style={s.ratingLabel}>{t(lang, "recipe", "rateThis")}</Text>
+            <Text style={[s.ratingLabel, { color: colors.secondaryText }]}>
+              {t(lang, "recipe", "rateThis")}
+            </Text>
             <RenderStarsForRecipe
               avg={community.avg}
               myRating={myRating}
@@ -538,7 +593,7 @@ export default function RecipeStepsScreen() {
             />
 
             {community.count > 0 && (
-              <Text style={s.ratingMeta}>
+              <Text style={[s.ratingMeta, { color: colors.secondaryText }]}>
                 {community.avg.toFixed(1)} ({community.count})
               </Text>
             )}
@@ -553,7 +608,7 @@ export default function RecipeStepsScreen() {
               </Text>
             )}
             {!canRateCommunity && (
-              <Text style={s.ratingDisabled}>
+              <Text style={[s.ratingDisabled, { color: colors.muted }]}>
                 {ensuring
                   ? t(lang, "recipe", "preparing")
                   : t(lang, "recipe", "cannotRate")}
@@ -566,30 +621,51 @@ export default function RecipeStepsScreen() {
           <Pressable
             disabled={current === 0}
             onPress={() => setCurrent((p) => Math.max(0, p - 1))}
-            style={[s.btn, current === 0 && s.btnDisabled]}
+            style={[
+              s.btn,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.border,
+              },
+              current === 0 && s.btnDisabled,
+            ]}
           >
-            <Text style={s.btnText}>{t(lang, "recipe", "previous")}</Text>
+            <Text style={[s.btnText, { color: colors.text }]}>
+              {t(lang, "recipe", "previous")}
+            </Text>
           </Pressable>
           {current < steps.length - 1 ? (
             <Pressable
               onPress={() =>
                 setCurrent((p) => Math.min(steps.length - 1, p + 1))
               }
-              style={[s.btn, s.btnPrimary]}
+              style={[
+                s.btn,
+                s.btnPrimary,
+                {
+                  backgroundColor: colors.pillActive,
+                  borderColor: colors.pillActive,
+                },
+              ]}
             >
-              <Text style={[s.btnText, { color: "#fff" }]}>
+              <Text style={[s.btnText, { color: "white" }]}>
                 {t(lang, "recipe", "next")}
               </Text>
             </Pressable>
           ) : (
             <Pressable
               onPress={() => router.back()}
-              style={[s.btn, s.btnPrimary, { backgroundColor: "#410101ff" }]}
+              style={[
+                s.btn,
+                s.btnPrimary,
+                {
+                  backgroundColor: colors.pillActive,
+                  borderColor: colors.pillActive,
+                },
+              ]}
             >
-              <Text style={[s.btnText, { color: "#fff" }]}>
-                <Text style={[s.btnText, { color: "#fff" }]}>
-                  {t(lang, "recipe", "finish")}
-                </Text>
+              <Text style={[s.btnText, { color: colors.text }]}>
+                {t(lang, "recipe", "finish")}
               </Text>
             </Pressable>
           )}
@@ -676,7 +752,7 @@ const s = StyleSheet.create({
   },
   timerBtn: {
     borderRadius: 70,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0.5,
     borderColor: "#555",
     alignItems: "center",
     width: 50,

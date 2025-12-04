@@ -17,6 +17,7 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE, fetchJSON } from "../../lib/api";
+import { useTheme } from "../../theme/ThemeContext";
 
 const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
 
@@ -31,10 +32,12 @@ function StarRatingDisplay({
   value,
   size = 16,
   count,
+  color,
 }: {
   value: number;
   size?: number;
   count?: number;
+  color?: string;
 }) {
   const val = Math.max(0, Math.min(5, value || 0));
 
@@ -62,7 +65,9 @@ function StarRatingDisplay({
       </View>
 
       {typeof count === "number" ? (
-        <Text style={{ color: "#dcd7d7ff", fontSize: 12, opacity: 0.8 }}>
+        <Text
+          style={{ color: color || "#dcd7d7ff", fontSize: 12, opacity: 0.8 }}
+        >
           {val.toFixed(1)} ({count})
         </Text>
       ) : null}
@@ -172,6 +177,7 @@ function AuthFormRN({
   onLoggedIn: () => void;
   lang: Lang;
 }) {
+  const { colors } = useTheme(); // 💡 TADY
   const [mode, setMode] = useState<"signup" | "login">("signup");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -236,7 +242,10 @@ function AuthFormRN({
 
   return (
     <ScrollView
-      contentContainerStyle={styles.authWrap}
+      contentContainerStyle={[
+        styles.authWrap,
+        { backgroundColor: colors.background },
+      ]}
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.authSwitchRow}>
@@ -244,10 +253,17 @@ function AuthFormRN({
           onPress={() => setMode("signup")}
           style={[
             styles.switchBtn,
-            mode === "signup" && styles.switchBtnActive,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            },
+            mode === "signup" && {
+              backgroundColor: colors.pillActive,
+              borderColor: colors.pillActive,
+            },
           ]}
         >
-          <Text style={styles.switchText}>
+          <Text style={[styles.switchText, { color: colors.text }]}>
             {" "}
             {t(lang, "profile", "authSignUp")}
           </Text>
@@ -265,31 +281,63 @@ function AuthFormRN({
 
       {mode === "signup" && (
         <View style={styles.form}>
-          <Text style={styles.label}>{t(lang, "profile", "username")}</Text>
+          <Text style={[styles.label, { color: colors.text }]}>
+            {t(lang, "profile", "username")}
+          </Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
           />
-          <Text style={styles.label}>Email</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Email</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
           />
-          <Text style={styles.label}>Password</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Password</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
           />
-          <Text style={styles.label}>Confirm password</Text>
+          <Text style={[styles.label, { color: colors.text }]}>
+            Confirm password
+          </Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             value={confirm}
             onChangeText={setConfirm}
             secureTextEntry
@@ -297,9 +345,13 @@ function AuthFormRN({
           <Pressable
             disabled={busy}
             onPress={handleSignup}
-            style={[styles.primaryBtn, busy && { opacity: 0.7 }]}
+            style={[
+              styles.primaryBtn,
+              { backgroundColor: colors.pillActive },
+              busy && { opacity: 0.7 },
+            ]}
           >
-            <Text style={styles.primaryBtnText}>
+            <Text style={[styles.primaryBtnText, { color: colors.text }]}>
               {busy
                 ? t(lang, "profile", "pleaseWait")
                 : t(lang, "profile", "authSignUp")}
@@ -328,14 +380,16 @@ function AuthFormRN({
           <Pressable
             disabled={busy}
             onPress={handleLogin}
-            style={[styles.primaryBtn, busy && { opacity: 0.7 }]}
+            style={[
+              styles.primaryBtn,
+              { backgroundColor: colors.pillActive },
+              busy && { opacity: 0.7 },
+            ]}
           >
-            <Text style={styles.primaryBtnText}>
-              <Text style={styles.primaryBtnText}>
-                {busy
-                  ? t(lang, "profile", "pleaseWait")
-                  : t(lang, "profile", "authLogin")}
-              </Text>
+            <Text style={[styles.primaryBtnText, { color: colors.text }]}>
+              {busy
+                ? t(lang, "profile", "pleaseWait")
+                : t(lang, "profile", "authLogin")}
             </Text>
           </Pressable>
         </View>
@@ -352,6 +406,7 @@ function MyProfileRN({
   onLoggedOut: () => void;
   lang: Lang;
 }) {
+  const { colors } = useTheme(); // 💡
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [items, setItems] = useState<any[]>([]);
@@ -486,9 +541,9 @@ function MyProfileRN({
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 8, color: "white" }}>
+        <Text style={{ marginTop: 8, color: colors.text }}>
           {" "}
           {t(lang, "profile", "loading")}
         </Text>
@@ -498,16 +553,19 @@ function MyProfileRN({
 
   if (err) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.err}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={[styles.err, { color: colors.danger }]}>
           {" "}
           {t(lang, "profile", "errorPrefix")}: {err}
         </Text>
         <Pressable
           onPress={loadAll}
-          style={[styles.primaryBtn, { marginTop: 12 }]}
+          style={[
+            styles.primaryBtn,
+            { marginTop: 12, backgroundColor: colors.pillActive },
+          ]}
         >
-          <Text style={styles.primaryBtnText}>
+          <Text style={[styles.primaryBtnText, { color: colors.text }]}>
             {" "}
             {t(lang, "profile", "retry")}
           </Text>
@@ -517,12 +575,27 @@ function MyProfileRN({
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0f0f0fff", paddingTop: 15 }}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.background,
+        paddingTop: 15,
+      }}
+    >
       <View style={styles.profileHeader}>
         <View style={{ flex: 1 }}></View>
         <View style={{ flexDirection: "row", gap: 8 }}>
-          <Pressable onPress={handleLogout} style={styles.secondaryBtn}>
-            <Text style={styles.secondaryBtnText}>
+          <Pressable
+            onPress={handleLogout}
+            style={[
+              styles.secondaryBtn,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
               {" "}
               {t(lang, "profile", "logout")}
             </Text>
@@ -531,11 +604,17 @@ function MyProfileRN({
       </View>
       <View>
         {/* SAVED RECIPES */}
-        <Text style={styles.sectionTitle}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t(lang, "profile", "savedRecipesTitle")}
         </Text>
         {saved.length === 0 ? (
-          <Text style={{ opacity: 0.7, paddingHorizontal: 16, color: "white" }}>
+          <Text
+            style={{
+              opacity: 0.7,
+              paddingHorizontal: 16,
+              color: colors.muted,
+            }}
+          >
             {t(lang, "profile", "savedEmpty")}
           </Text>
         ) : null}
@@ -549,7 +628,15 @@ function MyProfileRN({
             const cover = getCover(item); // sjednocený zdroj
             const rid = String(item?._id || (item as any)?.id || "");
             return (
-              <View style={styles.card}>
+              <View
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
                 <Pressable
                   style={{ flex: 1, flexDirection: "row" }}
                   onPress={() => setSelected(item)}
@@ -568,19 +655,27 @@ function MyProfileRN({
                   )}
 
                   <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
+                    <Text
+                      style={[styles.cardTitle, { color: colors.text }]}
+                      numberOfLines={1}
+                    >
                       {item?.title || "Untitled"}
                     </Text>
-                    <Text style={styles.metaText}>
+                    <Text
+                      style={[styles.metaText, { color: colors.secondaryText }]}
+                    >
                       {t(lang, "home", "difficulty")}:{" "}
                       {translateDifficulty(lang, item?.difficulty || "—")}
                     </Text>
-                    <Text style={styles.metaText}>
+                    <Text
+                      style={[styles.metaText, { color: colors.secondaryText }]}
+                    >
                       {t(lang, "home", "time")}: {item?.time || "—"} ⏱️
                     </Text>
                     <StarRatingDisplay
                       value={item?.ratingAvg ?? item?.rating ?? 0}
                       count={item?.ratingCount}
+                      color={colors.secondaryText}
                     />
                   </View>
                 </Pressable>
@@ -598,7 +693,7 @@ function MyProfileRN({
             );
           }}
         />
-        <Text style={styles.sectionTitle}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {" "}
           {t(lang, "profile", "myRecipesTitle")}
         </Text>
@@ -616,7 +711,15 @@ function MyProfileRN({
             const cover = getCover(item);
             const rid = String(item?._id || item?.id || "");
             return (
-              <View style={styles.card}>
+              <View
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
                 <Pressable
                   style={{ flex: 1, flexDirection: "row" }}
                   onPress={() => setSelected(item)}
@@ -634,19 +737,27 @@ function MyProfileRN({
                     <Image source={{ uri: cover.url }} style={styles.cardImg} />
                   )}
                   <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
+                    <Text
+                      style={[styles.cardTitle, { color: colors.text }]}
+                      numberOfLines={1}
+                    >
                       {item?.title || "Untitled"}
                     </Text>
-                    <Text style={styles.metaText}>
+                    <Text
+                      style={[styles.metaText, { color: colors.secondaryText }]}
+                    >
                       {t(lang, "home", "difficulty")}:{" "}
                       {translateDifficulty(lang, item?.difficulty || "—")}
                     </Text>
-                    <Text style={styles.metaText}>
+                    <Text
+                      style={[styles.metaText, { color: colors.secondaryText }]}
+                    >
                       {t(lang, "home", "time")}: {item?.time || "—"} ⏱️
                     </Text>
                     <StarRatingDisplay
                       value={item?.ratingAvg ?? item?.rating ?? 0}
                       count={item?.ratingCount}
+                      color={colors.secondaryText}
                     />
                   </View>
                 </Pressable>
@@ -672,7 +783,7 @@ function MyProfileRN({
         onRequestClose={() => setSelected(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
             <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
               {selectedCover && selectedCover.isVideo ? (
                 <Video
@@ -689,26 +800,40 @@ function MyProfileRN({
                 />
               )}
 
-              <Text style={styles.modalTitle}>{selected?.title}</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {selected?.title}
+              </Text>
               {typeof selected?.ratingAvg === "number" && (
                 <StarRatingDisplay
                   value={selected.ratingAvg}
                   count={selected.ratingCount}
                   size={20}
+                  color={colors.secondaryText}
                 />
               )}
 
               {selected?.ingredients?.length ? (
                 <>
-                  <Text style={styles.section}>
+                  <Text style={[styles.section, { color: colors.pillActive }]}>
                     {t(lang, "profile", "ingredients")}
                   </Text>
                   {selected!.ingredients!.map((ing: string, i: number) => (
-                    <View key={i} style={styles.ingredientRow}>
-                      <Text style={styles.ingredient}>• {ing}</Text>
+                    <View
+                      key={i}
+                      style={[
+                        styles.ingredientRow,
+                        { borderColor: colors.border },
+                      ]}
+                    >
+                      <Text style={[styles.ingredient, { color: colors.text }]}>
+                        • {ing}
+                      </Text>
 
                       <Pressable
-                        style={styles.ingredientAddBtn}
+                        style={[
+                          styles.ingredientAddBtn,
+                          { backgroundColor: colors.pillActive },
+                        ]}
                         onPress={() => addIngredientToShopping(ing, lang)}
                       >
                         <MaterialIcons
@@ -723,7 +848,10 @@ function MyProfileRN({
               ) : null}
 
               <Pressable
-                style={styles.primaryBtn}
+                style={[
+                  styles.primaryBtn,
+                  { backgroundColor: colors.pillActive },
+                ]}
                 onPress={() => {
                   // přejít na detail se „steps“
                   const rid = String(selected?._id || selected?.id || "");
@@ -739,15 +867,21 @@ function MyProfileRN({
                   setSelected(null);
                 }}
               >
-                <Text style={styles.primaryBtnText}>
+                <Text style={[styles.primaryBtnText, { color: "white" }]}>
                   {t(lang, "profile", "getStarted")}
                 </Text>
               </Pressable>
               <Pressable
-                style={styles.secondaryBtn}
+                style={[
+                  styles.secondaryBtn,
+                  {
+                    backgroundColor: colors.border,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => setSelected(null)}
               >
-                <Text style={styles.secondaryBtnText}>
+                <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
                   {" "}
                   {t(lang, "profile", "close")}
                 </Text>
@@ -762,6 +896,7 @@ function MyProfileRN({
 
 /** ===== Profile root ===== */
 export default function ProfileScreen() {
+  const { colors } = useTheme();
   const [hasToken, setHasToken] = useState<boolean | null>(null);
   const [lang, setLang] = useState<Lang>("en");
   const refreshAuth = useCallback(async () => {
@@ -782,7 +917,7 @@ export default function ProfileScreen() {
 
   if (hasToken === null) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -885,6 +1020,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     padding: 16,
+    backgroundColor: "rgba(0,0,0,0.7)",
   },
   modalCard: {
     backgroundColor: "#212121ff",

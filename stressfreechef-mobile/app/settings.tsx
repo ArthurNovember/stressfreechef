@@ -7,7 +7,6 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
-  Appearance,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
@@ -15,8 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { API_BASE } from "../lib/api";
 import { getLocales } from "expo-localization";
 import { t, Lang, LANG_KEY } from "../i18n/strings";
-
-const THEME_KEY = "app_theme"; // "light" | "dark"
+import { useTheme } from "../theme/ThemeContext"; // ← napojení na ThemeProvider
 
 const TOKEN_KEY = "token";
 
@@ -38,7 +36,7 @@ async function clearToken() {
 }
 
 export default function SettingsScreen() {
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const { theme, setTheme, colors } = useTheme(); // ← globální theme
   const [lang, setLang] = useState<Lang>("en");
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -47,32 +45,10 @@ export default function SettingsScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const storedTheme = (await AsyncStorage.getItem(THEME_KEY)) as
-          | "light"
-          | "dark"
-          | null;
         const storedLang = (await AsyncStorage.getItem(LANG_KEY)) as
           | "en"
           | "cs"
           | null;
-
-        // 🎨 THEME – nejdřív uložený, jinak systém
-        let nextTheme: "light" | "dark" = "dark";
-
-        if (storedTheme === "light" || storedTheme === "dark") {
-          nextTheme = storedTheme;
-        } else {
-          const systemScheme = Appearance.getColorScheme(); // "light" | "dark" | null
-          if (systemScheme === "light" || systemScheme === "dark") {
-            nextTheme = systemScheme;
-          } else {
-            nextTheme = "dark"; // fallback
-          }
-          // poprvé uložíme odvozený theme podle systému
-          await AsyncStorage.setItem(THEME_KEY, nextTheme);
-        }
-
-        setTheme(nextTheme);
 
         // 🌍 LANGUAGE – nejdřív uložený, jinak systém
         const locales = getLocales();
@@ -104,16 +80,14 @@ export default function SettingsScreen() {
     })();
   }, []);
 
+  // 🎨 přepnutí tématu přes ThemeContext
   async function handleThemeChange(next: "light" | "dark") {
-    setTheme(next);
-    await AsyncStorage.setItem(THEME_KEY, next);
-    // TODO: tady pak napojíš reálný theme context / reload appky
+    await setTheme(next); // ThemeProvider se postará o AsyncStorage + repaint
   }
 
   async function handleLangChange(next: "en" | "cs") {
     setLang(next);
     await AsyncStorage.setItem(LANG_KEY, next);
-    // TODO: tady pak napojíš i18n / přepnutí textů
   }
 
   function confirmDeleteProfile() {
@@ -159,7 +133,6 @@ export default function SettingsScreen() {
         t(lang, "settings", "deletedMsg")
       );
 
-      // po smazání tě hodíme „domů“ – klidně si cestu uprav
       router.replace("/(tabs)/home");
     } catch (e: any) {
       Alert.alert(
@@ -171,9 +144,16 @@ export default function SettingsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View
+        style={[
+          styles.center,
+          {
+            backgroundColor: colors.background,
+          },
+        ]}
+      >
         <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 8, color: "#e0e0e0" }}>
+        <Text style={{ marginTop: 8, color: colors.text }}>
           {t(lang, "settings", "loading")}
         </Text>
       </View>
@@ -181,44 +161,89 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.background,
+        },
+      ]}
+    >
       {/* HEADER */}
       <View style={styles.headerRow}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <MaterialIcons name="arrow-back" size={24} color="#ffffff" />
+          <MaterialIcons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>
+        <Text
+          style={[
+            styles.headerTitle,
+            {
+              color: colors.text,
+            },
+          ]}
+        >
           {t(lang, "settings", "headerTitle")}
         </Text>
       </View>
 
       {/* THEME */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          {" "}
+        <Text
+          style={[
+            styles.sectionTitle,
+            {
+              color: colors.secondaryText ?? colors.text,
+            },
+          ]}
+        >
           {t(lang, "settings", "themeTitle")}
         </Text>
         <View style={styles.row}>
+          {/* DARK */}
           <Pressable
-            style={[styles.pill, theme === "dark" && styles.pillActive]}
+            style={[
+              styles.pill,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+              theme === "dark" && {
+                backgroundColor: colors.pillActive,
+                borderColor: colors.pillActive,
+              },
+            ]}
             onPress={() => handleThemeChange("dark")}
           >
             <Text
               style={[
                 styles.pillText,
+                { color: colors.text },
                 theme === "dark" && styles.pillTextActive,
               ]}
             >
               {t(lang, "settings", "themeDark")}
             </Text>
           </Pressable>
+
+          {/* LIGHT */}
           <Pressable
-            style={[styles.pill, theme === "light" && styles.pillActive]}
+            style={[
+              styles.pill,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+              theme === "light" && {
+                backgroundColor: colors.pillActive,
+                borderColor: colors.pillActive,
+              },
+            ]}
             onPress={() => handleThemeChange("light")}
           >
             <Text
               style={[
                 styles.pillText,
+                { color: colors.text },
                 theme === "light" && styles.pillTextActive,
               ]}
             >
@@ -226,54 +251,106 @@ export default function SettingsScreen() {
             </Text>
           </Pressable>
         </View>
-        <Text style={styles.helper}>
-          (zatím jen ukládá volbu do AsyncStorage – později napojíme na reálný
-          theme)
+        <Text
+          style={[
+            styles.helper,
+            {
+              color: colors.muted,
+            },
+          ]}
+        >
+          (tato volba okamžitě změní vzhled celé aplikace)
         </Text>
       </View>
 
       {/* LANGUAGE */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            {
+              color: colors.secondaryText ?? colors.text,
+            },
+          ]}
+        >
           {t(lang, "settings", "langTitle")}
         </Text>
         <View style={styles.row}>
           <Pressable
-            style={[styles.pill, lang === "en" && styles.pillActive]}
+            style={[
+              styles.pill,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+              lang === "en" && {
+                backgroundColor: colors.pillActive,
+                borderColor: colors.pillActive,
+              },
+            ]}
             onPress={() => handleLangChange("en")}
           >
             <Text
-              style={[styles.pillText, lang === "en" && styles.pillTextActive]}
+              style={[
+                styles.pillText,
+                { color: colors.text },
+                lang === "en" && styles.pillTextActive,
+              ]}
             >
               English
             </Text>
           </Pressable>
           <Pressable
-            style={[styles.pill, lang === "cs" && styles.pillActive]}
+            style={[
+              styles.pill,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+              lang === "cs" && {
+                backgroundColor: colors.pillActive,
+                borderColor: colors.pillActive,
+              },
+            ]}
             onPress={() => handleLangChange("cs")}
           >
             <Text
-              style={[styles.pillText, lang === "cs" && styles.pillTextActive]}
+              style={[
+                styles.pillText,
+                { color: colors.text },
+                lang === "cs" && styles.pillTextActive,
+              ]}
             >
               Čeština
             </Text>
           </Pressable>
         </View>
-        <Text style={styles.helper}>
-          (stejně jako theme – preference je uložená, později na ni navážeme
-          texty)
+        <Text
+          style={[
+            styles.helper,
+            {
+              color: colors.muted,
+            },
+          ]}
+        >
+          (jazyk ovlivní texty v celé aplikaci)
         </Text>
       </View>
 
       {/* DELETE PROFILE */}
       {hasToken && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: colors.secondaryText ?? colors.text },
+            ]}
+          >
             {t(lang, "settings", "dangerTitle")}
           </Text>
 
           <Pressable
-            style={styles.deleteBtn}
+            style={[styles.deleteBtn, { backgroundColor: colors.danger }]}
             onPress={confirmDeleteProfile}
             disabled={deleting}
           >
@@ -283,14 +360,20 @@ export default function SettingsScreen() {
               <>
                 <MaterialIcons name="delete-forever" size={20} color="#fff" />
                 <Text style={styles.deleteBtnText}>
-                  {" "}
                   {t(lang, "settings", "deleteBtn")}
                 </Text>
               </>
             )}
           </Pressable>
 
-          <Text style={styles.helper}>
+          <Text
+            style={[
+              styles.helper,
+              {
+                color: colors.muted,
+              },
+            ]}
+          >
             {t(lang, "settings", "dangerHelper")}
           </Text>
         </View>
@@ -302,6 +385,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    // konkrétní barvu přepíšeme z ThemeContextu
     backgroundColor: "#141414ff",
     paddingHorizontal: 16,
     paddingTop: 40,
@@ -324,7 +408,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#f4f4f4ff",
+    color: "#f4f4f4ff", // přepsáno inline podle theme
   },
   section: {
     marginBottom: 24,
@@ -332,7 +416,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#e0e0e0ff",
+    color: "#e0e0e0ff", // přepsáno inline
     marginBottom: 8,
   },
   row: {

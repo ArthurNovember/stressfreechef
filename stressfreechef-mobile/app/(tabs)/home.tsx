@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useScrollToTop } from "@react-navigation/native"; // ← tohle přidej
 import { t, Lang, LANG_KEY } from "../../i18n/strings";
+import { useTheme } from "../../theme/ThemeContext";
 
 import {
   useFonts,
@@ -106,6 +107,7 @@ async function getToken() {
 }
 
 export default function HomeScreen() {
+  const { colors } = useTheme(); // 💡 tady máš theme barvy
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -568,9 +570,9 @@ export default function HomeScreen() {
   }
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 8, color: "white" }}>
+        <Text style={{ marginTop: 8, color: colors.text }}>
           {" "}
           {t(lang, "home", "loadingRecipes")}
         </Text>
@@ -579,14 +581,14 @@ export default function HomeScreen() {
   }
   if (err) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.err}>Error: {err}</Text>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={[styles.err, { color: colors.danger }]}>Error: {err}</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         ref={listRef}
         data={list}
@@ -597,7 +599,8 @@ export default function HomeScreen() {
         }}
         ListHeaderComponent={
           <View>
-            <View style={{ height: 33, backgroundColor: "#000000ff" }} />
+            <View style={{ height: 33, backgroundColor: colors.background }} />
+
             <View
               style={{
                 alignItems: "center",
@@ -611,10 +614,11 @@ export default function HomeScreen() {
                   paddingHorizontal: 12,
                   height: 100,
                   justifyContent: "center",
-                  backgroundColor: "#760101",
-                  borderColor: "black",
+                  backgroundColor: colors.pillActive,
+                  borderColor: colors.border,
                   borderWidth: 4,
                   borderRightWidth: 0,
+                  borderLeftWidth: 0,
                 }}
               >
                 <MaterialIcons name="menu" size={28} color="#edededff" />
@@ -626,13 +630,14 @@ export default function HomeScreen() {
                   flex: 1,
                   fontSize: 33,
                   lineHeight: 100,
-                  borderWidth: 4,
+                  borderWidth: 3,
                   borderLeftWidth: 0,
                   borderRightWidth: 0,
                   height: 100,
                   textAlign: "center",
-                  backgroundColor: "#111111ff",
-                  color: "#edededff",
+                  backgroundColor: colors.card,
+                  color: colors.text,
+                  borderColor: colors.border,
                   fontFamily: "Merienda_400Regular",
                   zIndex: 1000,
                 }}
@@ -642,11 +647,23 @@ export default function HomeScreen() {
             </View>
 
             <View>
-              <View style={{ flexDirection: "row" }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  paddingBottom: 1,
+                }}
+              >
                 <Pressable
                   style={[
                     styles.chip,
-                    active === "NEWEST" && styles.chipActive,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                    active === "NEWEST" && {
+                      backgroundColor: colors.pillActive,
+                      borderColor: colors.pillActive,
+                    },
                   ]}
                   onPress={() => {
                     setActive("NEWEST");
@@ -656,6 +673,7 @@ export default function HomeScreen() {
                   <Text
                     style={[
                       styles.chipText,
+                      { color: colors.text },
                       active === "NEWEST" && styles.chipTextActive,
                     ]}
                   >
@@ -665,7 +683,14 @@ export default function HomeScreen() {
                 <Pressable
                   style={[
                     styles.chip,
-                    active === "EASIEST" && styles.chipActive,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                    active === "EASIEST" && {
+                      backgroundColor: colors.pillActive,
+                      borderColor: colors.pillActive,
+                    },
                   ]}
                   onPress={() => {
                     setActive("EASIEST");
@@ -675,6 +700,7 @@ export default function HomeScreen() {
                   <Text
                     style={[
                       styles.chipText,
+                      { color: colors.text },
                       active === "EASIEST" && styles.chipTextActive,
                     ]}
                   >
@@ -685,7 +711,14 @@ export default function HomeScreen() {
                 <Pressable
                   style={[
                     styles.chip,
-                    active === "FAVORITE" && styles.chipActive,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                    active === "FAVORITE" && {
+                      backgroundColor: colors.pillActive,
+                      borderColor: colors.pillActive,
+                    },
                   ]}
                   onPress={() => {
                     setActive("FAVORITE");
@@ -695,6 +728,7 @@ export default function HomeScreen() {
                   <Text
                     style={[
                       styles.chipText,
+                      { color: colors.text },
                       active === "FAVORITE" && styles.chipTextActive,
                     ]}
                   >
@@ -704,7 +738,14 @@ export default function HomeScreen() {
                 <Pressable
                   style={[
                     styles.chip,
-                    active === "RANDOM" && styles.chipActive,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                    active === "RANDOM" && {
+                      backgroundColor: colors.pillActive,
+                      borderColor: colors.pillActive,
+                    },
                   ]}
                   onPress={() => {
                     setActive("RANDOM");
@@ -714,6 +755,7 @@ export default function HomeScreen() {
                   <Text
                     style={[
                       styles.chipText,
+                      { color: colors.text },
                       active === "RANDOM" && styles.chipTextActive,
                     ]}
                   >
@@ -743,22 +785,31 @@ export default function HomeScreen() {
               : undefined;
 
           return (
-            <Pressable style={styles.card} onPress={() => setSelected(item)}>
+            <Pressable
+              style={[
+                styles.card,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+              onPress={() => setSelected(item)}
+            >
               <Image source={{ uri: item.imgSrc }} style={styles.img} />
-              <Text style={styles.title} numberOfLines={2}>
+              <Text
+                style={[styles.title, { color: colors.text }]}
+                numberOfLines={2}
+              >
                 {getRecipeTitle(item, lang)}
               </Text>
 
               {/* ⭐ hvězdy + 4.3 (12) z communityStats */}
               <StarRatingDisplay value={ratingVal} count={ratingCount} />
 
-              <Text style={styles.meta}>
-                <Text style={styles.meta}>
+              <Text style={[styles.meta, { color: colors.secondaryText }]}>
+                <Text style={[styles.meta, { color: colors.secondaryText }]}>
                   {t(lang, "home", "difficulty")}:{" "}
                   {translateDifficulty(lang, item.difficulty)}
                 </Text>
               </Text>
-              <Text style={styles.meta}>
+              <Text style={[styles.meta, { color: colors.secondaryText }]}>
                 {" "}
                 {t(lang, "home", "time")}: {item.time} ⏱️
               </Text>
@@ -774,16 +825,25 @@ export default function HomeScreen() {
         onRequestClose={() => setSelected(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
             {selected && (
               <Pressable
                 style={[
                   styles.saveFloatingBtn,
-                  selectedIsSaved && styles.saveFloatingBtnActive,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                  selectedIsSaved && {
+                    backgroundColor: colors.pillActive,
+                    borderColor: colors.pillActive,
+                  },
                 ]}
                 onPress={() => toggleSaveOfficial(selected)}
               >
-                <Text style={styles.saveFloatingBtnText}>
+                <Text
+                  style={[styles.saveFloatingBtnText, { color: colors.text }]}
+                >
                   {selectedIsSaved
                     ? t(lang, "home", "saved")
                     : t(lang, "home", "save")}
@@ -797,7 +857,7 @@ export default function HomeScreen() {
                 style={styles.modalImg}
               />
               <View style={styles.modalHeaderRow}>
-                <Text style={styles.modalTitle}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
                   {selected ? getRecipeTitle(selected, lang) : ""}
                 </Text>
               </View>
@@ -811,15 +871,29 @@ export default function HomeScreen() {
 
               {ingredients.length ? (
                 <>
-                  <Text style={styles.section}>
+                  <Text style={[styles.section, { color: colors.pillActive }]}>
                     {t(lang, "home", "ingredients")}
                   </Text>
                   {ingredients.map((ing, i) => (
-                    <View key={i} style={styles.ingredientRow}>
-                      <Text style={styles.ingredient}>• {ing}</Text>
+                    <View
+                      key={i}
+                      style={[
+                        styles.ingredientRow,
+                        { borderColor: colors.border },
+                      ]}
+                    >
+                      <Text style={[styles.ingredient, { color: colors.text }]}>
+                        • {ing}
+                      </Text>
 
                       <Pressable
-                        style={styles.ingredientAddBtn}
+                        style={[
+                          styles.ingredientAddBtn,
+                          {
+                            backgroundColor: colors.pillActive,
+                            borderColor: colors.pillActive,
+                          },
+                        ]}
                         onPress={() => addIngredientToShopping(ing)}
                       >
                         <MaterialIcons
@@ -834,7 +908,10 @@ export default function HomeScreen() {
               ) : null}
 
               <Pressable
-                style={styles.primaryBtn}
+                style={[
+                  styles.primaryBtn,
+                  { backgroundColor: colors.pillActive },
+                ]}
                 onPress={() => {
                   if (!selected) return;
 
@@ -869,10 +946,16 @@ export default function HomeScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                style={styles.secondaryBtn}
+                style={[
+                  styles.secondaryBtn,
+                  {
+                    backgroundColor: colors.border,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => setSelected(null)}
               >
-                <Text style={styles.secondaryBtnText}>
+                <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
                   {" "}
                   {t(lang, "home", "close")}
                 </Text>
@@ -976,6 +1059,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     borderColor: "#000000ff",
     backgroundColor: "#1a1919ff",
+    borderBottomWidth: 0,
   },
 
   chipActive: {

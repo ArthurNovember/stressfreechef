@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { t, Lang, LANG_KEY } from "../../i18n/strings";
+import { useTheme } from "../../theme/ThemeContext";
 
 import { useRouter } from "expo-router";
 import {
@@ -170,7 +171,7 @@ async function publishRecipeMobile(token: string, recipeId: string) {
 
 export default function NewRecipeScreen() {
   const router = useRouter();
-
+  const { colors } = useTheme(); // 🎨 sem si sáhneš na barvy
   // hlavní info
   const [title, setTitle] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty>("Beginner");
@@ -296,16 +297,15 @@ export default function NewRecipeScreen() {
         if (!raw) continue;
         const seconds = parseTimerInput(raw);
         if (!seconds) {
+          // ❌ nevalidní timer → ukončit
           setErr(
-            `Krok ${
-              i + 1
-            }: Časovač musí být ve formátu "mm:ss" nebo jako počet sekund.`
-          );
-        } else {
-          setErr(
-            `Step ${
-              i + 1
-            }: Timer must be in format "mm:ss" or a number of seconds.`
+            lang === "cs"
+              ? `Krok ${
+                  i + 1
+                }: Časovač musí být ve formátu "mm:ss" nebo jako počet sekund.`
+              : `Step ${
+                  i + 1
+                }: Timer must be in format "mm:ss" or a number of seconds.`
           );
           return;
         }
@@ -417,22 +417,46 @@ export default function NewRecipeScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {err && <Text style={styles.error}>{err}</Text>}
-      {successMsg && <Text style={styles.success}>{successMsg}</Text>}
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={[
+        styles.container,
+        { backgroundColor: colors.background },
+      ]}
+    >
+      {err && (
+        <Text style={[styles.error, { color: colors.danger }]}>{err}</Text>
+      )}
+      {successMsg && (
+        <Text style={[styles.success, { color: "#7cd992" }]}>{successMsg}</Text>
+      )}
 
       {/* Hlavní info */}
-      <View style={styles.card}>
-        <Text style={styles.label}>{t(lang, "newRecipe", "nameLabel")}</Text>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        <Text style={[styles.label, { color: colors.text }]}>
+          {t(lang, "newRecipe", "nameLabel")}
+        </Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           placeholder={t(lang, "newRecipe", "titlePlaceholder")}
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.muted}
           value={title}
           onChangeText={setTitle}
         />
 
-        <Text style={styles.label}>
+        <Text style={[styles.label, { color: colors.text }]}>
           {t(lang, "newRecipe", "difficultyLabel")}
         </Text>
         <View style={styles.difficultyRow}>
@@ -441,11 +465,25 @@ export default function NewRecipeScreen() {
             return (
               <Pressable
                 key={d}
-                style={[styles.chip, active && styles.chipActive]}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                  active && {
+                    backgroundColor: colors.pillActive,
+                    borderColor: colors.pillActive,
+                  },
+                ]}
                 onPress={() => setDifficulty(d)}
               >
                 <Text
-                  style={[styles.chipText, active && styles.chipTextActive]}
+                  style={[
+                    styles.chipText,
+                    { color: colors.text },
+                    active && styles.chipTextActive,
+                  ]}
                 >
                   {translateDifficulty(lang, d)}
                 </Text>
@@ -454,9 +492,20 @@ export default function NewRecipeScreen() {
           })}
         </View>
 
-        <Text style={styles.label}> {t(lang, "newRecipe", "timeLabel")}</Text>
+        <Text style={[styles.label, { color: colors.text }]}>
+          {" "}
+          {t(lang, "newRecipe", "timeLabel")}
+        </Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           placeholder={t(lang, "newRecipe", "timePlaceholder")}
           placeholderTextColor="#999"
           value={time}
@@ -464,7 +513,7 @@ export default function NewRecipeScreen() {
         />
 
         <View style={styles.publicRow}>
-          <Text style={styles.label}>
+          <Text style={[styles.label, { color: colors.text }]}>
             {" "}
             {t(lang, "newRecipe", "publicLabel")}
           </Text>
@@ -473,22 +522,33 @@ export default function NewRecipeScreen() {
       </View>
 
       {/* Thumbnail */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {" "}
           {t(lang, "newRecipe", "thumbTitle")}
         </Text>
-        <Pressable style={styles.thumbBox} onPress={handlePickThumb}>
+        <Pressable
+          style={[
+            styles.thumbBox,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+          onPress={handlePickThumb}
+        >
           {thumbUri ? (
             thumbMediaType === "image" ? (
               <Image source={{ uri: thumbUri }} style={styles.thumbImage} />
             ) : (
-              <Text style={styles.thumbPlaceholder}>
+              <Text style={[styles.thumbPlaceholder, { color: colors.muted }]}>
                 {t(lang, "newRecipe", "thumbVideoSelected")}
               </Text>
             )
           ) : (
-            <Text style={styles.thumbPlaceholder}>
+            <Text style={[styles.thumbPlaceholder, { color: colors.muted }]}>
               {t(lang, "newRecipe", "thumbTapSelect")}
             </Text>
           )}
@@ -496,15 +556,26 @@ export default function NewRecipeScreen() {
       </View>
 
       {/* Steps */}
-      <View style={styles.card}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
         <Text style={styles.sectionTitle}>
           {" "}
           {t(lang, "newRecipe", "stepsTitle")}
         </Text>
         {steps.map((step, index) => (
-          <View key={index} style={styles.stepCard}>
+          <View
+            key={index}
+            style={[
+              styles.stepCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
             <View style={styles.stepHeaderRow}>
-              <Text style={styles.stepTitle}>
+              <Text style={[styles.stepTitle, { color: colors.text }]}>
                 {" "}
                 {t(lang, "newRecipe", "stepLabelPrefix")} {index + 1}
               </Text>
@@ -519,16 +590,27 @@ export default function NewRecipeScreen() {
             </View>
 
             <TextInput
-              style={[styles.input, styles.multilineInput]}
+              style={[
+                styles.input,
+                styles.multilineInput,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
+              placeholderTextColor={colors.muted}
               placeholder={t(lang, "newRecipe", "stepDescribePlaceholder")}
-              placeholderTextColor="#999"
               multiline
               value={step.description}
               onChangeText={(val) => updateStepDesc(index, val)}
             />
 
             <Pressable
-              style={styles.stepMediaBox}
+              style={[
+                styles.stepMediaBox,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
               onPress={() => handlePickStepMedia(index)}
             >
               {step.localUri ? (
@@ -538,26 +620,38 @@ export default function NewRecipeScreen() {
                     style={styles.stepImage}
                   />
                 ) : (
-                  <Text style={styles.thumbPlaceholder}>
+                  <Text
+                    style={[styles.thumbPlaceholder, { color: colors.muted }]}
+                  >
                     {" "}
                     {t(lang, "newRecipe", "stepVideoSelected")}
                   </Text>
                 )
               ) : (
-                <Text style={styles.thumbPlaceholder}>
+                <Text
+                  style={[styles.thumbPlaceholder, { color: colors.muted }]}
+                >
                   {t(lang, "newRecipe", "stepMediaPlaceholder")}
                 </Text>
               )}
             </Pressable>
 
             <View style={styles.timerRow}>
-              <Text style={styles.timerLabel}>
+              <Text
+                style={[styles.timerLabel, { color: colors.secondaryText }]}
+              >
                 {t(lang, "newRecipe", "timerLabel")}
               </Text>
               <TextInput
-                style={styles.timerInput}
-                placeholder={t(lang, "newRecipe", "timerPlaceholder")}
-                placeholderTextColor="#999"
+                style={[
+                  styles.timerInput,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  },
+                ]}
+                placeholderTextColor={colors.muted}
                 value={step.timerInput}
                 onChangeText={(val) => updateStepTimer(index, val)}
                 keyboardType="numbers-and-punctuation"
@@ -567,7 +661,7 @@ export default function NewRecipeScreen() {
         ))}
 
         <Pressable style={styles.addBtn} onPress={addStep}>
-          <Text style={styles.addBtnText}>
+          <Text style={[styles.addBtnText, { color: colors.text }]}>
             {" "}
             {t(lang, "newRecipe", "addStepBtn")}
           </Text>
@@ -575,7 +669,12 @@ export default function NewRecipeScreen() {
       </View>
 
       {/* Ingredients */}
-      <View style={styles.card}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
         <Text style={styles.sectionTitle}>
           {" "}
           {t(lang, "newRecipe", "ingredientsTitle")}
@@ -583,24 +682,37 @@ export default function NewRecipeScreen() {
         {ingredients.map((ing, index) => (
           <View key={index} style={styles.ingredientRow}>
             <TextInput
-              style={[styles.input, styles.ingredientInput]}
+              style={[
+                styles.input,
+                styles.ingredientInput,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
+              placeholderTextColor={colors.muted}
               placeholder={t(lang, "newRecipe", "ingredientPlaceholder")}
-              placeholderTextColor="#999"
               value={ing}
               onChangeText={(val) => updateIngredient(index, val)}
             />
             {ingredients.length > 1 && (
               <Pressable
-                style={styles.removeBtn}
+                style={[styles.removeBtn, { backgroundColor: colors.card }]}
                 onPress={() => removeIngredient(index)}
               >
-                <Text style={styles.removeBtnText}>X</Text>
+                <Text style={[styles.removeBtnText, { color: colors.danger }]}>
+                  X
+                </Text>
               </Pressable>
             )}
           </View>
         ))}
-        <Pressable style={styles.addBtn} onPress={addIngredient}>
-          <Text style={styles.addBtnText}>
+        <Pressable
+          style={[styles.addBtn, { borderColor: colors.border }]}
+          onPress={addIngredient}
+        >
+          <Text style={[styles.addBtnText, { color: colors.text }]}>
             {t(lang, "newRecipe", "addIngredientBtn")}
           </Text>
         </Pressable>
@@ -608,13 +720,19 @@ export default function NewRecipeScreen() {
 
       {/* Submit */}
       <Pressable
-        style={[styles.submitBtn, saving && styles.submitBtnDisabled]}
+        style={[
+          styles.submitBtn,
+          {
+            backgroundColor: colors.pillActive,
+          },
+          saving && styles.submitBtnDisabled,
+        ]}
         onPress={saving ? undefined : handleSubmit}
       >
         {saving ? (
           <ActivityIndicator />
         ) : (
-          <Text style={styles.submitBtnText}>
+          <Text style={[styles.submitBtnText, { color: colors.text }]}>
             {t(lang, "newRecipe", "createBtn")}
           </Text>
         )}

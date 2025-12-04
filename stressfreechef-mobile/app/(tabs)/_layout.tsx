@@ -3,9 +3,15 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { t, Lang, LANG_KEY } from "../../i18n/strings";
+import { useTheme } from "../../theme/ThemeContext";
+import {
+  useFonts,
+  Montserrat_800ExtraBold,
+} from "@expo-google-fonts/montserrat";
 
 export default function Layout() {
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<Lang>("cs");
+  const { colors } = useTheme(); // ← čteme theme barvy
 
   useEffect(() => {
     (async () => {
@@ -15,12 +21,17 @@ export default function Layout() {
       }
     })();
   }, []);
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { backgroundColor: "#0c0c0cff" },
-        tabBarActiveTintColor: "#8d0f0fff",
+        tabBarStyle: {
+          backgroundColor: colors.card, // ← přepíná se podle tématu
+          borderTopColor: colors.border, // jemná linka
+        },
+        tabBarActiveTintColor: colors.pillActive, // aktivní ikona = accent
+        tabBarInactiveTintColor: colors.text, // neaktivní
       }}
     >
       <Tabs.Screen

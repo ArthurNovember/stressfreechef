@@ -1,6 +1,7 @@
 // app/favorites.tsx
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { t, Lang, LANG_KEY } from "../i18n/strings";
+import { useTheme } from "../theme/ThemeContext";
 
 import {
   ActivityIndicator,
@@ -53,7 +54,7 @@ const isUnauthorizedError = (e: any) => {
 /** ===== Hlavní screen ===== */
 export default function FavoritesScreen() {
   const router = useRouter();
-
+  const { colors } = useTheme(); // 🎨 TADY theme barvy
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -423,9 +424,9 @@ export default function FavoritesScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" />
-        <Text style={styles.centerText}>
+        <Text style={[styles.centerText, { color: colors.text }]}>
           {" "}
           {t(lang, "favorites", "loading")}
         </Text>
@@ -435,13 +436,19 @@ export default function FavoritesScreen() {
 
   if (err) {
     return (
-      <View style={styles.center}>
-        <Text style={[styles.centerText, { color: "#f77" }]}>{err}</Text>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={[styles.centerText, { color: colors.danger }]}>{err}</Text>
         <Pressable
-          style={[styles.primaryBtn, { marginTop: 12 }]}
+          style={[
+            styles.primaryBtn,
+            {
+              marginTop: 12,
+              backgroundColor: colors.pillActive,
+            },
+          ]}
           onPress={loadAll}
         >
-          <Text style={styles.primaryBtnText}>
+          <Text style={[styles.primaryBtnText, { color: colors.text }]}>
             {" "}
             {t(lang, "shopping", "retry")}
           </Text>
@@ -454,13 +461,13 @@ export default function FavoritesScreen() {
     editingFavoriteId != null
       ? favorites.find((f) => f._id === editingFavoriteId) || null
       : null;
-
+  const noShopActive = filterShopIds.includes("No Shop");
   /** ==== UI ==== */
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={styles.headerRow}>
         <Pressable onPress={() => router.replace("/(tabs)/shopping")}>
-          <Text style={styles.backText}>
+          <Text style={[styles.backText, { color: colors.text }]}>
             {t(lang, "favorites", "backToShopping")}
           </Text>
         </Pressable>
@@ -468,10 +475,19 @@ export default function FavoritesScreen() {
 
       {/* 🔹 INPUT NA NOVÝ FAVORITE */}
       <View style={{ paddingHorizontal: 12, paddingBottom: 4 }}>
-        <View style={styles.newItemCard}>
+        <View
+          style={[
+            styles.newItemCard,
+            {
+              backgroundColor: colors.favorite,
+              borderColor: "#353535ff",
+              borderWidth: 5,
+            },
+          ]}
+        >
           <Text
             style={{
-              color: "#fff",
+              color: "white",
               fontSize: 18,
               fontWeight: "700",
               marginBottom: 6,
@@ -482,15 +498,22 @@ export default function FavoritesScreen() {
 
           <TextInput
             placeholder={t(lang, "favorites", "addFavoritePlaceholder")}
-            placeholderTextColor="#777"
+            placeholderTextColor={colors.muted}
             value={newText}
             onChangeText={setNewText}
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
           />
 
           {shopOptions.length > 0 && (
             <View style={{ marginTop: 8 }}>
-              <Text style={styles.label}>
+              <Text style={[styles.label, { color: "white" }]}>
                 {t(lang, "shopping", "shopsForItem")}
               </Text>
               <View style={styles.shopsRow}>
@@ -499,7 +522,17 @@ export default function FavoritesScreen() {
                   return (
                     <Pressable
                       key={shop._id}
-                      style={[styles.chipSmall, active && styles.chipActive]}
+                      style={[
+                        styles.chipSmall,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
+                        active && {
+                          backgroundColor: colors.pillActive,
+                          borderColor: colors.pillActive,
+                        },
+                      ]}
                       onPress={() => {
                         setNewFavoriteShopIds((prev) =>
                           prev.includes(shop._id)
@@ -511,6 +544,7 @@ export default function FavoritesScreen() {
                       <Text
                         style={[
                           styles.chipText,
+                          { color: colors.text },
                           active && styles.chipTextActive,
                         ]}
                       >
@@ -524,10 +558,16 @@ export default function FavoritesScreen() {
           )}
 
           <Pressable
-            style={styles.manageShopsBtn}
+            style={[
+              styles.manageShopsBtn,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+            ]}
             onPress={() => setManageShopsVisible(true)}
           >
-            <Text style={styles.manageShopsText}>
+            <Text style={[styles.manageShopsText, { color: colors.text }]}>
               {shopOptions.length > 0
                 ? t(lang, "shopping", "manageShops")
                 : t(lang, "shopping", "addShops")}
@@ -537,12 +577,13 @@ export default function FavoritesScreen() {
           <Pressable
             style={[
               styles.primaryBtn,
+              { backgroundColor: "#1a1a1aff" },
               (!newText.trim() || savingFavorite) && { opacity: 0.6 },
             ]}
             onPress={handleAddFavorite}
             disabled={!newText.trim() || savingFavorite}
           >
-            <Text style={styles.primaryBtnText}>
+            <Text style={[styles.primaryBtnText, { color: "white" }]}>
               {savingFavorite
                 ? t(lang, "favorites", "saving")
                 : t(lang, "favorites", "addFavoriteBtn")}
@@ -551,7 +592,7 @@ export default function FavoritesScreen() {
         </View>
 
         {/* 🔹 FILTR JAKO V SHOPPINGLISTU */}
-        <Text style={{ color: "#d9d8d8ff", fontSize: 20, paddingTop: 10 }}>
+        <Text style={{ color: colors.text, fontSize: 20, paddingTop: 10 }}>
           {t(lang, "shopping", "filterByShop")}
         </Text>
         {shopOptions.length > 0 && (
@@ -565,12 +606,20 @@ export default function FavoritesScreen() {
               onPress={() => setFilterShopIds([])}
               style={[
                 styles.chip,
-                filterShopIds.length === 0 && styles.chipActive,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
+                filterShopIds.length === 0 && {
+                  backgroundColor: colors.pillActive,
+                  borderColor: colors.pillActive,
+                },
               ]}
             >
               <Text
                 style={[
                   styles.chipText,
+                  { color: colors.text },
                   filterShopIds.length === 0 && styles.chipTextActive,
                 ]}
               >
@@ -591,10 +640,24 @@ export default function FavoritesScreen() {
                         : [...prev, shop._id]
                     );
                   }}
-                  style={[styles.chip, active && styles.chipActive]}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                    active && {
+                      backgroundColor: colors.pillActive,
+                      borderColor: colors.pillActive,
+                    },
+                  ]}
                 >
                   <Text
-                    style={[styles.chipText, active && styles.chipTextActive]}
+                    style={[
+                      styles.chipText,
+                      { color: colors.text },
+                      active && styles.chipTextActive,
+                    ]}
                   >
                     {shop.name}
                   </Text>
@@ -603,6 +666,7 @@ export default function FavoritesScreen() {
             })}
 
             {/* No Shop */}
+
             <Pressable
               onPress={() => {
                 setFilterShopIds((prev) =>
@@ -613,13 +677,21 @@ export default function FavoritesScreen() {
               }}
               style={[
                 styles.chip,
-                filterShopIds.includes("No Shop") && styles.chipActive,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
+                noShopActive && {
+                  backgroundColor: colors.pillActive,
+                  borderColor: colors.pillActive,
+                },
               ]}
             >
               <Text
                 style={[
                   styles.chipText,
-                  filterShopIds.includes("No Shop") && styles.chipTextActive,
+                  { color: colors.text },
+                  noShopActive && styles.chipTextActive,
                 ]}
               >
                 No Shop
@@ -631,7 +703,9 @@ export default function FavoritesScreen() {
 
       {/* 🔹 SEZNAM FAVORITES (filtrovaný) */}
       {processedFavorites.length === 0 ? (
-        <View style={styles.center}></View>
+        <View
+          style={[styles.center, { backgroundColor: colors.background }]}
+        ></View>
       ) : (
         <ScrollView
           contentContainerStyle={{ padding: 12, paddingBottom: 24 }}
@@ -644,18 +718,44 @@ export default function FavoritesScreen() {
                 : t(lang, "shopping", "shopsTitle") + " ▾";
 
             return (
-              <View key={item._id} style={styles.row}>
+              <View
+                key={item._id}
+                style={[
+                  styles.row,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.itemText}>
-                    <Text style={styles.itemIndex}>{index + 1}. </Text>
+                  <Text style={[styles.itemText, { color: colors.text }]}>
+                    <Text
+                      style={[styles.itemIndex, { color: colors.pillActive }]}
+                    >
+                      {index + 1}.{" "}
+                    </Text>
                     {item.text}
                   </Text>
 
                   <Pressable
-                    style={styles.shopsBtn}
+                    style={[
+                      styles.shopsBtn,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                      },
+                    ]}
                     onPress={() => setEditingFavoriteId(item._id)}
                   >
-                    <Text style={styles.shopsBtnText}>{shopLabel}</Text>
+                    <Text
+                      style={[
+                        styles.shopsBtnText,
+                        { color: colors.secondaryText },
+                      ]}
+                    >
+                      {shopLabel}
+                    </Text>
                   </Pressable>
                 </View>
 
@@ -669,10 +769,12 @@ export default function FavoritesScreen() {
                     />
                   </Pressable>
                   <Pressable
-                    style={[styles.smallBtn, styles.deleteBtn]}
+                    style={[styles.smallBtn, { backgroundColor: "#7a0202ff" }]}
                     onPress={() => deleteFavorite(item._id)}
                   >
-                    <Text style={styles.smallBtnText}>✕</Text>
+                    <Text style={[styles.smallBtnText, { color: "#fff" }]}>
+                      ✕
+                    </Text>
                   </Pressable>
                 </View>
               </View>
@@ -689,11 +791,13 @@ export default function FavoritesScreen() {
         onRequestClose={() => setEditingFavoriteId(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
               {editingFavorite?.text || t(lang, "shopping", "itemFallback")}
             </Text>
-            <Text style={styles.modalSubtitle}>
+            <Text
+              style={[styles.modalSubtitle, { color: colors.secondaryText }]}
+            >
               {t(lang, "shopping", "shopsTitle")}
             </Text>
 
@@ -707,7 +811,8 @@ export default function FavoritesScreen() {
                     key={shop._id}
                     style={[
                       styles.modalRow,
-                      active && { backgroundColor: "#333" },
+                      { borderBottomColor: colors.border },
+                      active && { backgroundColor: colors.card },
                     ]}
                   >
                     <Pressable
@@ -721,8 +826,18 @@ export default function FavoritesScreen() {
                         toggleShopForFavorite(editingFavorite, shop._id)
                       }
                     >
-                      <Text style={styles.modalRowText}>{shop.name}</Text>
-                      {active && <Text style={styles.modalRowText}>✓</Text>}
+                      <Text
+                        style={[styles.modalRowText, { color: colors.text }]}
+                      >
+                        {shop.name}
+                      </Text>
+                      {active && (
+                        <Text
+                          style={[styles.modalRowText, { color: colors.text }]}
+                        >
+                          ✓
+                        </Text>
+                      )}
                     </Pressable>
                   </View>
                 );
@@ -739,18 +854,31 @@ export default function FavoritesScreen() {
                   value={addingShopName}
                   onChangeText={setAddingShopName}
                   placeholder={t(lang, "shopping", "newShopPlaceholder")}
-                  placeholderTextColor="#777"
-                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  placeholderTextColor={colors.muted}
+                  style={[
+                    styles.input,
+                    {
+                      flex: 1,
+                      marginBottom: 0,
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                      color: colors.text,
+                    },
+                  ]}
                 />
                 <Pressable
                   style={[
                     styles.primaryBtn,
-                    { marginLeft: 8, paddingHorizontal: 16 },
+                    {
+                      marginLeft: 8,
+                      paddingHorizontal: 16,
+                      backgroundColor: colors.pillActive,
+                    },
                   ]}
                   disabled={addingShopBusy}
                   onPress={handleAddShopOption}
                 >
-                  <Text style={styles.primaryBtnText}>
+                  <Text style={[styles.primaryBtnText]}>
                     {addingShopBusy ? "…" : "+"}
                   </Text>
                 </Pressable>
@@ -758,10 +886,17 @@ export default function FavoritesScreen() {
             </View>
 
             <Pressable
-              style={[styles.secondaryBtn, { marginTop: 16 }]}
+              style={[
+                styles.secondaryBtn,
+                {
+                  marginTop: 16,
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
+              ]}
               onPress={() => setEditingFavoriteId(null)}
             >
-              <Text style={styles.secondaryBtnText}>
+              <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
                 {" "}
                 {t(lang, "shopping", "close")}
               </Text>
@@ -778,16 +913,24 @@ export default function FavoritesScreen() {
         onRequestClose={() => setManageShopsVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
               {" "}
               {t(lang, "shopping", "manageShopsTitle")}
             </Text>
 
             <ScrollView style={{ maxHeight: 260, marginTop: 8 }}>
               {shopOptions.map((shop) => (
-                <View key={shop._id} style={styles.modalRow}>
-                  <Text style={styles.modalRowText}>{shop.name}</Text>
+                <View
+                  key={shop._id}
+                  style={[
+                    styles.modalRow,
+                    { borderBottomColor: colors.border },
+                  ]}
+                >
+                  <Text style={[styles.modalRowText, { color: colors.text }]}>
+                    {shop.name}
+                  </Text>
                   <Pressable
                     style={styles.modalDeleteShopBtn}
                     onPress={() => deleteShopOption(shop._id)}
@@ -805,14 +948,25 @@ export default function FavoritesScreen() {
             </ScrollView>
 
             <View style={{ marginTop: 12 }}>
-              <Text style={styles.label}>Add new shop</Text>
+              <Text style={styles.label}>
+                {t(lang, "shopping", "addNewShopLabel")}
+              </Text>
               <View style={styles.addShopRow}>
                 <TextInput
                   value={addingShopName}
                   onChangeText={setAddingShopName}
                   placeholder="New shop name"
-                  placeholderTextColor="#777"
-                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  placeholderTextColor={colors.muted}
+                  style={[
+                    styles.input,
+                    {
+                      flex: 1,
+                      marginBottom: 0,
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                      color: colors.text,
+                    },
+                  ]}
                 />
                 <Pressable
                   style={[
@@ -830,10 +984,20 @@ export default function FavoritesScreen() {
             </View>
 
             <Pressable
-              style={[styles.secondaryBtn, { marginTop: 16 }]}
+              style={[
+                styles.secondaryBtn,
+                {
+                  marginTop: 16,
+                  backgroundColor: colors.border,
+                  borderColor: colors.border,
+                },
+              ]}
               onPress={() => setManageShopsVisible(false)}
             >
-              <Text style={styles.secondaryBtnText}>Close</Text>
+              <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
+                {" "}
+                {t(lang, "shopping", "close")}
+              </Text>
             </Pressable>
           </View>
         </View>

@@ -4,6 +4,7 @@ import { useScrollToTop, useFocusEffect } from "@react-navigation/native";
 import { Video, ResizeMode } from "expo-av";
 import { MaterialIcons } from "@expo/vector-icons";
 import { t, Lang, LANG_KEY } from "../../i18n/strings";
+import { useTheme } from "../../theme/ThemeContext";
 
 import {
   View,
@@ -214,6 +215,7 @@ function StarRatingDisplay({
 }
 
 export default function ExploreScreen() {
+  const { colors } = useTheme(); // ← theme barvy
   const [items, setItems] = useState<CommunityRecipe[]>([]);
   const [displayList, setDisplayList] = useState<CommunityRecipe[]>([]);
 
@@ -436,8 +438,10 @@ export default function ExploreScreen() {
 
   if (!API_BASE) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errText}>Missing EXPO_PUBLIC_API_BASE in .env</Text>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errText, { color: colors.danger }]}>
+          Missing EXPO_PUBLIC_API_BASE in .env
+        </Text>
       </View>
     );
   }
@@ -518,7 +522,10 @@ export default function ExploreScreen() {
 
     return (
       <Pressable
-        style={styles.card}
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
         onPress={() => {
           setSelected(item); // modal si vezme cover přes getCover(selected)
         }}
@@ -536,18 +543,21 @@ export default function ExploreScreen() {
           <Image source={{ uri: cover.url }} style={styles.cardImg} />
         )}
 
-        <Text style={styles.cardTitle} numberOfLines={2}>
+        <Text
+          style={[styles.cardTitle, { color: colors.text }]}
+          numberOfLines={2}
+        >
           {item.title || "Untitled"}
         </Text>
         <StarRatingDisplay
           value={ratingVal}
           count={item.ratingCount ?? undefined}
         />
-        <Text style={styles.cardMeta}>
+        <Text style={[styles.cardMeta, { color: colors.secondaryText }]}>
           {t(lang, "home", "difficulty")}:{" "}
           {translateDifficulty(lang, item.difficulty || "—")}
         </Text>
-        <Text style={styles.cardMeta}>
+        <Text style={[styles.cardMeta, { color: colors.secondaryText }]}>
           {" "}
           {t(lang, "home", "time")}: {item.time || "—"} ⏱️
         </Text>
@@ -566,20 +576,25 @@ export default function ExploreScreen() {
   const selectedCover = selected ? getCover(selected) : null;
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
       {/* 🔝 Přepínač módů – vždy viditelný */}
-      <View style={styles.headerWrap}>
+      <View style={[styles.headerWrap, { backgroundColor: colors.background }]}>
         <View style={styles.viewModeRow}>
           <Pressable
             style={[
               styles.viewModeBtn,
-              viewMode === "GRID" && styles.viewModeBtnActive,
+              { borderColor: colors.border, backgroundColor: colors.card },
+              viewMode === "GRID" && {
+                backgroundColor: colors.pillActive,
+                borderColor: colors.pillActive,
+              },
             ]}
             onPress={() => setViewMode("GRID")}
           >
             <Text
               style={[
                 styles.viewModeText,
+                { color: colors.text },
                 viewMode === "GRID" && styles.viewModeTextActive,
               ]}
             >
@@ -589,7 +604,11 @@ export default function ExploreScreen() {
           <Pressable
             style={[
               styles.viewModeBtn,
-              viewMode === "SWIPE" && styles.viewModeBtnActive,
+              { borderColor: colors.border, backgroundColor: colors.card },
+              viewMode === "SWIPE" && {
+                backgroundColor: colors.pillActive,
+                borderColor: colors.pillActive,
+              },
             ]}
             onPress={() => {
               setViewMode("SWIPE");
@@ -599,13 +618,17 @@ export default function ExploreScreen() {
             <Text
               style={[
                 styles.viewModeText,
+                { color: colors.text },
                 viewMode === "SWIPE" && styles.viewModeTextActive,
               ]}
             >
               {t(lang, "explore", "swipe")}
             </Text>
           </Pressable>
-          <Text style={styles.screenTitle}> {t(lang, "explore", "title")}</Text>
+          <Text style={[styles.screenTitle, { color: colors.text }]}>
+            {" "}
+            {t(lang, "explore", "title")}
+          </Text>
         </View>
 
         {/* GRID header – nadpis, search, filtry (v SWIPE módu skryté) */}
@@ -613,9 +636,16 @@ export default function ExploreScreen() {
           <>
             <View style={styles.searchRow}>
               <TextInput
-                style={styles.searchInput}
+                style={[
+                  styles.searchInput,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  },
+                ]}
+                placeholderTextColor={colors.muted}
                 placeholder={t(lang, "explore", "searchPlaceholder")}
-                placeholderTextColor="#777"
                 value={q}
                 onChangeText={setQ}
                 returnKeyType="search"
@@ -627,7 +657,7 @@ export default function ExploreScreen() {
             ) : loading && items.length === 0 ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator />
-                <Text style={styles.loadingText}>
+                <Text style={[styles.loadingText, { color: colors.muted }]}>
                   {" "}
                   {t(lang, "explore", "loading")}
                 </Text>
@@ -642,12 +672,20 @@ export default function ExploreScreen() {
 
             <View style={styles.chipsRow}>
               <Pressable
-                style={[styles.chip, active === "NEWEST" && styles.chipActive]}
+                style={[
+                  styles.chip,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                  active === "NEWEST" && {
+                    backgroundColor: colors.pillActive,
+                    borderColor: colors.pillActive,
+                  },
+                ]}
                 onPress={() => setActive("NEWEST")}
               >
                 <Text
                   style={[
                     styles.chipText,
+                    { color: colors.text },
                     active === "NEWEST" && styles.chipTextActive,
                   ]}
                 >
@@ -655,12 +693,20 @@ export default function ExploreScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.chip, active === "EASIEST" && styles.chipActive]}
+                style={[
+                  styles.chip,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                  active === "EASIEST" && {
+                    backgroundColor: colors.pillActive,
+                    borderColor: colors.pillActive,
+                  },
+                ]}
                 onPress={() => setActive("EASIEST")}
               >
                 <Text
                   style={[
                     styles.chipText,
+                    { color: colors.text },
                     active === "EASIEST" && styles.chipTextActive,
                   ]}
                 >
@@ -670,13 +716,18 @@ export default function ExploreScreen() {
               <Pressable
                 style={[
                   styles.chip,
-                  active === "FAVORITE" && styles.chipActive,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                  active === "FAVORITE" && {
+                    backgroundColor: colors.pillActive,
+                    borderColor: colors.pillActive,
+                  },
                 ]}
                 onPress={() => setActive("FAVORITE")}
               >
                 <Text
                   style={[
                     styles.chipText,
+                    { color: colors.text },
                     active === "FAVORITE" && styles.chipTextActive,
                   ]}
                 >
@@ -684,12 +735,20 @@ export default function ExploreScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.chip, active === "RANDOM" && styles.chipActive]}
+                style={[
+                  styles.chip,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                  active === "RANDOM" && {
+                    backgroundColor: colors.pillActive,
+                    borderColor: colors.pillActive,
+                  },
+                ]}
                 onPress={() => setActive("RANDOM")}
               >
                 <Text
                   style={[
                     styles.chipText,
+                    { color: colors.text },
                     active === "RANDOM" && styles.chipTextActive,
                   ]}
                 >
@@ -704,7 +763,7 @@ export default function ExploreScreen() {
       {/* Tělo – GRID nebo SWIPE */}
       {viewMode === "GRID" ? (
         loading && items.length === 0 ? (
-          <View style={styles.center}>
+          <View style={[styles.center, { backgroundColor: colors.background }]}>
             <ActivityIndicator size="large" />
           </View>
         ) : (
@@ -727,7 +786,7 @@ export default function ExploreScreen() {
               loading && items.length > 0 ? (
                 <View style={styles.listFooter}>
                   <ActivityIndicator />
-                  <Text style={styles.loadingText}>
+                  <Text style={[styles.loadingText, { color: colors.muted }]}>
                     {t(lang, "explore", "loadingMore")}
                   </Text>
                 </View>
@@ -751,7 +810,7 @@ export default function ExploreScreen() {
             // jsme na poslední kartě, ale zrovna se načítá další stránka → ukaž loader místo „no more“
             <View style={styles.center}>
               <ActivityIndicator />
-              <Text style={styles.loadingText}>
+              <Text style={[styles.loadingText, { color: colors.muted }]}>
                 {" "}
                 {t(lang, "explore", "loadingMoreSwipe")}
               </Text>
@@ -789,7 +848,15 @@ export default function ExploreScreen() {
                 const isFav = id && favoriteIds.includes(id);
 
                 return (
-                  <View style={styles.swipeCard}>
+                  <View
+                    style={[
+                      styles.swipeCard,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
                     <ScrollView contentContainerStyle={styles.swipeCardContent}>
                       {cover.isVideo ? (
                         <Video
@@ -806,26 +873,49 @@ export default function ExploreScreen() {
                           style={styles.swipeImg}
                         />
                       )}
-                      <Text style={styles.swipeTitle}>{card.title}</Text>
+                      <Text style={[styles.swipeTitle, { color: colors.text }]}>
+                        {card.title}
+                      </Text>
                       <StarRatingDisplay
                         value={ratingVal}
                         count={card.ratingCount ?? undefined}
                       />
-                      <Text style={styles.swipeMeta}>
+                      <Text
+                        style={[
+                          styles.swipeMeta,
+                          { color: colors.secondaryText },
+                        ]}
+                      >
                         {t(lang, "home", "difficulty")}:{" "}
                         {translateDifficulty(lang, card.difficulty || "—")}
                       </Text>
-                      <Text style={styles.swipeMeta}>
+                      <Text
+                        style={[
+                          styles.swipeMeta,
+                          { color: colors.secondaryText },
+                        ]}
+                      >
                         {t(lang, "home", "time")}: {card.time || "—"} ⏱️
                       </Text>
                       {card.ingredients?.length ? (
                         <>
-                          <Text style={styles.section}>
+                          <Text
+                            style={[
+                              styles.section,
+                              { color: colors.pillActive },
+                            ]}
+                          >
                             {" "}
                             {t(lang, "explore", "ingredients")}
                           </Text>
                           {card.ingredients.map((ing, i) => (
-                            <Text key={i} style={styles.ingredient}>
+                            <Text
+                              key={i}
+                              style={[
+                                styles.ingredient,
+                                { color: colors.text },
+                              ]}
+                            >
                               • {ing}
                             </Text>
                           ))}
@@ -833,7 +923,10 @@ export default function ExploreScreen() {
                       ) : null}
 
                       <Pressable
-                        style={styles.primaryBtn}
+                        style={[
+                          styles.primaryBtn,
+                          { backgroundColor: colors.pillActive },
+                        ]}
                         onPress={() => openRecipe(card)}
                       >
                         <Text style={styles.primaryBtnText}>
@@ -844,7 +937,13 @@ export default function ExploreScreen() {
 
                     <View style={styles.swipeActionsRow}>
                       <Pressable
-                        style={[styles.swipeActionBtn, styles.swipeActionSkip]}
+                        style={[
+                          styles.swipeActionBtn,
+                          {
+                            backgroundColor: colors.border,
+                            borderColor: colors.border,
+                          },
+                        ]}
                         onPress={() => {
                           setSwipeIndex((i) => {
                             const next = i + 1 < swipeDeck.length ? i + 1 : i;
@@ -856,14 +955,22 @@ export default function ExploreScreen() {
                           });
                         }}
                       >
-                        <Text style={styles.swipeActionText}>
+                        <Text
+                          style={[
+                            styles.swipeActionText,
+                            { color: colors.text },
+                          ]}
+                        >
                           {" "}
                           {t(lang, "explore", "skip")}
                         </Text>
                       </Pressable>
 
                       <Pressable
-                        style={[styles.swipeActionBtn, styles.swipeActionSave]}
+                        style={[
+                          styles.swipeActionBtn,
+                          { backgroundColor: colors.pillActive },
+                        ]}
                         onPress={async () => {
                           await handleSaveFavorite(card);
                           setSwipeIndex((i) => {
@@ -876,7 +983,12 @@ export default function ExploreScreen() {
                           });
                         }}
                       >
-                        <Text style={styles.swipeActionText}>
+                        <Text
+                          style={[
+                            styles.swipeActionText,
+                            { color: colors.text },
+                          ]}
+                        >
                           {" "}
                           {t(lang, "explore", "save")}
                         </Text>
@@ -898,16 +1010,20 @@ export default function ExploreScreen() {
         onRequestClose={() => setSelected(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
             {selected && (
               <Pressable
                 style={[
                   styles.modalSaveBtn,
-                  selectedIsSaved && styles.modalSaveBtnActive,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                  selectedIsSaved && {
+                    backgroundColor: colors.pillActive,
+                    borderColor: colors.pillActive,
+                  },
                 ]}
                 onPress={() => handleSaveFavorite(selected)}
               >
-                <Text style={styles.modalSaveBtnText}>
+                <Text style={[styles.modalSaveBtnText, { color: colors.text }]}>
                   {selectedIsSaved ? "Saved" : "Save"}
                 </Text>
               </Pressable>
@@ -928,7 +1044,9 @@ export default function ExploreScreen() {
                 />
               )}
 
-              <Text style={styles.modalTitle}>{selected?.title}</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {selected?.title}
+              </Text>
               <StarRatingDisplay
                 value={
                   typeof selected?.ratingAvg === "number"
@@ -937,25 +1055,36 @@ export default function ExploreScreen() {
                 }
                 count={selected?.ratingCount}
               />
-              <Text style={styles.modalMeta}>
+              <Text style={[styles.modalMeta, { color: colors.secondaryText }]}>
                 {t(lang, "home", "difficulty")}:{" "}
                 {translateDifficulty(lang, selected?.difficulty || "—")}
               </Text>
-              <Text style={styles.modalMeta}>
+              <Text style={[styles.modalMeta, { color: colors.secondaryText }]}>
                 {t(lang, "home", "time")}: {selected?.time || "—"} ⏱️
               </Text>
               {selected?.ingredients?.length ? (
                 <>
-                  <Text style={styles.section}>
+                  <Text style={[styles.section, { color: colors.pillActive }]}>
                     {" "}
                     {t(lang, "explore", "ingredients")}
                   </Text>
                   {selected.ingredients.map((ing, i) => (
-                    <View key={i} style={styles.ingredientRow}>
-                      <Text style={styles.ingredient}>• {ing}</Text>
+                    <View
+                      key={i}
+                      style={[
+                        styles.ingredientRow,
+                        { borderColor: colors.border },
+                      ]}
+                    >
+                      <Text style={[styles.ingredient, { color: colors.text }]}>
+                        • {ing}
+                      </Text>
 
                       <Pressable
-                        style={styles.ingredientAddBtn}
+                        style={[
+                          styles.ingredientAddBtn,
+                          { backgroundColor: colors.pillActive },
+                        ]}
                         onPress={() => addIngredientToShopping(ing, lang)}
                       >
                         <MaterialIcons
@@ -970,7 +1099,10 @@ export default function ExploreScreen() {
               ) : null}
 
               <Pressable
-                style={styles.primaryBtn}
+                style={[
+                  styles.primaryBtn,
+                  { backgroundColor: colors.pillActive },
+                ]}
                 onPress={() => {
                   openRecipe(selected);
                   setSelected(null);
@@ -981,10 +1113,16 @@ export default function ExploreScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                style={styles.secondaryBtn}
+                style={[
+                  styles.secondaryBtn,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.card,
+                  },
+                ]}
                 onPress={() => setSelected(null)}
               >
-                <Text style={styles.secondaryBtnText}>
+                <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
                   {" "}
                   {t(lang, "explore", "close")}
                 </Text>
@@ -1044,7 +1182,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   viewModeTextActive: {
-    color: "#111",
+    color: "#ffffffff",
   },
   searchRow: {
     flexDirection: "row",

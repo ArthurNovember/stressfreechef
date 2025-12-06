@@ -48,11 +48,25 @@ export default function RecipeStepsScreen() {
   useKeepAwake();
   const { colors } = useTheme(); // 🎨 tady máš theme barvy
   const router = useRouter();
+  function handleBack() {
+    if (source === "explore") {
+      router.replace("/(tabs)/explore");
+    } else if (source === "profile") {
+      router.replace("/(tabs)/profile");
+    } else {
+      // default – když něco chybí, vrať se na home
+      router.replace("/(tabs)/home");
+    }
+  }
   const params = useLocalSearchParams<{
     id: string;
     recipe?: string; // JSON předaný z Home (dočasně)
     communityRecipeId?: string; // volitelně, když se bude posílat z Explore
+    source?: string;
   }>();
+
+  const source =
+    (params.source as "home" | "explore" | "profile" | undefined) ?? "home";
 
   // ⚠️ Dočasný zdroj dat ze stringu (rychlá integrace)
   let recipe: Recipe | null = null;
@@ -300,7 +314,7 @@ export default function RecipeStepsScreen() {
               borderColor: colors.pillActive,
             },
           ]}
-          onPress={() => router.back()}
+          onPress={handleBack}
         >
           <Text style={[s.primaryText, { color: colors.text }]}>
             {t(lang, "recipe", "back")}
@@ -654,7 +668,7 @@ export default function RecipeStepsScreen() {
             </Pressable>
           ) : (
             <Pressable
-              onPress={() => router.back()}
+              onPress={handleBack}
               style={[
                 s.btn,
                 s.btnPrimary,

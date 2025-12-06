@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { t, Lang, LANG_KEY } from "../../i18n/strings";
 import { useTheme } from "../../theme/ThemeContext";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { useRouter } from "expo-router";
 import {
@@ -42,28 +43,56 @@ function parseTimerInput(raw: string): number | null {
   const value = raw.trim();
   if (!value) return null;
 
+  const parts = value.split(":");
+
   // jen číslo => sekundy
-  if (!value.includes(":")) {
-    const sec = Number(value);
+  if (parts.length === 1) {
+    const sec = Number(parts[0]);
     if (!Number.isFinite(sec) || sec <= 0) return null;
     return Math.floor(sec);
   }
 
   // mm:ss
-  const [mStr, sStr] = value.split(":");
-  const min = Number(mStr);
-  const sec = Number(sStr);
-  if (
-    !Number.isFinite(min) ||
-    !Number.isFinite(sec) ||
-    min < 0 ||
-    sec < 0 ||
-    sec >= 60
-  ) {
-    return null;
+  if (parts.length === 2) {
+    const [mStr, sStr] = parts;
+    const min = Number(mStr);
+    const sec = Number(sStr);
+    if (
+      !Number.isFinite(min) ||
+      !Number.isFinite(sec) ||
+      min < 0 ||
+      sec < 0 ||
+      sec >= 60
+    ) {
+      return null;
+    }
+    const total = min * 60 + sec;
+    return total > 0 ? total : null;
   }
-  const total = min * 60 + sec;
-  return total > 0 ? total : null;
+
+  // hh:mm:ss
+  if (parts.length === 3) {
+    const [hStr, mStr, sStr] = parts;
+    const h = Number(hStr);
+    const m = Number(mStr);
+    const s = Number(sStr);
+    if (
+      !Number.isFinite(h) ||
+      !Number.isFinite(m) ||
+      !Number.isFinite(s) ||
+      h < 0 ||
+      m < 0 ||
+      m >= 60 ||
+      s < 0 ||
+      s >= 60
+    ) {
+      return null;
+    }
+    const total = h * 3600 + m * 60 + s;
+    return total > 0 ? total : null;
+  }
+
+  return null;
 }
 
 async function pickMediaFromLibrary(): Promise<{
@@ -169,6 +198,60 @@ async function publishRecipeMobile(token: string, recipeId: string) {
   }
 }
 
+function clampInt(raw: string, max: number): number {
+  const cleaned = raw.replace(/\D/g, ""); // jen čísla
+  if (!cleaned) return 0;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(n, max);
+}
+
+function splitTimerHMS(timer: string) {
+  let h = 0;
+  let m = 0;
+  let s = 0;
+
+  const parts = timer.split(":").filter(Boolean);
+
+  if (parts.length === 1) {
+    const sec = Number(parts[0]);
+    if (Number.isFinite(sec) && sec > 0) {
+      h = Math.floor(sec / 3600);
+      const rem = sec % 3600;
+      m = Math.floor(rem / 60);
+      s = rem % 60;
+    }
+  } else if (parts.length === 2) {
+    m = clampInt(parts[0], 59);
+    s = clampInt(parts[1], 59);
+  } else if (parts.length >= 3) {
+    h = clampInt(parts[0], 99);
+    m = clampInt(parts[1], 59);
+    s = clampInt(parts[2], 59);
+  }
+
+  return {
+    h: String(h).padStart(2, "0"),
+    m: String(m).padStart(2, "0"),
+    s: String(s).padStart(2, "0"),
+  };
+}
+
+function convertRecipeTimeToDate(time: string): Date {
+  const d = new Date(0);
+  if (!time) return d;
+
+  const parts = time.split(":");
+  const h = Number(parts[0] ?? 0);
+  const m = Number(parts[1] ?? 0);
+
+  d.setHours(Number.isFinite(h) ? h : 0);
+  d.setMinutes(Number.isFinite(m) ? m : 0);
+  d.setSeconds(0);
+
+  return d;
+}
+
 export default function NewRecipeScreen() {
   const router = useRouter();
   const { colors } = useTheme(); // 🎨 sem si sáhneš na barvy
@@ -197,6 +280,51 @@ export default function NewRecipeScreen() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const [lang, setLang] = useState<Lang>("en");
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  function handleRecipeTimeChange(date: Date | undefined) {
+    if (!date) {
+      setShowTimePicker(false);
+      return;
+    }
+
+    const h = date.getHours();
+    const m = date.getMinutes();
+
+    const formatted = `${String(h).padStart(2, "0")}:${String(m).padStart(
+      2,
+      "0"
+    )}`;
+
+    setTime(formatted);
+    setShowTimePicker(false);
+  }
+
+  function updateStepTimerPart(
+    index: number,
+    part: "h" | "m" | "s",
+    raw: string
+  ) {
+    setSteps((prev) =>
+      prev.map((step, i) => {
+        if (i !== index) return step;
+
+        const current = splitTimerHMS(step.timerInput);
+        const max = part === "h" ? 99 : 59;
+        const n = clampInt(raw, max);
+
+        const nextH = part === "h" ? n : Number(current.h);
+        const nextM = part === "m" ? n : Number(current.m);
+        const nextS = part === "s" ? n : Number(current.s);
+
+        const formatted = `${String(nextH).padStart(2, "0")}:${String(
+          nextM
+        ).padStart(2, "0")}:${String(nextS).padStart(2, "0")}`;
+
+        return { ...step, timerInput: formatted };
+      })
+    );
+  }
 
   useEffect(() => {
     (async () => {
@@ -241,12 +369,6 @@ export default function NewRecipeScreen() {
   const updateStepDesc = (index: number, value: string) => {
     setSteps((prev) =>
       prev.map((s, i) => (i === index ? { ...s, description: value } : s))
-    );
-  };
-
-  const updateStepTimer = (index: number, value: string) => {
-    setSteps((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, timerInput: value } : s))
     );
   };
 
@@ -496,21 +618,36 @@ export default function NewRecipeScreen() {
           {" "}
           {t(lang, "newRecipe", "timeLabel")}
         </Text>
-        <TextInput
+        <Pressable
+          onPress={() => setShowTimePicker(true)}
           style={[
             styles.input,
-
             {
+              justifyContent: "center",
               backgroundColor: colors.card,
               borderColor: colors.border,
-              color: colors.text,
             },
           ]}
-          placeholder={t(lang, "newRecipe", "timePlaceholder")}
-          placeholderTextColor="#999"
-          value={time}
-          onChangeText={setTime}
-        />
+        >
+          <Text
+            style={{
+              color: time ? colors.text : colors.muted,
+              fontSize: 14,
+            }}
+          >
+            {time ||
+              (lang === "cs" ? "Vyber čas (HH:MM)" : "Select time (HH:MM)")}
+          </Text>
+        </Pressable>
+
+        {showTimePicker && (
+          <DateTimePicker
+            mode="time"
+            display="spinner"
+            value={convertRecipeTimeToDate(time)}
+            onChange={(_, date) => handleRecipeTimeChange(date || undefined)}
+          />
+        )}
 
         <View style={styles.publicRow}>
           <Text style={[styles.label, { color: colors.text }]}>
@@ -640,22 +777,80 @@ export default function NewRecipeScreen() {
               <Text
                 style={[styles.timerLabel, { color: colors.secondaryText }]}
               >
-                {t(lang, "newRecipe", "timerLabel")}
+                {lang === "cs"
+                  ? "Časovač (volitelné, HH:MM:SS)"
+                  : "Timer (optional, HH:MM:SS)"}
               </Text>
-              <TextInput
-                style={[
-                  styles.timerInput,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    color: colors.text,
-                  },
-                ]}
-                placeholderTextColor={colors.muted}
-                value={step.timerInput}
-                onChangeText={(val) => updateStepTimer(index, val)}
-                keyboardType="numbers-and-punctuation"
-              />
+
+              {(() => {
+                const { h, m, s } = splitTimerHMS(step.timerInput);
+                return (
+                  <View style={styles.timerHmsRow}>
+                    <View style={styles.timerField}>
+                      <Text style={styles.timerFieldLabel}>h</Text>
+                      <TextInput
+                        style={[
+                          styles.timerFieldInput,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border,
+                            color: colors.text,
+                          },
+                        ]}
+                        keyboardType="number-pad"
+                        value={h}
+                        onChangeText={(val) =>
+                          updateStepTimerPart(index, "h", val)
+                        }
+                        placeholder="00"
+                        placeholderTextColor={colors.muted}
+                      />
+                    </View>
+
+                    <View style={styles.timerField}>
+                      <Text style={styles.timerFieldLabel}>m</Text>
+                      <TextInput
+                        style={[
+                          styles.timerFieldInput,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border,
+                            color: colors.text,
+                          },
+                        ]}
+                        keyboardType="number-pad"
+                        value={m}
+                        onChangeText={(val) =>
+                          updateStepTimerPart(index, "m", val)
+                        }
+                        placeholder="00"
+                        placeholderTextColor={colors.muted}
+                      />
+                    </View>
+
+                    <View style={styles.timerField}>
+                      <Text style={styles.timerFieldLabel}>s</Text>
+                      <TextInput
+                        style={[
+                          styles.timerFieldInput,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border,
+                            color: colors.text,
+                          },
+                        ]}
+                        keyboardType="number-pad"
+                        value={s}
+                        onChangeText={(val) =>
+                          updateStepTimerPart(index, "s", val)
+                        }
+                        placeholder="00"
+                        placeholderTextColor={colors.muted}
+                      />
+                    </View>
+                  </View>
+                );
+              })()}
             </View>
           </View>
         ))}
@@ -874,16 +1069,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 4,
   },
-  timerInput: {
-    backgroundColor: "#222",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    color: "#fff",
-    borderWidth: 1,
-    borderColor: "#444",
-    fontSize: 13,
-  },
   ingredientRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -940,5 +1125,32 @@ const styles = StyleSheet.create({
   success: {
     color: "#7cd992",
     marginBottom: 4,
+  },
+  timerHmsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  timerField: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  timerFieldLabel: {
+    color: "#aaa",
+    fontSize: 12,
+  },
+  timerFieldInput: {
+    minWidth: 50,
+    textAlign: "center",
+    backgroundColor: "#222",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    color: "#fff",
+    borderWidth: 1,
+    borderColor: "#444",
+    fontSize: 13,
   },
 });

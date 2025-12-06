@@ -3,6 +3,8 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
 import { t, Lang, LANG_KEY } from "../../i18n/strings";
 import { useTheme } from "../../theme/ThemeContext";
+import { useScrollToTop } from "@react-navigation/native";
+import { useRef } from "react";
 
 import {
   ActivityIndicator,
@@ -104,6 +106,9 @@ export default function ShoppingScreen() {
   const [hasToken, setHasToken] = useState(false);
 
   const router = useRouter();
+
+  const listRef = React.useRef<SwipeListView<ShoppingItem> | null>(null);
+  useScrollToTop(listRef as any);
 
   /** ===== Načtení dat (stejně jako web) ===== */
   const loadAll = useCallback(async () => {
@@ -715,6 +720,9 @@ export default function ShoppingScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <SwipeListView
+        listViewRef={(ref) => {
+          listRef.current = ref;
+        }}
         data={processedItems}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}

@@ -2,7 +2,7 @@ import "dotenv/config";
 
 export default {
   expo: {
-    name: "stressfreechef-mobile",
+    name: "Stress Free Chef",
     slug: "stressfreechef-mobile",
     version: "1.0.0",
     orientation: "portrait",
@@ -19,7 +19,7 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        foregroundImage: "./assets/icon.png",
         backgroundColor: "#ffffff",
       },
       edgeToEdgeEnabled: true,

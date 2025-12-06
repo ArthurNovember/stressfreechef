@@ -236,7 +236,7 @@ export default function ExploreScreen() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("GRID");
   const [swipeDeck, setSwipeDeck] = useState<CommunityRecipe[]>([]);
-  const [swipeIndex, setSwipeIndex] = useState(0);
+  const swiperRef = useRef<Swiper<CommunityRecipe> | null>(null);
 
   // IDs receptů, které už mám uložené v backendu (savedCommunityRecipes)
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
@@ -315,6 +315,20 @@ export default function ExploreScreen() {
       return () => {
         isActive = false;
       };
+    }, [])
+  );
+
+  // 🔁 Načtení community recipes při každém návratu na Explore
+  useFocusEffect(
+    useCallback(() => {
+      // vyčistíme list a nastavení stránkování
+      setItems([]);
+      setPage(1);
+      setHasMore(true);
+      setErr(null);
+
+      // žádný cleanup nepotřebujeme
+      return () => {};
     }, [])
   );
 
@@ -424,16 +438,6 @@ export default function ExploreScreen() {
     });
 
     setSwipeDeck(candidates);
-
-    // když se lista zmenší (třeba kvůli save / novému fetchi),
-    // a index by byl mimo rozsah, stáhneme ho na poslední kartu
-    setSwipeIndex((idx) =>
-      idx >= candidates.length
-        ? candidates.length > 0
-          ? candidates.length - 1
-          : 0
-        : idx
-    );
   }, [items, favoriteIds]);
 
   if (!API_BASE) {
@@ -511,6 +515,7 @@ export default function ExploreScreen() {
       params: {
         id: rid,
         recipe: JSON.stringify(recipe),
+        source: "explore",
       },
     });
   }
@@ -565,11 +570,11 @@ export default function ExploreScreen() {
     );
   };
 
-  const noCards = swipeDeck.length === 0;
-  const allSwiped = swipeDeck.length > 0 && swipeIndex >= swipeDeck.length;
+  // V SWIPE módu není co zobrazit a backend už nic nemá
+  const swipeEmpty = swipeDeck.length === 0 && !loading && !hasMore;
 
-  // „opravdu“ jsme na konci = žádné karty + už není co načítat
-  const isDeckExhausted = allSwiped && !loading && !hasMore;
+  // SWIPE čeká na data (první load nebo dotažení dalších karet)
+  const swipeLoading = swipeDeck.length === 0 && (loading || hasMore);
 
   const selectedId = selected ? String(selected._id || selected.id || "") : "";
   const selectedIsSaved = !!(selectedId && favoriteIds.includes(selectedId));
@@ -801,39 +806,28 @@ export default function ExploreScreen() {
         )
       ) : (
         <View style={styles.swipeContainer}>
-          {noCards ? (
+          {swipeEmpty ? (
             <Text style={styles.emptyText}>
-              {t(lang, "explore", "noSwipe")}
-            </Text>
-          ) : isDeckExhausted ? (
-            // opravdu jsme na konci, backend už nic dalšího neposílá
-            <Text style={styles.emptyText}>
-              {" "}
               {t(lang, "explore", "noMoreSwipe")}
             </Text>
-          ) : allSwiped && loading && hasMore ? (
-            // jsme na poslední kartě, ale zrovna se načítá další stránka → ukaž loader místo „no more“
+          ) : swipeLoading ? (
             <View style={styles.center}>
               <ActivityIndicator />
               <Text style={[styles.loadingText, { color: colors.muted }]}>
-                {" "}
                 {t(lang, "explore", "loadingMoreSwipe")}
               </Text>
             </View>
           ) : (
             <Swiper
+              ref={swiperRef as any}
               cards={swipeDeck}
-              cardIndex={swipeIndex}
               backgroundColor="transparent"
               stackSize={3}
               infinite={false}
               verticalSwipe={false}
               onSwiped={(index) => {
-                const next = index + 1;
-                setSwipeIndex(next);
-
-                const remaining = swipeDeck.length - next;
-                if (remaining <= 3 && hasMore && !loading) {
+                const cardsLeft = swipeDeck.length - (index + 1);
+                if (cardsLeft <= 3 && hasMore && !loading) {
                   setPage((p) => p + 1);
                 }
               }}
@@ -842,7 +836,7 @@ export default function ExploreScreen() {
                 await handleSaveFavorite(card);
               }}
               renderCard={(card) => {
-                if (!card) return null; // ⬅️ přidat jako první řádek
+                if (!card) return null;
 
                 const cover = getCover(card);
                 const ratingVal =
@@ -950,14 +944,8 @@ export default function ExploreScreen() {
                           },
                         ]}
                         onPress={() => {
-                          setSwipeIndex((i) => {
-                            const next = i + 1 < swipeDeck.length ? i + 1 : i;
-                            const remaining = swipeDeck.length - next;
-                            if (remaining <= 3 && hasMore && !loading) {
-                              setPage((p) => p + 1);
-                            }
-                            return next;
-                          });
+                          // jen swipe doleva – onSwiped se postará o načtení dalších karet
+                          swiperRef.current?.swipeLeft();
                         }}
                       >
                         <Text
@@ -976,16 +964,9 @@ export default function ExploreScreen() {
                           styles.swipeActionBtn,
                           { backgroundColor: colors.pillActive },
                         ]}
-                        onPress={async () => {
-                          await handleSaveFavorite(card);
-                          setSwipeIndex((i) => {
-                            const next = i + 1 < swipeDeck.length ? i + 1 : i;
-                            const remaining = swipeDeck.length - next;
-                            if (remaining <= 3 && hasMore && !loading) {
-                              setPage((p) => p + 1);
-                            }
-                            return next;
-                          });
+                        onPress={() => {
+                          // swipe doprava → Swiper zavolá onSwiped + onSwipedRight
+                          swiperRef.current?.swipeRight();
                         }}
                       >
                         <Text
@@ -1390,6 +1371,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#f5f5f5",
     marginBottom: 2,
+    flex: 1, // ← důležité: vezme si zbytek šířky
+    flexWrap: "wrap", // ← text se může zalomit
+    marginRight: 8, // trochu místa před tlačítkem
   },
   primaryBtn: {
     marginTop: 16,
@@ -1442,7 +1426,7 @@ const styles = StyleSheet.create({
   ingredientRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+
     gap: 8,
     paddingVertical: 6,
     borderBottomWidth: 1,
@@ -1454,5 +1438,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: "#171111ff",
+    alignSelf: "flex-start", // ← ať se drží horního okraje textu
   },
 });

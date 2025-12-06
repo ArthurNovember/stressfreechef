@@ -856,6 +856,7 @@ function MyProfileRN({
                       // POZN: dočasně předáme i celý recipe (kvůli rychlosti),
                       // později uděláme fetch na detail podle id:
                       recipe: JSON.stringify(selected),
+                      source: "profile",
                     },
                   });
                   setSelected(null);
@@ -1045,11 +1046,13 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     marginVertical: 2,
     color: "#dcd7d7ff",
+    flex: 1, // ← důležité: vezme si zbytek šířky
+    flexWrap: "wrap", // ← text se může zalomit
+    marginRight: 8, // trochu místa před tlačítkem
   },
   ingredientRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: 8,
     paddingVertical: 6,
     borderBottomWidth: 1,
@@ -1060,5 +1063,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: "#171111ff",
+    alignSelf: "flex-start", // ← ať se drží horního okraje textu
   },
 });

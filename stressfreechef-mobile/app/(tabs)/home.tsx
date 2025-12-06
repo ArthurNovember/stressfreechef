@@ -939,6 +939,7 @@ export default function HomeScreen() {
                       communityRecipeId: stats?.id
                         ? String(stats.id)
                         : undefined,
+                      source: "home",
                     },
                   });
 
@@ -1035,6 +1036,9 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     marginVertical: 2,
     color: "#dcd7d7ff",
+    flex: 1, // ← důležité: vezme si zbytek šířky
+    flexWrap: "wrap", // ← text se může zalomit
+    marginRight: 8, // trochu místa před tlačítkem
   },
   primaryBtn: {
     backgroundColor: "#570303ff",
@@ -1127,7 +1131,7 @@ const styles = StyleSheet.create({
   ingredientRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+
     gap: 8,
     marginVertical: 2,
     borderBottomWidth: 1,
@@ -1141,5 +1145,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#444",
     backgroundColor: "#171111ff",
+    alignSelf: "flex-start", // ← ať se drží horního okraje textu
   },
 });

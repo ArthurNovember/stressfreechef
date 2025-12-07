@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { t, Lang, LANG_KEY } from "../../i18n/strings";
 import { useTheme } from "../../theme/ThemeContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import * as Clipboard from "expo-clipboard";
 
 import { useRouter } from "expo-router";
 import {
@@ -35,6 +36,33 @@ type LocalStep = {
   localUri?: string | null;
   mediaType?: LocalMediaType | null;
 };
+
+// nahoře u ostatních typů a state věcí
+type AiStepInput = {
+  description: string;
+  timerSeconds?: number;
+};
+
+type AiRecipeInput = {
+  title: string;
+  difficulty?: Difficulty;
+  time: string; // např. "00:20"
+  ingredients: string[];
+  steps: AiStepInput[];
+};
+
+// helper: seconds → "HH:MM:SS"
+function secondsToHmsInput(total: number | undefined | null): string {
+  if (!Number.isFinite(Number(total)) || !total || total <= 0) return "";
+  const t = Number(total);
+  const h = Math.floor(t / 3600);
+  const rem = t % 3600;
+  const m = Math.floor(rem / 60);
+  const s = rem % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(
+    s
+  ).padStart(2, "0")}`;
+}
 
 const DIFFICULTIES = ["Beginner", "Intermediate", "Hard"] as const;
 type Difficulty = (typeof DIFFICULTIES)[number];
@@ -282,6 +310,168 @@ export default function NewRecipeScreen() {
   const [lang, setLang] = useState<Lang>("en");
   const [showTimePicker, setShowTimePicker] = useState(false);
 
+  const [aiMode, setAiMode] = useState(false);
+  const [aiText, setAiText] = useState("");
+  const [aiImportErr, setAiImportErr] = useState<string | null>(null);
+
+  function importFromAiJson(raw: string) {
+    setAiImportErr(null);
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      setAiImportErr(
+        lang === "cs" ? "Text není validní JSON." : "Text is not valid JSON."
+      );
+      return;
+    }
+
+    if (!parsed || typeof parsed !== "object") {
+      setAiImportErr(
+        lang === "cs"
+          ? "Očekávám JSON objekt s vlastnostmi title, time, ingredients a steps."
+          : "Expected a JSON object with title, time, ingredients and steps."
+      );
+      return;
+    }
+
+    const data = parsed as AiRecipeInput;
+
+    if (!data.title || typeof data.title !== "string") {
+      setAiImportErr(
+        lang === "cs" ? "Chybí title (název receptu)." : "Missing title."
+      );
+      return;
+    }
+
+    if (!data.time || typeof data.time !== "string") {
+      setAiImportErr(
+        lang === "cs"
+          ? "Chybí time (čas ve formátu HH:MM)."
+          : "Missing time (HH:MM)."
+      );
+      return;
+    }
+
+    if (!Array.isArray(data.ingredients) || data.ingredients.length === 0) {
+      setAiImportErr(
+        lang === "cs"
+          ? "Chybí ingredients (alespoň jedna ingredience)."
+          : "Missing ingredients (at least one item)."
+      );
+      return;
+    }
+
+    if (!Array.isArray(data.steps) || data.steps.length === 0) {
+      setAiImportErr(
+        lang === "cs"
+          ? "Chybí steps (alespoň jeden krok s description)."
+          : "Missing steps (at least one step with description)."
+      );
+      return;
+    }
+
+    // ✅ přepíšeme formulář
+    setTitle(data.title.trim());
+
+    if (data.difficulty && DIFFICULTIES.includes(data.difficulty)) {
+      setDifficulty(data.difficulty);
+    } else {
+      setDifficulty("Beginner");
+    }
+
+    setTime(data.time.trim());
+
+    setIngredients(
+      data.ingredients.map((i) => String(i || "").trim()).filter(Boolean)
+    );
+
+    const mappedSteps: LocalStep[] = data.steps.map((s) => ({
+      description: String(s.description || "").trim(),
+      timerInput: secondsToHmsInput(s.timerSeconds),
+      localUri: null,
+      mediaType: null,
+    }));
+
+    setSteps(
+      mappedSteps.length > 0
+        ? mappedSteps
+        : [
+            {
+              description: "",
+              timerInput: "",
+              localUri: null,
+              mediaType: null,
+            },
+          ]
+    );
+  }
+
+  const handleCopyAiPrompt = async () => {
+    const prompt =
+      lang === "cs"
+        ? `Přepiš prosím následující recept do strukturovaného JSON formátu:
+
+{
+  "title": "Název receptu",
+  "difficulty": "Beginner",
+  "time": "00:20",
+  "ingredients": [
+    "Popis ingredience 1",
+    "Popis ingredience 2"
+  ],
+  "steps": [
+    { "description": "Popis kroku 1", "timerSeconds": 120 },
+    { "description": "Popis kroku 2", "timerSeconds": 90 }
+  ]
+}
+
+POŽADAVKY:
+- Název, ingredience i kroky piš česky.
+- ⚠️ Pole "difficulty" NIKDY nepřekládej. Musí být přesně jedno z:
+  "Beginner", "Intermediate", "Hard".
+- "time" nech ve formátu HH:MM.
+- "steps" je pole kroků. Každý krok musí mít "description" a volitelné "timerSeconds".
+- Odpověz POUZE čistým JSONem bez vysvětlení.
+
+Tady je recept:`
+        : `Please rewrite the following recipe into the structured JSON format below:
+
+{
+  "title": "Recipe title",
+  "difficulty": "Beginner",
+  "time": "00:20",
+  "ingredients": [
+    "Ingredient 1",
+    "Ingredient 2"
+  ],
+  "steps": [
+    { "description": "Step 1 description", "timerSeconds": 120 },
+    { "description": "Step 2 description", "timerSeconds": 90 }
+  ]
+}
+
+REQUIREMENTS:
+- Title, ingredients and steps may be in the user’s language.
+- ⚠️ The "difficulty" field must NEVER be translated. It must be exactly one of:
+  "Beginner", "Intermediate", "Hard".
+- Leave "time" in HH:MM.
+- "steps" must be an array. Each step must contain "description" and optional "timerSeconds".
+- Respond ONLY with clean JSON, no explanation.
+
+Here is the recipe:`;
+
+    await Clipboard.setStringAsync(prompt);
+
+    Alert.alert(
+      lang === "cs" ? "Zkopírováno" : "Copied",
+      lang === "cs"
+        ? "Prompt pro AI byl zkopírován."
+        : "AI prompt has been copied."
+    );
+  };
+
   function handleRecipeTimeChange(date: Date | undefined) {
     if (!date) {
       setShowTimePicker(false);
@@ -521,6 +711,13 @@ export default function NewRecipeScreen() {
           : t(lang, "newRecipe", "recipeCreated")
       );
 
+      Alert.alert(
+        lang === "cs" ? "Recept vytvořen" : "Recipe created",
+        lang === "cs"
+          ? "Recept byl úspěšně vytvořen."
+          : "The recipe was successfully created."
+      );
+
       // reset formuláře
       setTitle("");
       setDifficulty("Beginner");
@@ -659,6 +856,116 @@ export default function NewRecipeScreen() {
       </View>
 
       {/* Thumbnail */}
+      {/* AI mód – Vaříte s AI */}
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        <View style={styles.aiHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {lang === "cs" ? "Vařím s AI" : "Cook with AI"}
+          </Text>
+          <Switch value={aiMode} onValueChange={setAiMode} />
+        </View>
+
+        {aiMode && (
+          <>
+            <Text style={{ color: colors.secondaryText, fontSize: 13 }}>
+              {lang === "cs"
+                ? `1. Otevřete AI (např. ChatGPT) a vložte váš recept.
+2. Použijte níže uvedený JSON formát.
+3. Název, ingredience i kroky mohou být v češtině.
+4. ⚠️ Pole "difficulty" MUSÍ zůstat v angličtině a musí být jedno z:
+   "Beginner", "Intermediate", "Hard".
+5. AI musí odpovědět pouze čistým JSONem bez vysvětlení.`
+                : `1. Open an AI assistant (e.g. ChatGPT) and paste your recipe.
+2. Tell it to use the JSON format below.
+3. Title, ingredients and steps may be in your language.
+4. ⚠️ The "difficulty" field MUST stay in English and must be one of:
+   "Beginner", "Intermediate", "Hard".
+5. AI must output ONLY clean JSON, no explanation.`}
+            </Text>
+
+            <View
+              style={[
+                styles.aiFormatBox,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                },
+              ]}
+            >
+              <Text
+                selectable
+                style={{
+                  color: colors.muted,
+                  fontSize: 12,
+                  fontFamily: "monospace",
+                }}
+              >
+                {`{
+  "title": "Avocado Toast with Egg",
+  "difficulty": "Beginner",
+  "time": "00:15",
+  "ingredients": ["..."],
+  "steps": [
+    { "description": "First step...", "timerSeconds": 180 }
+  ]
+}`}
+              </Text>
+            </View>
+            <Pressable
+              style={[styles.aiCopyBtn, { borderColor: colors.border }]}
+              onPress={handleCopyAiPrompt}
+            >
+              <Text style={[styles.aiCopyBtnText, { color: colors.text }]}>
+                {lang === "cs"
+                  ? "Zkopírovat celý prompt pro AI"
+                  : "Copy full AI prompt"}
+              </Text>
+            </Pressable>
+
+            {aiImportErr && (
+              <Text style={[styles.error, { color: colors.danger }]}>
+                {aiImportErr}
+              </Text>
+            )}
+
+            <TextInput
+              style={[
+                styles.input,
+                styles.aiTextInput,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
+              multiline
+              placeholder={
+                lang === "cs"
+                  ? "Sem vložte JSON text vygenerovaný AI..."
+                  : "Paste the JSON text from AI here..."
+              }
+              placeholderTextColor={colors.muted}
+              value={aiText}
+              onChangeText={setAiText}
+            />
+
+            <Pressable
+              style={[styles.aiImportBtn, { borderColor: colors.border }]}
+              onPress={() => importFromAiJson(aiText)}
+            >
+              <Text style={[styles.aiImportBtnText, { color: colors.text }]}>
+                {lang === "cs" ? "Načíst z AI textu" : "Import from AI text"}
+              </Text>
+            </Pressable>
+          </>
+        )}
+      </View>
+
       <View
         style={[
           styles.card,
@@ -1152,5 +1459,46 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#444",
     fontSize: 13,
+  },
+  aiHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  aiFormatBox: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  aiTextInput: {
+    minHeight: 120,
+    textAlignVertical: "top",
+  },
+  aiImportBtn: {
+    marginTop: 8,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  aiImportBtnText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  aiCopyBtn: {
+    alignSelf: "flex-start",
+    marginTop: 4,
+    marginBottom: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  aiCopyBtnText: {
+    fontSize: 12,
+    fontWeight: "500",
   },
 });

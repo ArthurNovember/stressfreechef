@@ -696,7 +696,7 @@ function MyProfileRN({
         </Text>
         {items.length === 0 ? (
           <Text style={{ opacity: 0.7, paddingHorizontal: 16, color: "white" }}>
-            You don’t have any recipes yet. Add your first one!
+            {t(lang, "profile", "myEmpty")}
           </Text>
         ) : null}
 

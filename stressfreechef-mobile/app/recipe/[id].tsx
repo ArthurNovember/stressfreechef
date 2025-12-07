@@ -506,12 +506,7 @@ export default function RecipeStepsScreen() {
                 s.textStep,
                 { backgroundColor: colors.card, borderColor: colors.border },
               ]}
-            >
-              <Text style={{ fontSize: 16, color: colors.text }}>
-                {" "}
-                {getStepDescription(step, lang)}
-              </Text>
-            </View>
+            ></View>
           )}
           {step.type === "video" && (
             <Video

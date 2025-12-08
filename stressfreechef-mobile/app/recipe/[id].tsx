@@ -3,7 +3,8 @@ import { useTheme } from "../../theme/ThemeContext";
 import { Audio } from "expo-av";
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+
 import {
   View,
   Text,
@@ -345,21 +346,25 @@ export default function RecipeStepsScreen() {
   };
 
   const handleBlow = useCallback(() => {
-    // 1) Krok má timer, neběží, a ještě neskončil → fouknutím SPUSTÍME timer
+    // timer běží → ignorovat fouknutí
+    if (hasTimer && isRunning) {
+      return;
+    }
+
+    // krok má timer, ještě neběžel → fouknutím ho spustíme
     if (hasTimer && !isRunning && !justFinished) {
       handleStartPause();
       return;
     }
 
-    // 2) Jinak (bez timeru NEBO timer už doběhl) → posuneme krok dál
+    // jinak → další krok
     setCurrent((p) => Math.min(steps.length - 1, p + 1));
   }, [hasTimer, isRunning, justFinished, handleStartPause, steps.length]);
 
-  useBlowToNextStep(
-    blowNextEnabled && current < steps.length - 1 && !isRunning,
-    handleBlow,
-    [current]
-  );
+  // foukání zapnuto pokud:
+  const blowListeningEnabled = blowNextEnabled;
+
+  useBlowToNextStep(blowListeningEnabled, handleBlow, current);
 
   if (!recipe || steps.length === 0) {
     return (
@@ -880,21 +885,30 @@ const s = StyleSheet.create({
 function useBlowToNextStep(
   enabled: boolean,
   onBlow: () => void,
-  deps: any[] = []
+  currentStep: number
 ) {
+  const blowRef = useRef(onBlow);
+
+  // vždy držíme aktuální callback
+  useEffect(() => {
+    blowRef.current = onBlow;
+  }, [onBlow]);
+
   useEffect(() => {
     if (!enabled) return;
 
     let cancelled = false;
     let recording: Audio.Recording | null = null;
     let lastTrigger = 0;
-    let baseline: number | null = null;
-    let interval: ReturnType<typeof setInterval> | null = null;
-    let samples = 0;
 
-    let hotCount = 0; // kolik „horkých“ vzorků máme za sebou
-    let hotMin: number | null = null; // nejnižší amp v aktuálním „fouknutí“
-    let hotMax: number | null = null; // nejvyšší amp v aktuálním „fouknutí“
+    // 🔥 BASELINE RESTART při každém zapnutí nebo změně kroku
+    let baseline: number | null = null;
+    let samples = 0;
+    let hotCount = 0;
+    let hotMin: number | null = null;
+    let hotMax: number | null = null;
+
+    let interval: ReturnType<typeof setInterval> | null = null;
 
     (async () => {
       try {
@@ -904,15 +918,11 @@ function useBlowToNextStep(
           return;
         }
 
-        try {
-          await Audio.setAudioModeAsync({
-            allowsRecordingIOS: true,
-            playsInSilentModeIOS: true,
-            staysActiveInBackground: false,
-          });
-        } catch (e) {
-          if (__DEV__) console.log("[BLOW] setAudioMode failed", e);
-        }
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        }).catch(() => {});
 
         const recordingOptions: Audio.RecordingOptions = {
           ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
@@ -928,11 +938,10 @@ function useBlowToNextStep(
         interval = setInterval(async () => {
           if (cancelled || !recording) return;
 
-          let status: any;
+          let status;
           try {
             status = await recording.getStatusAsync();
-          } catch (e) {
-            if (__DEV__) console.log("[BLOW] getStatus error", e);
+          } catch {
             return;
           }
 
@@ -940,71 +949,48 @@ function useBlowToNextStep(
 
           const amp =
             typeof status.metering === "number" ? status.metering : null;
-
-          if (amp == null) {
-            if (__DEV__) console.log("[BLOW] metering not available");
-            return;
-          }
+          if (amp == null) return;
 
           samples++;
 
-          // 🧊 WARMUP – prvních pár vzorků jen ladíme baseline
+          // ⚪ Warmup (prvních 10 vzorků)
           if (samples < 10) {
             if (baseline == null) {
               baseline = amp;
             } else {
               baseline = baseline * 0.8 + amp * 0.2;
             }
-
-            if (__DEV__) {
-              console.log("[BLOW] warmup amp", amp, "baseline", baseline);
-            }
             return;
           }
 
+          // odteď máme jistotu, že baseline už NENÍ null
           if (baseline == null) {
             baseline = amp;
             return;
           }
 
-          // lehké vyhlazení
           baseline = baseline * 0.9 + amp * 0.1;
           const delta = amp - baseline;
 
-          if (__DEV__) {
-            console.log("[BLOW] amp", amp, "base", baseline, "delta", delta);
-          }
-
           const now = Date.now();
-          const COOL_DOWN = 2500; // trochu kratší, ať to není líné
-
-          // 🎚 kompromisní prahy
-          const MIN_DELTA = 28; // o něco méně přísné → fouknutí projde snáz
-          const MIN_AMP = -32; // dovolíme fouknout o chlup dál od mikrofonu
+          const MIN_DELTA = 28;
+          const MIN_AMP = -32;
+          const COOL_DOWN = 2500;
 
           const isHot = delta > MIN_DELTA && amp > MIN_AMP;
 
           if (isHot) {
-            // rozjíždíme / pokračujeme „fouknutí“
             hotCount++;
-            if (hotMin == null || hotMax == null) {
-              hotMin = amp;
-              hotMax = amp;
-            } else {
-              hotMin = Math.min(hotMin, amp);
-              hotMax = Math.max(hotMax, amp);
-            }
+            hotMin = hotMin == null ? amp : Math.min(hotMin, amp);
+            hotMax = hotMax == null ? amp : Math.max(hotMax, amp);
           } else {
-            // klid / normální zvuk → reset „fouknutí“
             hotCount = 0;
             hotMin = null;
             hotMax = null;
           }
 
-          // fouknutí musí být delší shluk „horkých“ vzorků
-          const REQUIRED_HOT_SAMPLES = 3; // zase o chlup citlivější než 4
-          const MAX_HOT_VARIATION = 10; // povolíme větší kolísání při fouknut
-          // hudba má větší výkyvy
+          const REQUIRED_HOT_SAMPLES = 3;
+          const MAX_HOT_VARIATION = 10;
 
           if (
             hotCount >= REQUIRED_HOT_SAMPLES &&
@@ -1019,7 +1005,7 @@ function useBlowToNextStep(
             hotMax = null;
 
             if (__DEV__) console.log("[BLOW] TRIGGER");
-            onBlow();
+            blowRef.current?.();
           }
         }, 120);
       } catch (err) {
@@ -1030,20 +1016,14 @@ function useBlowToNextStep(
     return () => {
       cancelled = true;
 
-      if (interval) {
-        clearInterval(interval);
-        interval = null;
-      }
+      if (interval) clearInterval(interval);
 
       if (recording) {
-        recording.stopAndUnloadAsync().catch((e) => {
-          if (__DEV__) console.log("[BLOW] stop failed", e);
-        });
+        recording.stopAndUnloadAsync().catch(() => {});
         recording = null;
       }
 
       Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, onBlow, ...deps]);
+  }, [enabled, currentStep]);
 }

@@ -973,8 +973,8 @@ function useBlowToNextStep(
           const delta = amp - baseline;
 
           const now = Date.now();
-          const MIN_DELTA = 28;
-          const MIN_AMP = -32;
+          const MIN_DELTA = 40;
+          const MIN_AMP = -25;
           const COOL_DOWN = 2500;
 
           const isHot = delta > MIN_DELTA && amp > MIN_AMP;

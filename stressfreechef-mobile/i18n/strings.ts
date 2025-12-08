@@ -79,6 +79,18 @@ const STRINGS = {
       en: "Account deletion failed",
       cs: "Smazání účtu se nezdařilo",
     },
+    handsfreeTitle: {
+      en: "Hands-free cooking",
+      cs: "Hands-free vaření",
+    },
+    handsfreeNext: {
+      en: "Next step by blowing into mic",
+      cs: "Další krok fouknutím do mikrofonu",
+    },
+    handsfreeHelper: {
+      en: "(when enabled, StressFreeChef listens for a short blow to move to the next step)",
+      cs: "(pokud je aktivní, aplikace po fouknutí přejde na další krok)",
+    },
   },
   home: {
     loadingRecipes: {

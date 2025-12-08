@@ -334,12 +334,10 @@ export default function SettingsScreen() {
         <Text
           style={[
             styles.sectionTitle,
-            {
-              color: colors.secondaryText ?? colors.text,
-            },
+            { color: colors.secondaryText ?? colors.text },
           ]}
         >
-          Hands-free cooking
+          {t(lang, "settings", "handsfreeTitle")}
         </Text>
         <View style={styles.row}>
           <Pressable
@@ -363,7 +361,7 @@ export default function SettingsScreen() {
                 blowNext && styles.pillTextActive,
               ]}
             >
-              Next step by blowing into mic
+              {t(lang, "settings", "handsfreeNext")}
             </Text>
           </Pressable>
         </View>

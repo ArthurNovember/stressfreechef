@@ -21,6 +21,8 @@ import { API_BASE } from "../../lib/api";
 import { MaterialIcons } from "@expo/vector-icons";
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
+let blowRecordingInUse = false;
+
 type Step = {
   type: "image" | "video" | "text";
   src?: string;
@@ -912,6 +914,12 @@ function useBlowToNextStep(
 
     (async () => {
       try {
+        // ⛔ počkej, dokud předchozí nahrávání nedokončí cleanup
+        while (blowRecordingInUse && !cancelled) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        if (cancelled) return;
+
         const perm = await Audio.requestPermissionsAsync();
         if (!perm.granted) {
           if (__DEV__) console.log("[BLOW] Mic permission not granted");
@@ -930,8 +938,19 @@ function useBlowToNextStep(
         };
 
         recording = new Audio.Recording();
-        await recording.prepareToRecordAsync(recordingOptions);
-        await recording.startAsync();
+
+        // 🔒 od teď blokujeme další starty
+        blowRecordingInUse = true;
+        try {
+          await recording.prepareToRecordAsync(recordingOptions);
+          await recording.startAsync();
+        } catch (err) {
+          // když se start nepovede, lock zase pustíme
+          blowRecordingInUse = false;
+          recording = null;
+          if (__DEV__) console.log("[BLOW] start failed:", err);
+          return;
+        }
 
         if (__DEV__) console.log("[BLOW] Recording started");
 
@@ -963,7 +982,6 @@ function useBlowToNextStep(
             return;
           }
 
-          // odteď máme jistotu, že baseline už NENÍ null
           if (baseline == null) {
             baseline = amp;
             return;
@@ -1019,11 +1037,28 @@ function useBlowToNextStep(
       if (interval) clearInterval(interval);
 
       if (recording) {
-        recording.stopAndUnloadAsync().catch(() => {});
-        recording = null;
+        (async () => {
+          try {
+            const status = await recording.getStatusAsync().catch(() => null);
+            if (status?.isRecording) {
+              await recording.stopAndUnloadAsync().catch(() => {});
+            }
+          } finally {
+            // ✅ cleanup dokončen → uvolníme lock + audio mód
+            blowRecordingInUse = false;
+            recording = null;
+            Audio.setAudioModeAsync({
+              allowsRecordingIOS: false,
+            }).catch(() => {});
+          }
+        })();
+      } else {
+        // nic neběželo, jen pro jistotu uvolníme lock + mód
+        blowRecordingInUse = false;
+        Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+        }).catch(() => {});
       }
-
-      Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
     };
   }, [enabled, currentStep]);
 }

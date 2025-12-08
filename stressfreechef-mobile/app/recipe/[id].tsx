@@ -1,8 +1,9 @@
 import { t, Lang, LANG_KEY } from "../../i18n/strings";
 import { useTheme } from "../../theme/ThemeContext";
+import { Audio } from "expo-av";
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -40,6 +41,7 @@ type Recipe = {
 
 const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
 const TOKEN_KEY = "token";
+const BLOW_NEXT_KEY = "settings:blowNextEnabled"; // 👈 stejný key jako v Settings
 async function getToken() {
   return (await AsyncStorage.getItem(TOKEN_KEY)) || "";
 }
@@ -85,11 +87,19 @@ export default function RecipeStepsScreen() {
   const steps = recipe?.steps || [];
 
   const [lang, setLang] = useState<Lang>("en");
+  const [blowNextEnabled, setBlowNextEnabled] = useState(false); // 👈 nový state
 
   useEffect(() => {
     (async () => {
       const stored = await AsyncStorage.getItem(LANG_KEY);
       if (stored === "cs" || stored === "en") setLang(stored);
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const stored = await AsyncStorage.getItem(BLOW_NEXT_KEY);
+      setBlowNextEnabled(stored === "1");
     })();
   }, []);
 
@@ -300,6 +310,73 @@ export default function RecipeStepsScreen() {
     return `${mm}:${ss}`;
   };
 
+  const step = steps[current];
+
+  const rawTimer =
+    typeof step?.timerSeconds === "number"
+      ? step.timerSeconds
+      : Number(step?.timerSeconds ?? 0);
+
+  const hasTimer = rawTimer > 0;
+
+  // 🔁 Kdykoliv se změní krok → resetneme stav timeru pro nový krok
+  useEffect(() => {
+    // stopneme případný běžící timer z předchozího kroku
+    setIsRunning(false);
+    setStartedAt(null);
+    setJustFinished(false);
+    setAccumulated(0);
+
+    // připravíme "čistý" remaining pro nový krok
+    if (hasTimer && rawTimer > 0) {
+      setRemaining(rawTimer);
+    } else {
+      setRemaining(null);
+    }
+  }, [current, hasTimer, rawTimer]);
+
+  // ⬇️ sem vlož handleStartPause
+  const handleStartPause = () => {
+    if (!hasTimer) return;
+
+    if (!isRunning) {
+      setJustFinished(false);
+
+      if (remaining == null || remaining <= 0) {
+        setAccumulated(0);
+        if (rawTimer > 0) setRemaining(rawTimer);
+      }
+
+      setStartedAt(Date.now());
+      setIsRunning(true);
+      return;
+    }
+
+    if (startedAt != null) {
+      const elapsedSinceStart = (Date.now() - startedAt) / 1000;
+      setAccumulated((acc) => acc + elapsedSinceStart);
+    }
+    setStartedAt(null);
+    setIsRunning(false);
+  };
+
+  const handleBlow = useCallback(() => {
+    // 1) Pokud má aktuální krok timer a neběží → fouknutím ho jen spustíme
+    if (hasTimer && !isRunning) {
+      handleStartPause();
+      return;
+    }
+
+    // 2) Jinak posuneme krok dál
+    setCurrent((p) => Math.min(steps.length - 1, p + 1));
+  }, [hasTimer, isRunning, handleStartPause, setCurrent, steps.length]);
+
+  useBlowToNextStep(
+    blowNextEnabled && current < steps.length - 1,
+    handleBlow,
+    [current] // stačí current, ostatní je uvnitř handleBlow
+  );
+
   if (!recipe || steps.length === 0) {
     return (
       <View style={[s.center, { backgroundColor: colors.background }]}>
@@ -324,47 +401,10 @@ export default function RecipeStepsScreen() {
     );
   }
 
-  const step = steps[current];
-
-  const rawTimer =
-    typeof step.timerSeconds === "number"
-      ? step.timerSeconds
-      : Number(step.timerSeconds ?? 0);
-
   // Timer bereme jen pokud je > 0 (0 = vlastně žádný timer)
-  const hasTimer = rawTimer > 0;
 
   const displaySeconds =
     remaining != null ? remaining : hasTimer ? rawTimer : 0;
-
-  const handleStartPause = () => {
-    if (!hasTimer) return;
-
-    // 👉 START
-    if (!isRunning) {
-      setJustFinished(false);
-
-      // pokud jsme na nule (timer doběhl nebo byl nějak rozbitý), začínáme znova
-      if (remaining == null || remaining <= 0) {
-        setAccumulated(0);
-        if (rawTimer > 0) {
-          setRemaining(rawTimer);
-        }
-      }
-
-      setStartedAt(Date.now());
-      setIsRunning(true);
-      return;
-    }
-
-    // 👉 PAUSE
-    if (startedAt != null) {
-      const elapsedSinceStart = (Date.now() - startedAt) / 1000;
-      setAccumulated((acc) => acc + elapsedSinceStart);
-    }
-    setStartedAt(null);
-    setIsRunning(false);
-  };
 
   const vibrateTimerDone = () => {
     if (Platform.OS === "android") {
@@ -852,3 +892,174 @@ const s = StyleSheet.create({
     textAlign: "center",
   },
 });
+
+function useBlowToNextStep(
+  enabled: boolean,
+  onBlow: () => void,
+  deps: any[] = []
+) {
+  useEffect(() => {
+    if (!enabled) return;
+
+    let cancelled = false;
+    let recording: Audio.Recording | null = null;
+    let lastTrigger = 0;
+    let baseline: number | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    let samples = 0;
+
+    let hotCount = 0; // kolik „horkých“ vzorků máme za sebou
+    let hotMin: number | null = null; // nejnižší amp v aktuálním „fouknutí“
+    let hotMax: number | null = null; // nejvyšší amp v aktuálním „fouknutí“
+
+    (async () => {
+      try {
+        const perm = await Audio.requestPermissionsAsync();
+        if (!perm.granted) {
+          if (__DEV__) console.log("[BLOW] Mic permission not granted");
+          return;
+        }
+
+        try {
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: true,
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: false,
+          });
+        } catch (e) {
+          if (__DEV__) console.log("[BLOW] setAudioMode failed", e);
+        }
+
+        const recordingOptions: Audio.RecordingOptions = {
+          ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+          isMeteringEnabled: true,
+        };
+
+        recording = new Audio.Recording();
+        await recording.prepareToRecordAsync(recordingOptions);
+        await recording.startAsync();
+
+        if (__DEV__) console.log("[BLOW] Recording started");
+
+        interval = setInterval(async () => {
+          if (cancelled || !recording) return;
+
+          let status: any;
+          try {
+            status = await recording.getStatusAsync();
+          } catch (e) {
+            if (__DEV__) console.log("[BLOW] getStatus error", e);
+            return;
+          }
+
+          if (!status.isRecording) return;
+
+          const amp =
+            typeof status.metering === "number" ? status.metering : null;
+
+          if (amp == null) {
+            if (__DEV__) console.log("[BLOW] metering not available");
+            return;
+          }
+
+          samples++;
+
+          // 🧊 WARMUP – prvních pár vzorků jen ladíme baseline
+          if (samples < 10) {
+            if (baseline == null) {
+              baseline = amp;
+            } else {
+              baseline = baseline * 0.8 + amp * 0.2;
+            }
+
+            if (__DEV__) {
+              console.log("[BLOW] warmup amp", amp, "baseline", baseline);
+            }
+            return;
+          }
+
+          if (baseline == null) {
+            baseline = amp;
+            return;
+          }
+
+          // lehké vyhlazení
+          baseline = baseline * 0.9 + amp * 0.1;
+          const delta = amp - baseline;
+
+          if (__DEV__) {
+            console.log("[BLOW] amp", amp, "base", baseline, "delta", delta);
+          }
+
+          const now = Date.now();
+          const COOL_DOWN = 2500; // trochu kratší, ať to není líné
+
+          // 🎚 kompromisní prahy
+          const MIN_DELTA = 28; // o něco méně přísné → fouknutí projde snáz
+          const MIN_AMP = -32; // dovolíme fouknout o chlup dál od mikrofonu
+
+          const isHot = delta > MIN_DELTA && amp > MIN_AMP;
+
+          if (isHot) {
+            // rozjíždíme / pokračujeme „fouknutí“
+            hotCount++;
+            if (hotMin == null || hotMax == null) {
+              hotMin = amp;
+              hotMax = amp;
+            } else {
+              hotMin = Math.min(hotMin, amp);
+              hotMax = Math.max(hotMax, amp);
+            }
+          } else {
+            // klid / normální zvuk → reset „fouknutí“
+            hotCount = 0;
+            hotMin = null;
+            hotMax = null;
+          }
+
+          // fouknutí musí být delší shluk „horkých“ vzorků
+          const REQUIRED_HOT_SAMPLES = 3; // zase o chlup citlivější než 4
+          const MAX_HOT_VARIATION = 10; // povolíme větší kolísání při fouknut
+          // hudba má větší výkyvy
+
+          if (
+            hotCount >= REQUIRED_HOT_SAMPLES &&
+            hotMin != null &&
+            hotMax != null &&
+            hotMax - hotMin <= MAX_HOT_VARIATION &&
+            now - lastTrigger > COOL_DOWN
+          ) {
+            lastTrigger = now;
+            hotCount = 0;
+            hotMin = null;
+            hotMax = null;
+
+            if (__DEV__) console.log("[BLOW] TRIGGER");
+            onBlow();
+          }
+        }, 120);
+      } catch (err) {
+        if (__DEV__) console.log("[BLOW] detection failed:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+
+      if (recording) {
+        recording.stopAndUnloadAsync().catch((e) => {
+          if (__DEV__) console.log("[BLOW] stop failed", e);
+        });
+        recording = null;
+      }
+
+      Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, onBlow, ...deps]);
+}

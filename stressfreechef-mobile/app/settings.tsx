@@ -17,6 +17,7 @@ import { t, Lang, LANG_KEY } from "../i18n/strings";
 import { useTheme } from "../theme/ThemeContext"; // ← napojení na ThemeProvider
 
 const TOKEN_KEY = "token";
+const BLOW_NEXT_KEY = "settings:blowNextEnabled";
 
 async function getToken() {
   try {
@@ -41,6 +42,7 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [hasToken, setHasToken] = useState(false);
+  const [blowNext, setBlowNext] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -74,6 +76,10 @@ export default function SettingsScreen() {
         // 🔐 jestli je user přihlášen
         const token = await AsyncStorage.getItem(TOKEN_KEY);
         setHasToken(!!token);
+
+        // 💨 BLOW-NEXT – načtení
+        const storedBlow = await AsyncStorage.getItem(BLOW_NEXT_KEY);
+        setBlowNext(storedBlow === "1");
       } finally {
         setLoading(false);
       }
@@ -88,6 +94,12 @@ export default function SettingsScreen() {
   async function handleLangChange(next: "en" | "cs") {
     setLang(next);
     await AsyncStorage.setItem(LANG_KEY, next);
+  }
+
+  async function toggleBlowNext() {
+    const next = !blowNext;
+    setBlowNext(next);
+    await AsyncStorage.setItem(BLOW_NEXT_KEY, next ? "1" : "0");
   }
 
   function confirmDeleteProfile() {
@@ -251,16 +263,6 @@ export default function SettingsScreen() {
             </Text>
           </Pressable>
         </View>
-        <Text
-          style={[
-            styles.helper,
-            {
-              color: colors.muted,
-            },
-          ]}
-        >
-          (tato volba okamžitě změní vzhled celé aplikace)
-        </Text>
       </View>
 
       {/* LANGUAGE */}
@@ -325,6 +327,46 @@ export default function SettingsScreen() {
             </Text>
           </Pressable>
         </View>
+      </View>
+
+      {/* HANDS-FREE COOKING */}
+      <View style={styles.section}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            {
+              color: colors.secondaryText ?? colors.text,
+            },
+          ]}
+        >
+          Hands-free cooking
+        </Text>
+        <View style={styles.row}>
+          <Pressable
+            onPress={toggleBlowNext}
+            style={[
+              styles.pill,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+              blowNext && {
+                backgroundColor: colors.pillActive,
+                borderColor: colors.pillActive,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.pillText,
+                { color: colors.text },
+                blowNext && styles.pillTextActive,
+              ]}
+            >
+              Next step by blowing into mic
+            </Text>
+          </Pressable>
+        </View>
         <Text
           style={[
             styles.helper,
@@ -333,7 +375,8 @@ export default function SettingsScreen() {
             },
           ]}
         >
-          (jazyk ovlivní texty v celé aplikaci)
+          (when enabled, StressFreeChef can listen for a short blow sound to
+          move to the next step)
         </Text>
       </View>
 

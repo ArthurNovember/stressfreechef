@@ -319,22 +319,6 @@ export default function RecipeStepsScreen() {
 
   const hasTimer = rawTimer > 0;
 
-  // 🔁 Kdykoliv se změní krok → resetneme stav timeru pro nový krok
-  useEffect(() => {
-    // stopneme případný běžící timer z předchozího kroku
-    setIsRunning(false);
-    setStartedAt(null);
-    setJustFinished(false);
-    setAccumulated(0);
-
-    // připravíme "čistý" remaining pro nový krok
-    if (hasTimer && rawTimer > 0) {
-      setRemaining(rawTimer);
-    } else {
-      setRemaining(null);
-    }
-  }, [current, hasTimer, rawTimer]);
-
   // ⬇️ sem vlož handleStartPause
   const handleStartPause = () => {
     if (!hasTimer) return;
@@ -361,20 +345,20 @@ export default function RecipeStepsScreen() {
   };
 
   const handleBlow = useCallback(() => {
-    // 1) Pokud má aktuální krok timer a neběží → fouknutím ho jen spustíme
-    if (hasTimer && !isRunning) {
+    // 1) Krok má timer, neběží, a ještě neskončil → fouknutím SPUSTÍME timer
+    if (hasTimer && !isRunning && !justFinished) {
       handleStartPause();
       return;
     }
 
-    // 2) Jinak posuneme krok dál
+    // 2) Jinak (bez timeru NEBO timer už doběhl) → posuneme krok dál
     setCurrent((p) => Math.min(steps.length - 1, p + 1));
-  }, [hasTimer, isRunning, handleStartPause, setCurrent, steps.length]);
+  }, [hasTimer, isRunning, justFinished, handleStartPause, steps.length]);
 
   useBlowToNextStep(
-    blowNextEnabled && current < steps.length - 1,
+    blowNextEnabled && current < steps.length - 1 && !isRunning,
     handleBlow,
-    [current] // stačí current, ostatní je uvnitř handleBlow
+    [current]
   );
 
   if (!recipe || steps.length === 0) {

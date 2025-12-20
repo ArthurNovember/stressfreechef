@@ -208,25 +208,97 @@ html {
   border-bottom-right-radius: 30px;
 }
 
+.selectedRecipeContainer {
+  width: min(1100px, 100vw - 40px);
+  max-height: 90vh;
+  background-color: #1a1a1a;
+  border-radius: 20px;
+  overflow-y: auto;
+}
+
+/* Nadpis receptu – přes celou šířku nameAndPicture boxu */
 .selectedRecipeContainer h2 {
   background-color: #0c0c0c;
-  width: 70%;
   text-align: center;
-  padding: 15px 0px;
-  margin-bottom: 0px;
+  padding: 15px 10px;
+  margin: 0;
   border-top-left-radius: 10px;
-  border-top-right-radius: 5px;
+  border-top-right-radius: 10px;
 }
 
+/* Obrázek v modalu – responsivní, omezená výška */
 .selectedRecipeContainer img {
-  width: 70%;
-  border-radius: 10px;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  max-height: 55vh;
+  object-fit: cover;
   border-top-left-radius: 0px;
   border-top-right-radius: 0px;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 
-.selectedRecipeContainer {
-  width: 1500px;
+/* Container se základními informacemi o receptu */
+#forNow {
+  background-color: #2d2d2d;
+  margin-left: auto;
+  margin-right: auto;
+  border: solid 8px #1d1c1c;
+  border-bottom: 0px;
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+}
+
+/* Levý a pravý sloupec v modalu */
+.nameAndPicture {
+  text-align: left;
+  margin: 20px;
+  flex: 1;
+  min-width: 260px;
+}
+
+.displayIngredience {
+  text-align: left;
+  margin: 20px;
+  flex: 1.5;
+  min-width: 260px;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 10px;
+}
+
+/* Mobil – modal přes celou šířku, obsah pod sebou */
+@media (max-width: 900px) {
+  .selectedRecipeContainer {
+    width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  #forNow {
+    border-radius: 0;
+  }
+
+  .nameAndPicture,
+  .displayIngredience {
+    margin: 16px;
+  }
 }
 
 #forNow {

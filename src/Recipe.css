@@ -1,117 +1,108 @@
+/* Obrázek / video v Recipe – držíme v rozumném boxu */
 .Recipe img {
-  max-height: 570px;
-  max-width: 500px;
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
 }
 
+/* Celá stránka Recipe – trochu menší padding a prostor pod */
 .Recipe {
-  padding-top: 10vh;
+  padding-top: 150px;
+  padding-bottom: 40px;
 }
 
+/* Box na obrázek: responsivní, střed, max 500px */
 .imgContainer {
   background-color: #212121;
-  width: 500px;
+  width: min(500px, 100%);
+  height: 61vh;
   display: flex;
   justify-content: center;
   align-items: center;
   border: solid 1vh rgb(70, 32, 32);
+  overflow: hidden;
 }
 
+/* Text “Step X” */
 .step {
   background-color: rgb(28, 28, 28);
   width: 100%;
-  margin-bottom: 0px;
-  margin-top: 0px;
-  padding-top: 3vh;
-  padding-bottom: 3vh;
+  margin: 0;
+  padding: 16px 20px;
   text-align: center;
 }
 
+/* Popis kroku – žádná pevná výška, jen min-height pro stabilitu */
 .instruction {
   background-color: rgb(48, 48, 48);
-  height: 44vh;
-  margin-top: 0px;
-  margin-bottom: 0px;
-  padding-top: 3vh;
+  margin: 0;
+  padding: 20px;
+  height: 40vh;
+  overflow-y: auto;
+  width: 100%;
 }
 
+/* Spodní tlačítka – jednotný styl pro všechny kroky */
 .buttonContainer {
   background-color: rgb(28, 28, 28);
   width: 100%;
-  padding-top: 11vh;
-  padding-bottom: 11vh;
+  padding: 16px 20px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
 
 .buttonContainer2 {
   background-color: rgb(28, 28, 28);
   width: 100%;
-  padding-top: 3vh;
-  padding-bottom: 3vh;
-  display: flex;
+  padding: 16px 20px;
+
   justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
 
-.nextStep {
-  margin-right: 20px;
-  width: 220px;
-}
-
-.previousStep {
-  margin-left: 20px;
-  width: 220px;
-}
-
-.completed {
-  margin-right: 20px;
-  background-color: rgb(74, 0, 0);
-  font-weight: 700;
-  padding-left: 200px;
-  padding-right: 200px;
-  padding-top: 10px;
-  padding-bottom: 10px;
-  margin-top: 0px;
-  margin-bottom: 0px;
-  border-radius: 5px;
-}
-
-.recipeVideo {
-  width: 78.6%;
-  height: 40vh;
-}
-
-.recipeBackground {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-size: cover;
-  background-position: center;
-  filter: blur(8px);
-  z-index: -1;
-}
-
-.imgAndTextRecipe {
-  display: flex;
+/* Speciální layout pro poslední krok (StarRating) */
+.buttonContainer2.lastStep {
   justify-content: center;
 }
 
-.buttonAndStep {
-  width: 60%;
+/* Hlavní layout: obrázek vlevo, text vpravo – ale responsivní */
+.imgAndTextRecipe {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
-.replace {
-  font-size: 1000%;
+/* Pravý sloupec s textem a tlačítky */
+.buttonAndStep {
+  width: 60%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Mobil / užší šířky: pod sebe */
+@media (max-width: 900px) {
+  .imgAndTextRecipe {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .buttonAndStep {
+    width: 100%;
+  }
+
+  .imgContainer {
+    width: 100%;
+    max-width: 500px;
+  }
 }
 
 .backPrevious {
-  margin-top: 10;
   display: flex;
   justify-content: space-between;
-  margin-right: 20px;
-}
-
-.Recipe button {
-  height: 8vh;
 }

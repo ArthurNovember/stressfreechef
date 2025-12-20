@@ -205,39 +205,7 @@ const Recipe = () => {
               </button>
             </div>
           ) : (
-            <div
-              className="buttonContainer2"
-              style={{ display: "block", textAlign: "center" }}
-            >
-              <p className="completed" style={{ marginBottom: 8 }}>
-                RECIPE COMPLETED
-              </p>
-              <p style={{ margin: "6px 0 8px" }}>Rate this recipe:</p>
-              <StarRating
-                value={myRating || community.avg}
-                onRate={canRateCommunity ? (v) => submitRating(v) : undefined}
-                showValue
-                count={community.count}
-                size={28}
-              />
-              {!canRateCommunity && (
-                <p style={{ marginTop: 6, opacity: 0.85 }}>
-                  {ensuring
-                    ? "Preparing rating…"
-                    : "This recipe cannot be rated."}
-                </p>
-              )}
-              {rateMsg && (
-                <p
-                  style={{
-                    marginTop: 8,
-                    color: rateMsg.type === "ok" ? "limegreen" : "tcdomato",
-                  }}
-                >
-                  {rateMsg.text}
-                </p>
-              )}
-
+            <div className="buttonContainer2">
               <div className="backPrevious">
                 <button
                   className="previousStep"
@@ -246,6 +214,30 @@ const Recipe = () => {
                   PREVIOUS
                 </button>
 
+                <StarRating
+                  value={myRating || community.avg}
+                  onRate={canRateCommunity ? (v) => submitRating(v) : undefined}
+                  showValue
+                  count={community.count}
+                  size={28}
+                />
+                {!canRateCommunity && (
+                  <p style={{ marginTop: 6, opacity: 0.85 }}>
+                    {ensuring
+                      ? "Preparing rating…"
+                      : "This recipe cannot be rated."}
+                  </p>
+                )}
+                {rateMsg && (
+                  <p
+                    style={{
+                      marginTop: 8,
+                      color: rateMsg.type === "ok" ? "limegreen" : "tcdomato",
+                    }}
+                  >
+                    {rateMsg.text}
+                  </p>
+                )}
                 <Link to="/domov">
                   <button>Back to HOME</button>
                 </Link>

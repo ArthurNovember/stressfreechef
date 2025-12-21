@@ -15,7 +15,7 @@
 .imgContainer {
   background-color: #212121;
   width: min(500px, 100%);
-  height: 61vh;
+  height: 70vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -28,16 +28,17 @@
   background-color: rgb(28, 28, 28);
   width: 100%;
   margin: 0;
-  padding: 16px 20px;
+  padding: 2vh 2vh;
   text-align: center;
+  height: 5vh;
 }
 
 /* Popis kroku – žádná pevná výška, jen min-height pro stabilitu */
 .instruction {
   background-color: rgb(48, 48, 48);
   margin: 0;
-  padding: 20px;
-  height: 40vh;
+  padding: 2vh 2vh;
+  height: 50vh;
   overflow-y: auto;
   width: 100%;
 }
@@ -46,11 +47,12 @@
 .buttonContainer {
   background-color: rgb(28, 28, 28);
   width: 100%;
-  padding: 16px 20px;
+  padding: 2vh 2vh;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  height: 5vh;
 }
 
 .buttonContainer2 {

@@ -83,25 +83,13 @@ const Home = ({
     };
   }, [displayRecipes]);
 
-  const [animateLogo, setAnimateLogo] = useState(false);
-  const handleHover = () => {
-    setAnimateLogo(true);
-  };
-  const handleAnimationEnd = () => {
-    setAnimateLogo(false);
-  };
-
   return (
     <main>
       <div className="main">
         <div className="logoText">
-          <img
-            src="https://i.imgur.com/EdgU8NN.png"
-            className={`logo ${animateLogo ? "animate" : ""}`}
-            onMouseEnter={handleHover}
-            onAnimationEnd={handleAnimationEnd}
-          />
-          <p className="StressFree">Stress Free Chef</p>
+          <p className="StressFree">
+            Stress Free <span className="chef">Chef</span>
+          </p>
         </div>
         <section className="variants">
           <ul className="HomeUl">

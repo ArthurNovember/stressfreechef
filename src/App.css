@@ -1,43 +1,59 @@
 @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css");
 @import url("https://fonts.googleapis.com/css2?family=Merienda:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap");
+@import url("https://fonts.cdnfonts.com/css/metropolis");
 
 #root {
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
 }
-
-nav {
+header {
   position: fixed;
   top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 1000;
+
+  right: 0;
+
   height: 80px;
-  position: fixed;
+  padding: 0 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  z-index: 1000;
 }
 
+.chef {
+  color: #730606;
+}
+
+/* nav už nebude fixed */
+nav {
+  position: static;
+  height: auto;
+}
+
+/* můžeš klidně zmenšit logo, ať to nevypadá přerostle */
 .logo {
-  width: 400px;
+  width: 150px; /* místo 400px */
+  position: relative;
+  top: 20px;
 }
 .logoText p {
-  position: absolute;
-  top: 250px;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 70px;
-  color: #0b0b0b;
+  font-size: 88px;
+
+  color: rgb(238, 235, 235);
+
   font-weight: 700;
   z-index: 2;
   pointer-events: none; /* text nebude blokovat hover obrázku */
 }
 
 .logoText {
-  background-color: #760101;
   width: 700px;
   margin: auto;
-  border-radius: 40px;
-  border: solid 5px black;
+
   margin-bottom: 40px;
 }
 
@@ -69,42 +85,46 @@ nav {
 
 ul {
   display: flex;
-  padding: 0;
-  margin: 0;
+  padding: 5;
+
   list-style-type: none;
 }
 
 li {
-  flex-grow: 1;
 }
 
 nav a {
   color: white;
-  background-color: #232323;
-  padding: 20px 0px;
+
+  padding: 20px 10px;
   display: flex;
   justify-content: center;
   width: 100%;
-  border-left: solid rgb(48, 48, 48) 1.5px;
-  border-right: solid rgb(48, 48, 48) 1.5px;
 }
 
 nav a:hover {
-  background-color: rgb(97, 1, 1);
+  color: rgb(97, 1, 1);
+  font-weight: bold;
 }
 
 section a {
-  background-color: #760303;
+  background-color: #5c0707;
   color: white;
   padding: 10px;
+  width: 100px;
   display: flex;
   justify-content: center;
-  border-left: solid rgb(0, 0, 0) 1.5px;
-  border-right: solid rgb(48, 48, 48) 1.5px;
+  border-radius: 20px;
+  margin-right: 20px;
+  margin-bottom: 10px;
+
+  background: rgb(114, 3, 3);
+  box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
 }
 
 section a:hover {
-  background-color: rgb(66, 10, 10);
+  background: rgba(71, 2, 2, 0.385);
+  box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.101);
 }
 
 main input {
@@ -118,6 +138,8 @@ main input {
 
 button {
   padding-top: 11px;
+
+  border-radius: 0;
 }
 
 button:hover {
@@ -129,16 +151,16 @@ button:hover {
   background-color: rgb(19, 19, 19);
   display: flex;
   justify-content: center;
-  max-width: 1700px;
+
   margin-left: auto;
   margin-right: auto;
   flex-wrap: wrap;
 }
 
 .recipeCard {
-  width: 22%;
+  width: 17%;
   margin: 10px;
-  background-color: rgb(35, 35, 35);
+  background: radial-gradient(circle at top, #212020 0, #161616 55%);
   border-radius: 8px;
   padding: 10px;
   text-align: center;
@@ -302,7 +324,7 @@ html {
 }
 
 #forNow {
-  background-color: #2d2d2d;
+  background-color: #131212;
   margin-left: auto;
   margin-right: auto;
   border: solid 8px #1d1c1c;
@@ -355,14 +377,13 @@ html {
 }
 
 .main {
-  background-image: url("https://i.imgur.com/yUtWIFO.jpeg");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: radial-gradient(circle at top, #301e21 0, #090505 55%);
   padding-top: 100px;
   min-height: 100vh;
+  min-width: fit-content;
 }
 
 .StressFree {
-  font-family: "Merienda", cursive;
+  font-family: "Metropolis", sans-serif;
+  color: white;
 }

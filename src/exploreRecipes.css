@@ -4,16 +4,14 @@
   height: 100%;
   align-items: center;
 
-  background-image: url("https://i.imgur.com/I7ofrjs.png");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: radial-gradient(circle at top, #301e21 0, #090505 55%);
   padding-top: 100px;
   min-height: 100vh;
 }
 
 .explore h2 {
   font-size: 40px;
+  font-family: "Metropolis", sans-serif;
 }
 
 .views {
@@ -43,14 +41,14 @@
   margin-left: 20px;
   flex-wrap: wrap;
   margin-right: 20px;
-  width: 98%;
+  width: 100%;
   padding-top: 30px;
   border-radius: 5px;
 }
 
 .recipeCard1 {
   margin: 10px;
-  background-color: rgb(35, 35, 35);
+  background-color: rgb(28, 27, 27);
   border-radius: 8px;
   padding: 10px;
   text-align: center;
@@ -67,7 +65,7 @@
   width: 800px;
   height: 45px;
   border-radius: 5px;
-  border: 3px solid rgb(65, 19, 19);
+  border: 3px solid rgb(96, 2, 2);
   border-right: 0px;
   border-top-right-radius: 0px;
   border-bottom-right-radius: 0px;
@@ -78,9 +76,9 @@
   border-radius: 5px;
   border-top-left-radius: 0px;
   border-bottom-left-radius: 0px;
-  border: 3px solid rgb(65, 19, 19);
+  border: 3px solid rgb(96, 2, 2);
   border-left: 0px;
-  background-color: rgb(65, 19, 19);
+  background-color: rgb(96, 2, 2);
   cursor: default;
 }
 .searchAndViews button {
@@ -109,7 +107,7 @@
 }
 
 .variantsExplore a {
-  background-color: rgb(71, 12, 12);
+  background-color: rgb(93, 0, 0);
   height: 15px;
   display: flex;
   justify-content: center; /* horizontálně */

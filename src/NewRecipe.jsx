@@ -354,7 +354,7 @@ const NewRecipe = () => {
             <li className="addStep">
               <input disabled />
               <div className="photoAndButton">
-                <button type="button" onClick={addStep}>
+                <button type="button" className="addStep" onClick={addStep}>
                   Add Step
                 </button>
               </div>

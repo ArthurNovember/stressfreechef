@@ -174,8 +174,6 @@ const FavoriteItems = ({
           </datalist>
         </div>
         <div className="TopAddShop">
-          <h2>Select Shop (optional)</h2>
-
           <div className="buttonAndShopsInput" ref={inputDropdownWrapRef}>
             <button
               type="button"

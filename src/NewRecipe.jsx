@@ -15,7 +15,8 @@ const NewRecipe = () => {
   // --- hlavní info
   const [title, setTitle] = useState("");
   const [difficulty, setDifficulty] = useState("Beginner");
-  const [time, setTime] = useState("");
+  const [time, setTime] = useState("00:00");
+
   const [isPublic, setIsPublic] = useState(false);
 
   // --- thumbnail (soubor + preview)
@@ -173,81 +174,83 @@ const NewRecipe = () => {
   return (
     <div className="new">
       {msg && <p className={msg.type}>{msg.text}</p>}
-
-      <div className="mainInfo">
-        <div className="nameDifTime">
-          <div className="inputAdd">
-            <label>
-              <p>Name of the Recipe: </p>
-            </label>
-            <input
-              type="text"
-              placeholder="Title..."
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
-
-          <div className="inputAdd">
-            <label>
-              <p>Difficulty</p>
-            </label>
-            <select
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-            >
-              {DIFFICULTIES.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="inputAdd">
-            <label>
-              <p>Time</p>
-            </label>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* THUMBNAIL: upload + preview */}
-        <label htmlFor="uploadID">
-          <div className="uploadContainer">
-            <div className="imagePreview">
-              {preview ? (
-                isVideo ? (
-                  <video
-                    src={preview}
-                    muted
-                    autoPlay
-                    loop
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "200px",
-                      borderRadius: 8,
-                    }}
-                  />
-                ) : (
-                  <img
-                    src={preview}
-                    alt="Preview"
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "200px",
-                      borderRadius: 8,
-                    }}
-                  />
-                )
-              ) : (
-                <p>Upload Recipe Thumbnail</p>
-              )}
+      <div className="creation">
+        <div className="mainInfo">
+          <div className="nameDifTime">
+            <div className="inputAdd">
+              <label>
+                <p>Name of the Recipe: </p>
+              </label>
+              <input
+                type="text"
+                placeholder="Title..."
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
             </div>
+
+            <div className="inputAdd">
+              <label>
+                <p>Difficulty</p>
+              </label>
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+              >
+                {DIFFICULTIES.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="inputAdd">
+              <label>
+                <p>Time</p>
+              </label>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* THUMBNAIL: upload + preview */}
+
+          <div className="uploadContainer">
+            <label htmlFor="uploadID">
+              <div className="imagePreview">
+                {preview ? (
+                  isVideo ? (
+                    <video
+                      src={preview}
+                      muted
+                      autoPlay
+                      loop
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "200px",
+                        borderRadius: 8,
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src={preview}
+                      alt="Preview"
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "200px",
+                        borderRadius: 8,
+                      }}
+                    />
+                  )
+                ) : (
+                  <p>Upload Recipe Thumbnail</p>
+                )}
+              </div>{" "}
+            </label>
 
             <input
               id="uploadID"
@@ -258,142 +261,140 @@ const NewRecipe = () => {
               hidden
             />
           </div>
-        </label>
 
-        {/* “tlačítko” Add Recipe */}
-        <img
-          className="addRecipe"
-          src="https://i.imgur.com/wPktOjd.png"
-          alt="Create"
-          style={{
-            cursor: saving ? "not-allowed" : "pointer",
-            opacity: saving ? 0.6 : 1,
-          }}
-          onClick={() => (!saving ? handleSubmit() : null)}
-        />
+          {/* “tlačítko” Add Recipe */}
+          <img
+            className="addRecipe"
+            src="https://i.imgur.com/wPktOjd.png"
+            alt="Create"
+            style={{
+              cursor: saving ? "not-allowed" : "pointer",
+              opacity: saving ? 0.6 : 1,
+            }}
+            onClick={() => (!saving ? handleSubmit() : null)}
+          />
 
-        <div className="public">
-          <select
-            value={isPublic ? "Public" : "Private"}
-            onChange={(e) => setIsPublic(e.target.value === "Public")}
-          >
-            <option>Public</option>
-            <option>Private</option>
-          </select>
+          <div className="public">
+            <select
+              value={isPublic ? "Public" : "Private"}
+              onChange={(e) => setIsPublic(e.target.value === "Public")}
+            >
+              <option>Public</option>
+              <option>Private</option>
+            </select>
+          </div>
         </div>
-      </div>
 
-      <div className="stepsAndIngrents">
-        {/* STEPS */}
-        <div className="Steps">
-          <h3>STEPS</h3>
-          <ol>
-            {steps.map((s, i) => (
-              <li key={i}>
-                <input
-                  placeholder="Describe the step…"
-                  value={s.description}
-                  onChange={(e) => updateStepDesc(i, e.target.value)}
-                />
-
-                <label htmlFor={`uploadStep-${i}`}>
-                  <div className="uploadContainer">
-                    <div className="imagePreview">
-                      {s.preview ? (
-                        s.type === "video" ? (
-                          <video
-                            src={s.preview}
-                            muted
-                            autoPlay
-                            loop
-                            style={{
-                              maxWidth: "100%",
-                              maxHeight: "200px",
-                              borderRadius: 8,
-                            }}
-                          />
-                        ) : (
-                          <img
-                            src={s.preview}
-                            alt="Step preview"
-                            style={{
-                              maxWidth: "100%",
-                              maxHeight: "200px",
-                              borderRadius: 8,
-                            }}
-                          />
-                        )
-                      ) : (
-                        <p>Upload Step Thumbnail (image/video)</p>
-                      )}
-                    </div>
-
-                    <input
-                      id={`uploadStep-${i}`}
-                      className="uploads"
-                      type="file"
-                      accept="image/*,video/*"
-                      onChange={(e) => handleStepFileChange(i, e)}
-                      hidden
-                    />
-                  </div>
-                </label>
-
-                {steps.length > 1 && (
-                  <button
-                    className="X"
-                    type="button"
-                    onClick={() => removeStep(i)}
-                  >
-                    X
-                  </button>
-                )}
-              </li>
-            ))}
-
-            <li className="addStep">
-              <input disabled />
-              <div className="photoAndButton">
-                <button type="button" className="addStep" onClick={addStep}>
-                  Add Step
+        <div className="stepsAndIngrents">
+          {/* INGREDIENTS */}
+          <div className="Ingredients">
+            <h3>INGREDIENTS</h3>
+            <ol>
+              {ingredients.map((val, i) => (
+                <li key={i} className="inputWithButton">
+                  <input
+                    placeholder="e.g., chicken breast"
+                    value={val}
+                    onChange={(e) => updateIngredient(i, e.target.value)}
+                  />
+                  {ingredients.length > 1 && (
+                    <button
+                      className="X"
+                      type="button"
+                      onClick={() => removeIngredient(i)}
+                    >
+                      X
+                    </button>
+                  )}
+                </li>
+              ))}
+              <li className="inputWithButton">
+                <button
+                  className="AddIngredient"
+                  type="button"
+                  onClick={addIngredient}
+                >
+                  Add Ingredient
                 </button>
-              </div>
-            </li>
-          </ol>
-        </div>
-
-        {/* INGREDIENTS */}
-        <div className="Ingredients">
-          <h3>INGREDIENTS</h3>
-          <ol>
-            {ingredients.map((val, i) => (
-              <li key={i} className="inputWithButton">
-                <input
-                  placeholder="e.g., chicken breast"
-                  value={val}
-                  onChange={(e) => updateIngredient(i, e.target.value)}
-                />
-                {ingredients.length > 1 && (
-                  <button
-                    className="X"
-                    type="button"
-                    onClick={() => removeIngredient(i)}
-                  >
-                    X
-                  </button>
-                )}
               </li>
-            ))}
-            <li className="inputWithButton">
-              <button
-                className="AddIngredient"
-                type="button"
-                onClick={addIngredient}
-              >
-                Add Ingredient
-              </button>
-            </li>
-          </ol>
+            </ol>
+          </div>
+
+          {/* STEPS */}
+          <div className="Steps">
+            <h3>STEPS</h3>
+            <ol>
+              {steps.map((s, i) => (
+                <li key={i}>
+                  <label htmlFor={`uploadStep-${i}`}>
+                    <div className="uploadContainer">
+                      <div className="imagePreview">
+                        {s.preview ? (
+                          s.type === "video" ? (
+                            <video
+                              src={s.preview}
+                              muted
+                              autoPlay
+                              loop
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "200px",
+                                borderRadius: 8,
+                              }}
+                            />
+                          ) : (
+                            <img
+                              src={s.preview}
+                              alt="Step preview"
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "200px",
+                                borderRadius: 8,
+                              }}
+                            />
+                          )
+                        ) : (
+                          <p>Upload Step Thumbnail (image/video)</p>
+                        )}
+                      </div>
+
+                      <input
+                        id={`uploadStep-${i}`}
+                        className="uploads"
+                        type="file"
+                        accept="image/*,video/*"
+                        onChange={(e) => handleStepFileChange(i, e)}
+                        hidden
+                      />
+                    </div>
+                  </label>
+                  <textarea
+                    placeholder="Describe the step…"
+                    value={s.description}
+                    onChange={(e) => updateStepDesc(i, e.target.value)}
+                  />
+
+                  {steps.length > 1 && (
+                    <button
+                      className="X"
+                      type="button"
+                      onClick={() => removeStep(i)}
+                    >
+                      X
+                    </button>
+                  )}
+                </li>
+              ))}
+
+              <li className="addStep">
+                <div className="photoAndButton">
+                  <button type="button" className="addStep" onClick={addStep}>
+                    Add Step
+                  </button>
+                </div>
+              </li>
+            </ol>
+          </div>
         </div>
       </div>
     </div>

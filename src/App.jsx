@@ -444,7 +444,9 @@ function App() {
                 <Link to="/shopping-list">Shopping List</Link>
               </li>
               <li id="nav">
-                <Link to={token ? "/myprofile" : "/authform"}>MyProfile</Link>
+                <Link to={userInfo ? "/myprofile" : "/authform"}>
+                  {userInfo?.username ? userInfo.username : "MyProfile"}
+                </Link>
               </li>
             </ul>
           </nav>

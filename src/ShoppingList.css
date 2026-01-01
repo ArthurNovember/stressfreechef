@@ -98,6 +98,7 @@
 
 .nameAndCheck {
   display: flex;
+  margin-left: 10px;
 }
 
 .deleteItem {
@@ -296,4 +297,8 @@
 .submit:hover {
   background-color: rgb(68, 0, 0);
   box-shadow: 0 0.1px 20px rgb(68, 0, 0);
+}
+
+.deleteShop {
+  background-color: transparent;
 }

@@ -84,6 +84,7 @@ const ExploreRecipes = ({ addItem }) => {
   const isVideoSelected = getCover(selectedRecipe).isVideo;
 
   const [displayRecipes, setDisplayRecipes] = useState([]);
+  const [sortBy, setSortBy] = useState("easiest");
 
   // Debounce vyhledávání (300 ms)
   useEffect(() => {
@@ -225,27 +226,63 @@ const ExploreRecipes = ({ addItem }) => {
       <section className="variantsExplore">
         <ul>
           <li>
-            <a href="#recommended" onClick={recommendedRecipes}>
+            <a
+              href="#recommended"
+              onClick={(e) => {
+                e.preventDefault();
+                setSortBy("easiest");
+                recommendedRecipes();
+              }}
+              className={sortBy === "easiest" ? "activeSection" : ""}
+            >
               EASIEST
             </a>
           </li>
+
           <li>
-            <a href="#newest" onClick={bestSortRecipes}>
+            <a
+              href="#newest"
+              onClick={(e) => {
+                e.preventDefault();
+                setSortBy("newest");
+                bestSortRecipes();
+              }}
+              className={sortBy === "newest" ? "activeSection" : ""}
+            >
               NEWEST
             </a>
           </li>
+
           <li>
-            <a href="#favorite" onClick={favoriteRecipes}>
+            <a
+              href="#favorite"
+              onClick={(e) => {
+                e.preventDefault();
+                setSortBy("favorite");
+                favoriteRecipes();
+              }}
+              className={sortBy === "favorite" ? "activeSection" : ""}
+            >
               FAVORITE
             </a>
           </li>
+
           <li>
-            <a href="#random" onClick={shuffleRecipes}>
+            <a
+              href="#random"
+              onClick={(e) => {
+                e.preventDefault();
+                setSortBy("random");
+                shuffleRecipes();
+              }}
+              className={sortBy === "random" ? "activeSection" : ""}
+            >
               RANDOM
             </a>
           </li>
         </ul>
       </section>
+
       <div className="recipeContainer1">
         {displayRecipes.map((r) => {
           const { url, isVideo } = getCover(r);

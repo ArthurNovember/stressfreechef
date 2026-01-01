@@ -229,23 +229,15 @@ const MyProfile = ({ userInfo, addItem }) => {
   return (
     <div className="myProfile">
       <div className="deleteContainer">
-        <button onClick={handleDeleteAccount} className="deleteAccount">
-          Delete account
+        <button className="logout" onClick={handleLogout}>
+          Logout
         </button>
       </div>
       <div classname="loginButtons">
-        <div className="loginInfo">
-          <h2>Welcome, {userInfo.username}!</h2>
-          <h2>Email: {userInfo.email}</h2>
-        </div>
-        <div clasName="endButtons">
-          <button className="logout" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
+        <div className="loginInfo"></div>
+        <div clasName="endButtons"></div>
       </div>
       <div className="My">
-        {/* SAVED RECIPES – zatím placeholder / budoucí feature 
         <div className="savedRecipes">
           <div className="MyRecipeNewRecipe">
             <h2 className="MyCategory">SAVED RECIPES</h2>
@@ -266,7 +258,6 @@ const MyProfile = ({ userInfo, addItem }) => {
             </div>
           </div>
         </div>
-        */}
 
         {/* MY RECIPES – skutečná data z /api/my-recipes */}
         <div className="myRecipes">
@@ -432,38 +423,42 @@ const MyProfile = ({ userInfo, addItem }) => {
               </div>
             </div>
           )}
-
-          {(pages > 1 || total > limit) && (
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                alignItems: "center",
-                justifyContent: "center",
-                marginTop: 16,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={!canPrev}
-              >
-                ◀︎ Previous
-              </button>
-              <span>
-                Page {page} / {pages} · {total} results
-              </span>
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.min(pages, p + 1))}
-                disabled={!canNext}
-              >
-                Next ▶︎
-              </button>
-            </div>
-          )}
         </div>
       </div>
+      {(pages > 1 || total > limit) && (
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 16,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={!canPrev}
+          >
+            ◀︎ Previous
+          </button>
+          <span>
+            Page {page} / {pages} · {total} results
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(pages, p + 1))}
+            disabled={!canNext}
+          >
+            Next ▶︎
+          </button>
+        </div>
+      )}
+      <footer className="profileFooter">
+        <button onClick={handleDeleteAccount} className="deleteAccount">
+          Delete account
+        </button>
+      </footer>
     </div>
   );
 };

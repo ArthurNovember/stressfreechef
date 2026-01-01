@@ -14,10 +14,8 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  margin-bottom: 50px;
-  background: radial-gradient(circle at top, #141414 0, #090505 55%);
-  border: 1px solid #1b1b1b;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+  padding-bottom: 50px;
+  border-bottom: 1px rgb(56, 52, 52) solid;
   position: relative;
 }
 
@@ -28,13 +26,15 @@
 .mainInfo input {
   width: 60%;
   border: 2px rgb(29, 29, 29) solid;
-  background-color: transparent;
+  background-color: rgb(10, 10, 10);
   padding-left: 10px;
+  border-radius: 5px;
+  margin-top: 5px;
 }
 
 .mainInfo select {
   width: 62.5%;
-  background-color: transparent;
+  background-color: rgb(10, 10, 10);
   border: 2px rgb(29, 29, 29) solid;
   padding-left: 10px;
 }
@@ -75,11 +75,6 @@
   object-fit: cover;
 }
 
-.stepsAndIngrents {
-  display: flex;
-  justify-content: space-between;
-}
-
 .stepsAndIngrents ol {
   padding-inline-start: 0px;
 }
@@ -106,21 +101,11 @@
 }
 
 .Ingredients {
-  width: 40%;
-  background: radial-gradient(circle at top, #111111 0, #090505 55%);
-  border-radius: 24px;
   padding: 20px;
-  border: 1px solid #1b1b1b;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
-}
-
-.Steps {
-  width: 55%;
-  background: radial-gradient(circle at top, #111111 0, #090505 55%);
-  border: 1px solid #1b1b1b;
-  border-radius: 24px;
-
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+  border-bottom: 1px rgb(56, 52, 52) solid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .photoAndButton {
@@ -132,14 +117,19 @@
   position: absolute;
   top: 0px; /* vzdálenost od horní hrany */
   right: 0px; /* vzdálenost od pravé hrany */
-  background-color: #490202;
+  background-color: transparent;
   border-radius: 0px;
+}
+
+.X:hover {
+  background-color: transparent;
+  border: 0px transparent;
 }
 
 .public {
   position: absolute;
-  top: 0px; /* vzdálenost od horní hrany */
-  right: 3px; /* vzdálenost od pravé hrany */
+  top: -40px; /* vzdálenost od horní hrany */
+  right: 10px; /* vzdálenost od pravé hrany */
   width: 20%;
   height: 15%;
 }
@@ -147,9 +137,15 @@
 .public select {
   width: 100%;
   height: 100%;
+  border-radius: 5px;
 }
 
 .AddIngredient {
+  border-radius: 5px;
+  background: rgb(114, 3, 3);
+}
+
+.AddIngredient:hover {
   background: rgb(114, 3, 3);
   box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
 }
@@ -173,5 +169,56 @@
 
 .addStep button {
   background: rgb(114, 3, 3);
+}
+
+.addStep button:hover {
+  background: rgb(114, 3, 3);
   box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
+}
+
+.creation {
+  background: radial-gradient(0, #131111 55%);
+  padding-top: 50px;
+  margin-left: 30px;
+  margin-right: 30px;
+  border-radius: 20px;
+  border: 1px rgb(41, 39, 39) solid;
+}
+
+.new label {
+  width: 300px;
+}
+
+.Steps li {
+  display: flex;
+  flex-direction: row;
+}
+
+.Steps li {
+  align-items: flex-start; /* ať textarea začíná nahoře, ne uprostřed */
+}
+
+.Steps textarea {
+  background-color: rgb(9, 9, 9);
+  width: 100%;
+  height: 290px;
+  min-height: 120px; /* výška pole */
+  padding: 10px;
+  color: white;
+  resize: none;
+  text-align: left;
+  line-height: 1.4;
+  margin-left: 10px;
+  font-size: large;
+  border: 0px;
+  align-items: baseline;
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+.Ingredients ol {
+  width: 1200px;
+}
+
+.Ingredients li {
+  margin-top: 10px;
 }

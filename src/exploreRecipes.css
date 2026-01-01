@@ -65,7 +65,7 @@
   width: 800px;
   height: 45px;
   border-radius: 5px;
-  border: 3px solid rgb(96, 2, 2);
+  border: 3px solid rgb(53, 28, 28);
   border-right: 0px;
   border-top-right-radius: 0px;
   border-bottom-right-radius: 0px;
@@ -76,9 +76,9 @@
   border-radius: 5px;
   border-top-left-radius: 0px;
   border-bottom-left-radius: 0px;
-  border: 3px solid rgb(96, 2, 2);
+  border: 3px solid rgb(53, 28, 28);
   border-left: 0px;
-  background-color: rgb(96, 2, 2);
+  background-color: rgb(53, 28, 28);
   cursor: default;
 }
 .searchAndViews button {
@@ -107,9 +107,14 @@
 }
 
 .variantsExplore a {
-  background-color: rgb(93, 0, 0);
+  background-color: #322222;
   height: 15px;
   display: flex;
   justify-content: center; /* horizontálně */
   align-items: center; /* vertikálně */
+}
+
+.variantsExplore a.activeSection {
+  background: rgb(114, 3, 3);
+  box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
 }

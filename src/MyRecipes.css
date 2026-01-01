@@ -4,9 +4,11 @@
 
 .My {
   display: flex;
-  margin-left: 40px;
-  flex-direction: column;
+  padding-top: 70px;
+  flex-direction: row;
   align-items: baseline;
+  gap: 10vh;
+  justify-content: center;
 }
 
 .recipeContainer2 {
@@ -25,6 +27,8 @@
   padding: 10px;
   text-align: center;
   display: flex;
+  justify-content: space-between;
+  width: 80vh;
 }
 
 .recipeCard2 img {
@@ -39,7 +43,7 @@
 
 .MyRecipeNewRecipe {
   display: flex;
-  border-bottom: 5px rgb(131, 26, 26) solid;
+  border-bottom: 5px rgb(114, 3, 3) solid;
   padding: bottom 0px;
   justify-content: space-between;
   align-items: center;
@@ -54,7 +58,7 @@
 }
 
 .myProfile {
-  padding-top: 55px;
+  padding-top: 5px;
   background: radial-gradient(circle at top, #301e21 0, #090505 55%);
   min-height: 100vh;
 }
@@ -63,8 +67,6 @@
   max-height: 40px;
   max-width: 40px;
   position: relative;
-  top: -10px;
-  right: -10px;
   text-align: center;
 }
 
@@ -76,7 +78,11 @@
 .logout {
   background: rgb(114, 3, 3);
   box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
-  width: 250px;
+  width: 150px;
+  margin-left: 20px;
+  border-radius: 5px;
+  margin-top: 20px;
+  font-size: large;
 }
 
 .deleteContainer {
@@ -100,4 +106,20 @@
   color: rgb(120, 5, 5);
   text-decoration: underline;
   border: 0;
+}
+
+.myRecipes {
+  width: 400vh;
+  margin-right: 8vh;
+}
+.savedRecipes {
+  width: 400vh;
+  margin-left: 8vh;
+}
+
+.profileFooter {
+  align-items: baseline;
+  text-align: left;
+  border-top: solid 1px rgb(40, 38, 38);
+  margin-top: 30px;
 }

@@ -200,17 +200,6 @@ const ShoppingList = ({
               </label>
             </div>
 
-            <div className="sortSelector">
-              <label>Sort by:</label>
-              <select
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value)}
-              >
-                <option value="added">Added</option>
-                <option value="shop">Shop</option>
-              </select>
-            </div>
-
             <div className="imgtext">
               <Link to="/favoriteItems">
                 <img
@@ -287,6 +276,7 @@ const ShoppingList = ({
                               <button
                                 type="button"
                                 onClick={() => handleDeleteShop(_id)}
+                                className="deleteShop"
                               >
                                 ❌
                               </button>
@@ -437,6 +427,7 @@ const ShoppingList = ({
                             <button
                               type="button"
                               onClick={() => handleDeleteShop(shop._id)}
+                              className="deleteShop"
                             >
                               ❌
                             </button>

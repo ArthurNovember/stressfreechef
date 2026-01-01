@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import StarRating from "./StarRating";
+import { MdAddShoppingCart } from "react-icons/md";
 
 const RAW =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
@@ -18,6 +19,7 @@ const Home = ({
   NewItem,
 }) => {
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [sortBy, setSortBy] = useState("newest");
 
   const openModal = (recipe) => {
     setSelectedRecipe(recipe);
@@ -94,22 +96,57 @@ const Home = ({
         <section className="variants">
           <ul className="HomeUl">
             <li>
-              <a href="#recommended" onClick={recommendedRecipes}>
+              <a
+                href="#recommended"
+                onClick={(e) => {
+                  e.preventDefault(); // ať to neskáče na #
+                  setSortBy("easiest"); // nastavíme aktivní sort
+                  recommendedRecipes(); // zavoláme tvoji funkci
+                }}
+                className={sortBy === "easiest" ? "activeSection" : ""}
+              >
                 EASIEST
               </a>
             </li>
+
             <li>
-              <a href="#newest" onClick={bestSortRecipes}>
+              <a
+                href="#newest"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSortBy("newest");
+                  bestSortRecipes();
+                }}
+                className={sortBy === "newest" ? "activeSection" : ""}
+              >
                 NEWEST
               </a>
             </li>
+
             <li>
-              <a href="#favorite" onClick={favoriteRecipes}>
+              <a
+                href="#favorite"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSortBy("favorite");
+                  favoriteRecipes();
+                }}
+                className={sortBy === "favorite" ? "activeSection" : ""}
+              >
                 FAVORITE
               </a>
             </li>
+
             <li>
-              <a href="#random" onClick={shuffleRecipes}>
+              <a
+                href="#random"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSortBy("random");
+                  shuffleRecipes();
+                }}
+                className={sortBy === "random" ? "activeSection" : ""}
+              >
                 RANDOM
               </a>
             </li>
@@ -166,9 +203,9 @@ const Home = ({
                   <ol>
                     {selectedRecipe.ingredients.map((ingredient, index) => {
                       return (
-                        <li key={index}>
+                        <li key={index} className="ingredient">
                           {" "}
-                          <input type="checkbox" /> {ingredient}{" "}
+                          {ingredient}
                           <button
                             className="sendToList"
                             onClick={() =>
@@ -178,7 +215,7 @@ const Home = ({
                               })
                             }
                           >
-                            Send to shopping list
+                            <MdAddShoppingCart size={18} color="#ffffff" />
                           </button>
                         </li>
                       );

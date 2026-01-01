@@ -166,38 +166,50 @@ const ShoppingList = ({
         {hasToken && (
           <div className="filterAndSort">
             <div className="filterShops">
-              <h3>Shop:</h3>
-              {shopOptions.map(({ _id, name }) => (
-                <label key={_id}>
-                  <input
-                    type="checkbox"
-                    checked={filterShops.includes(_id)}
-                    onChange={() => {
-                      setFilterShops((prev) =>
-                        prev.includes(_id)
-                          ? prev.filter((s) => s !== _id)
-                          : [...prev, _id]
-                      );
-                    }}
-                  />
-                  {name}
-                </label>
-              ))}
+              <div className="filter-buttons">
+                <button
+                  className={`filter-btn ${
+                    filterShops.length === 0 ? "active" : ""
+                  }`}
+                  onClick={() => setFilterShops([])}
+                >
+                  All
+                </button>
 
-              <label className="noShop">
-                <input
-                  type="checkbox"
-                  checked={filterShops.includes("No Shop")}
-                  onChange={() => {
+                {shopOptions.map((shop) => {
+                  const active = filterShops.includes(shop._id);
+                  return (
+                    <button
+                      key={shop._id}
+                      className={`filter-btn ${active ? "active" : ""}`}
+                      onClick={() => {
+                        setFilterShops((prev) =>
+                          active
+                            ? prev.filter((id) => id !== shop._id)
+                            : [...prev, shop._id]
+                        );
+                      }}
+                    >
+                      {shop.name}
+                    </button>
+                  );
+                })}
+
+                <button
+                  className={`filter-btn ${
+                    filterShops.includes("No Shop") ? "active" : ""
+                  }`}
+                  onClick={() => {
                     setFilterShops((prev) =>
                       prev.includes("No Shop")
-                        ? prev.filter((s) => s !== "No Shop")
+                        ? prev.filter((id) => id !== "No Shop")
                         : [...prev, "No Shop"]
                     );
                   }}
-                />
-                No Shop
-              </label>
+                >
+                  No Shop
+                </button>
+              </div>
             </div>
 
             <div className="imgtext">

@@ -3,6 +3,10 @@
 @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap");
 @import url("https://fonts.cdnfonts.com/css/metropolis");
 
+body {
+  background: radial-gradient(circle at top, #301e21 0, #090505 55%);
+}
+
 #root {
   max-width: 100%;
   margin: 0 auto;

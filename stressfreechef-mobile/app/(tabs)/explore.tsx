@@ -68,6 +68,13 @@ async function getToken() {
   }
 }
 
+function activeToSort(active: "EASIEST" | "NEWEST" | "FAVORITE" | "RANDOM") {
+  if (active === "EASIEST") return "easiest";
+  if (active === "FAVORITE") return "favorite";
+  if (active === "RANDOM") return "random";
+  return "newest";
+}
+
 async function addIngredientToShopping(ingredient: string, lang: Lang) {
   const trimmed = ingredient.trim();
   if (!trimmed) return;
@@ -242,6 +249,9 @@ export default function ExploreScreen() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   const [lang, setLang] = useState<Lang>("en");
+  const [randomSeed, setRandomSeed] = useState(0);
+
+  const justFocusedRef = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -266,8 +276,6 @@ export default function ExploreScreen() {
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedQ(q.trim());
-      setPage(1);
-      setHasMore(true); // nový search = můžeme znovu načítat další stránky
     }, 300);
     return () => clearTimeout(t);
   }, [q]);
@@ -318,19 +326,12 @@ export default function ExploreScreen() {
     }, [])
   );
 
-  // 🔁 Načtení community recipes při každém návratu na Explore
-  useFocusEffect(
-    useCallback(() => {
-      // vyčistíme list a nastavení stránkování
-      setItems([]);
-      setPage(1);
-      setHasMore(true);
-      setErr(null);
-
-      // žádný cleanup nepotřebujeme
-      return () => {};
-    }, [])
-  );
+  useEffect(() => {
+    setItems([]);
+    setPage(1);
+    setHasMore(true);
+    setErr(null);
+  }, [active, debouncedQ]);
 
   // ===== fetch community recipes =====
   useEffect(() => {
@@ -347,6 +348,9 @@ export default function ExploreScreen() {
         params.set("page", String(page));
         params.set("limit", String(limit));
         if (debouncedQ) params.set("q", debouncedQ);
+        if (active !== "RANDOM") {
+          params.set("sort", activeToSort(active));
+        }
 
         const url = `${API_BASE}/api/community-recipes?${params.toString()}`;
 
@@ -364,7 +368,12 @@ export default function ExploreScreen() {
         setItems((prev) => (page === 1 ? arr : [...prev, ...arr]));
 
         // pokud přišlo méně než limit, další stránka už není
-        setHasMore(arr.length === limit);
+        const nextHasMore =
+          typeof data?.pages === "number" && typeof data?.page === "number"
+            ? data.page < data.pages
+            : arr.length === limit;
+
+        setHasMore(nextHasMore);
       } catch (e: any) {
         if (!aborted) {
           setErr(e?.message || "Failed to load community recipes.");
@@ -377,7 +386,7 @@ export default function ExploreScreen() {
     return () => {
       aborted = true;
     };
-  }, [debouncedQ, page]);
+  }, [debouncedQ, page, active]);
 
   // ===== sort pomocné funkce =====
   function sortEasiest(src: CommunityRecipe[]) {
@@ -420,11 +429,9 @@ export default function ExploreScreen() {
 
   // ===== GRID: přepočet displayList při změně items/filtru =====
   useEffect(() => {
-    if (active === "EASIEST") setDisplayList(sortEasiest(items));
-    else if (active === "FAVORITE") setDisplayList(sortFavorite(items));
-    else if (active === "RANDOM") setDisplayList(shuffle(items));
-    else setDisplayList(sortNewest(items));
-  }, [items, active]);
+    if (active === "RANDOM") setDisplayList(shuffle(items));
+    else setDisplayList(items);
+  }, [items, active, randomSeed]);
 
   // ===== SWIPE: přepočet decku podle items + favoriteIds =====
 
@@ -753,7 +760,10 @@ export default function ExploreScreen() {
                     borderColor: colors.pillActive,
                   },
                 ]}
-                onPress={() => setActive("RANDOM")}
+                onPress={() => {
+                  setActive("RANDOM");
+                  setRandomSeed((s) => s + 1);
+                }}
               >
                 <Text
                   style={[
@@ -788,9 +798,8 @@ export default function ExploreScreen() {
             renderItem={renderItem}
             onEndReachedThreshold={0.5}
             onEndReached={() => {
-              if (!loading && hasMore) {
-                setPage((p) => p + 1);
-              }
+              if (justFocusedRef.current) return;
+              if (!loading && hasMore) setPage((p) => p + 1);
             }}
             ListFooterComponent={
               loading && items.length > 0 ? (

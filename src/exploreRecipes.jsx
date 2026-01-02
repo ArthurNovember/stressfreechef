@@ -68,6 +68,7 @@ const ExploreRecipes = ({ addItem }) => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [savedCommunityIds, setSavedCommunityIds] = useState([]);
+  const [randomSeed, setRandomSeed] = useState(() => String(Date.now()));
 
   const [selectedRecipe, setSelectedRecipe] = useState(null);
 
@@ -77,6 +78,22 @@ const ExploreRecipes = ({ addItem }) => {
   const closeModal = () => {
     setSelectedRecipe(null);
   };
+
+  const hash = (str) => {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  };
+
+  const randomSort = (list, seed) =>
+    [...list].sort((a, b) => {
+      const ida = String(a?._id || "");
+      const idb = String(b?._id || "");
+      return hash(seed + ida) - hash(seed + idb);
+    });
 
   useEffect(() => {
     if (selectedRecipe) {
@@ -134,6 +151,8 @@ const ExploreRecipes = ({ addItem }) => {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(limit));
+      params.set("sort", sortBy);
+
       if (debouncedQ) params.set("q", debouncedQ);
 
       try {
@@ -180,52 +199,40 @@ const ExploreRecipes = ({ addItem }) => {
     return () => {
       aborted = true;
     };
-  }, [page, limit, debouncedQ]);
+  }, [page, limit, debouncedQ, sortBy]);
 
   // reset page na 1 při změně hledání
   useEffect(() => {
     setPage(1);
-  }, [debouncedQ]);
+    setItems([]); // 👈 aby se neukazoval starý list do doby, než přijde nová page 1
+  }, [debouncedQ, sortBy]);
 
   const canPrev = page > 1;
   const canNext = page < pages;
 
-  const shuffleRecipes = () => {
-    const shuffled = [...items].sort(() => Math.random() - 0.5);
-    setDisplayRecipes(shuffled);
-  };
+  const bestSortRecipes = (list) =>
+    [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  const bestSortRecipes = () => {
-    const sorted = [...items].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    );
-    setDisplayRecipes(sorted);
-  };
-
-  const favoriteRecipes = () => {
-    const sorted = [...items].sort(
+  const favoriteRecipes = (list) =>
+    [...list].sort(
       (a, b) => (b.ratingAvg ?? b.rating ?? 0) - (a.ratingAvg ?? a.rating ?? 0)
     );
-    setDisplayRecipes(sorted);
-  };
-
   const difficultyOrder = ["Beginner", "Intermediate", "Hard"];
-  const recommendedRecipes = () => {
-    const sorted = [...items].sort(
+  const recommendedRecipes = (list) =>
+    [...list].sort(
       (a, b) =>
         difficultyOrder.indexOf(a.difficulty) -
         difficultyOrder.indexOf(b.difficulty)
     );
-    setDisplayRecipes(sorted);
-  };
 
   useEffect(() => {
-    if (sortBy === "easiest") recommendedRecipes();
-    else if (sortBy === "favorite") favoriteRecipes();
-    else if (sortBy === "random") shuffleRecipes();
-    else bestSortRecipes(); // newest
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, sortBy]);
+    if (sortBy === "random") {
+      setDisplayRecipes(randomSort(items, randomSeed));
+    } else {
+      // server už poslal správně seřazené items
+      setDisplayRecipes(items);
+    }
+  }, [items, sortBy, randomSeed]);
 
   async function toggleSaveExplore(recipe) {
     if (!recipe?._id) return;
@@ -316,7 +323,6 @@ const ExploreRecipes = ({ addItem }) => {
               onClick={(e) => {
                 e.preventDefault();
                 setSortBy("newest");
-                bestSortRecipes();
               }}
               className={sortBy === "newest" ? "activeSection" : ""}
             >
@@ -330,7 +336,6 @@ const ExploreRecipes = ({ addItem }) => {
               onClick={(e) => {
                 e.preventDefault();
                 setSortBy("easiest");
-                recommendedRecipes();
               }}
               className={sortBy === "easiest" ? "activeSection" : ""}
             >
@@ -344,7 +349,6 @@ const ExploreRecipes = ({ addItem }) => {
               onClick={(e) => {
                 e.preventDefault();
                 setSortBy("favorite");
-                favoriteRecipes();
               }}
               className={sortBy === "favorite" ? "activeSection" : ""}
             >
@@ -358,7 +362,7 @@ const ExploreRecipes = ({ addItem }) => {
               onClick={(e) => {
                 e.preventDefault();
                 setSortBy("random");
-                shuffleRecipes();
+                setRandomSeed(String(Date.now()));
               }}
               className={sortBy === "random" ? "activeSection" : ""}
             >

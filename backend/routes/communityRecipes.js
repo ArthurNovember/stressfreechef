@@ -5,32 +5,69 @@ const CommunityRecipe = require("../models/CommunityRecipe");
 const Recipe = require("../models/Recipe");
 
 // GET /api/community-recipes?page=&limit=&q=
+// GET /api/community-recipes?page=&limit=&q=&sort=&includeDerived=
 router.get("/", async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 12, 1), 50);
     const skip = (page - 1) * limit;
+
     const q = (req.query.q || "").trim();
+    const sort = String(req.query.sort || "newest").toLowerCase();
 
     const includeDerived = ["1", "true", "yes"].includes(
       String(req.query.includeDerived || "").toLowerCase()
     );
 
     const baseFilter = q ? { title: { $regex: q, $options: "i" } } : {};
-    // 👇 Default: zobraz jen „objevitelné“ community recepty (bez klonů ofiko)
     const filter = includeDerived
       ? baseFilter
       : { ...baseFilter, sourceRecipeId: null };
 
-    const [items, total] = await Promise.all([
-      CommunityRecipe.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      CommunityRecipe.countDocuments(filter),
-    ]);
+    const total = await CommunityRecipe.countDocuments(filter);
+    const pages = Math.ceil(total / limit);
 
-    res.json({ items, page, limit, total, pages: Math.ceil(total / limit) });
+    // ✅ EASIEST = Beginner -> Intermediate -> Hard (správně přes aggregation)
+    if (sort === "easiest") {
+      const items = await CommunityRecipe.aggregate([
+        { $match: filter },
+        {
+          $addFields: {
+            difficultyRank: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$difficulty", "Beginner"] }, then: 1 },
+                  { case: { $eq: ["$difficulty", "Intermediate"] }, then: 2 },
+                  { case: { $eq: ["$difficulty", "Hard"] }, then: 3 },
+                ],
+                default: 99,
+              },
+            },
+          },
+        },
+        { $sort: { difficultyRank: 1, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { difficultyRank: 0 } },
+      ]);
+
+      return res.json({ items, page, limit, total, pages });
+    }
+
+    // ✅ ostatní sorty = find().sort()
+    let sortSpec = { createdAt: -1 }; // newest
+    if (sort === "favorite" || sort === "top" || sort === "rating") {
+      sortSpec = { ratingAvg: -1, ratingCount: -1, createdAt: -1 };
+    } else if (sort === "newest") {
+      sortSpec = { createdAt: -1 };
+    }
+
+    const items = await CommunityRecipe.find(filter)
+      .sort(sortSpec)
+      .skip(skip)
+      .limit(limit);
+
+    return res.json({ items, page, limit, total, pages });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Interní chyba serveru." });

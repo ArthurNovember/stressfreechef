@@ -18,6 +18,8 @@
   margin-left: 0px;
   flex-wrap: wrap;
   margin-top: 20px;
+  border-radius: 8px;
+  border: solid 4px rgb(25, 25, 25);
 }
 
 .recipeCard2 {

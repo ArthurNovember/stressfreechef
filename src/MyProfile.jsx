@@ -3,6 +3,7 @@ import "./MyRecipes.css";
 import { Link } from "react-router-dom";
 import { deleteMyRecipe } from "./api"; // ⬅️ nahoře
 import StarRating from "./StarRating";
+import { MdAddShoppingCart } from "react-icons/md";
 
 // 🌍 backend base (stejný pattern jako v exploreRecipes.jsx)
 const DEPLOYED_BACKEND_URL = "https://stressfreecheff-backend.onrender.com";
@@ -13,6 +14,7 @@ const API_BASE = String(RAW_BASE || "").replace(/\/+$/, "");
 
 // endpoint pro moje soukromé recepty
 const API_URL = `${API_BASE}/api/my-recipes`;
+const SAVED_API_URL = `${API_BASE}/api/saved-community-recipes`;
 
 // stejné pomocné funkce jako v exploreRecipes.jsx
 const PLACEHOLDER_IMG = "https://i.imgur.com/CZaFjz2.png";
@@ -59,6 +61,7 @@ const MyProfile = ({ userInfo, addItem }) => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [communityRatings, setCommunityRatings] = useState({});
+  const [saved, setSaved] = useState([]);
 
   // --- Account deletion UI state ---
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -101,6 +104,29 @@ const MyProfile = ({ userInfo, addItem }) => {
     }
   };
 
+  const handleRemoveSaved = async (id) => {
+    if (!window.confirm("Remove this recipe from your saved recipes?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${SAVED_API_URL}/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok && res.status !== 204) {
+        const txt = await res.text();
+        throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
+      }
+
+      setSaved((prev) =>
+        prev.filter((r) => String(r?._id || r?.id) !== String(id))
+      );
+    } catch (e) {
+      alert("Removing saved recipe failed: " + (e?.message || e));
+    }
+  };
+
   const [selectedRecipe, setSelectedRecipe] = useState(null);
 
   const openModal = (recipe) => {
@@ -126,6 +152,52 @@ const MyProfile = ({ userInfo, addItem }) => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
+
+  useEffect(() => {
+    let aborted = false;
+
+    const fetchSaved = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setSaved([]);
+        return;
+      }
+
+      try {
+        const res = await fetch(SAVED_API_URL, {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const raw = await res.text();
+        if (!res.ok)
+          throw new Error(`HTTP ${res.status}: ${raw.slice(0, 200)}`);
+        const data = JSON.parse(raw);
+
+        if (!aborted) {
+          const sorted = Array.isArray(data)
+            ? [...data].sort(
+                (a, b) =>
+                  new Date(b?.createdAt || b?.updatedAt || 0) -
+                  new Date(a?.createdAt || a?.updatedAt || 0)
+              )
+            : [];
+          setSaved(sorted);
+        }
+      } catch (e) {
+        if (!aborted) {
+          console.error("Failed to load saved recipes", e);
+          setSaved([]);
+        }
+      }
+    };
+
+    fetchSaved();
+    return () => {
+      aborted = true;
+    };
+  }, []);
 
   // fetch mých receptů (vyžaduje token)
   useEffect(() => {
@@ -242,20 +314,88 @@ const MyProfile = ({ userInfo, addItem }) => {
           <div className="MyRecipeNewRecipe">
             <h2 className="MyCategory">SAVED RECIPES</h2>
           </div>
+
+          {saved.length === 0 && (
+            <p style={{ opacity: 0.8, marginTop: 8 }}>
+              You don’t have any saved recipes yet.
+            </p>
+          )}
+
           <div className="recipeContainer2">
-            <div className="recipeCard2">
-              <div>
-                <a href="#forNow">
-                  <img src="https://i.imgur.com/EZtSp3M.png" />
-                </a>
-              </div>
-              <div className="texto">
-                <h3>Coming soon</h3>
-                <p>Rating: –</p>
-                <p>Difficulty: –</p>
-                <p>Time: –</p>
-              </div>
-            </div>
+            {saved.map((r) => {
+              const { url, isVideo } = getCover(r); // stejná funkce jako u My Recipes
+              const title = r?.title || "Untitled";
+
+              const ratingValue =
+                typeof r?.ratingAvg === "number"
+                  ? r.ratingAvg
+                  : Number(r?.rating || 0);
+
+              const ratingCount =
+                typeof r?.ratingCount === "number" ? r.ratingCount : undefined;
+
+              const savedId = String(r?._id || r?.id || "");
+
+              return (
+                <div className="recipeCard2" key={savedId}>
+                  <a href="#saved" title={title}>
+                    {isVideo ? (
+                      <video
+                        src={url}
+                        onClick={() => openModal(r)}
+                        preload="metadata"
+                        playsInline
+                        muted
+                        loop
+                        autoPlay
+                        style={{
+                          width: "100%",
+                          height: 200,
+                          objectFit: "cover",
+                          borderRadius: 8,
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src={url || PLACEHOLDER_IMG}
+                        onClick={() => openModal(r)}
+                        alt={title}
+                        loading="lazy"
+                        style={{
+                          width: "100%",
+                          height: 200,
+                          objectFit: "cover",
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.src = PLACEHOLDER_IMG;
+                        }}
+                      />
+                    )}
+                  </a>
+
+                  <div className="texto">
+                    <h3 title={title}>{title}</h3>
+
+                    <StarRating
+                      value={ratingValue}
+                      readOnly
+                      showValue={Boolean(ratingCount)}
+                      count={ratingCount}
+                    />
+
+                    <p>Difficulty: {r?.difficulty || "—"}</p>
+                    <p>Time: {r?.time || "—"} ⏱️</p>
+                  </div>
+
+                  <img
+                    src="https://i.imgur.com/aRJEINp.png"
+                    className="deleteButton"
+                    onClick={() => handleRemoveSaved(savedId)}
+                    alt="Remove saved recipe"
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -388,9 +528,8 @@ const MyProfile = ({ userInfo, addItem }) => {
                     <ol>
                       {selectedRecipe.ingredients.map((ingredient, index) => {
                         return (
-                          <li key={index}>
-                            {" "}
-                            <input type="checkbox" /> {ingredient}{" "}
+                          <li key={index} className="ingredient">
+                            <input type="checkbox" /> {ingredient}
                             <button
                               className="sendToList"
                               onClick={() =>
@@ -400,7 +539,7 @@ const MyProfile = ({ userInfo, addItem }) => {
                                 })
                               }
                             >
-                              Send to shopping list
+                              <MdAddShoppingCart size={18} color="#ffffff" />
                             </button>
                           </li>
                         );

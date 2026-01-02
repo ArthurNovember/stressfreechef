@@ -19,7 +19,64 @@ const Home = ({
   NewItem,
 }) => {
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [savedBaseIds, setSavedBaseIds] = useState([]);
+  const selectedBaseId = selectedRecipe
+    ? String(selectedRecipe._id || selectedRecipe.id || "")
+    : "";
+
+  const selectedIsSaved = selectedBaseId
+    ? savedBaseIds.includes(selectedBaseId)
+    : false;
+
   const [sortBy, setSortBy] = useState("newest");
+
+  async function toggleSaveOfficial(recipe) {
+    if (!recipe) return;
+
+    const baseId = String(recipe._id || recipe.id || "");
+    if (!baseId) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please login to save recipes.");
+      return;
+    }
+
+    // 1) ensure community copy
+    const ensureRes = await fetch(
+      `${API_BASE}/api/community-recipes/ensure-from-recipe/${baseId}`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    const ensure = await ensureRes.json();
+    const communityId = ensure?._id;
+    if (!communityId) return;
+
+    // 2) pokud už uložené → UNSAVE
+    if (savedBaseIds.includes(baseId)) {
+      await fetch(`${API_BASE}/api/saved-community-recipes/${communityId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setSavedBaseIds((p) => p.filter((id) => id !== baseId));
+      return;
+    }
+
+    // 3) jinak uložit
+    await fetch(`${API_BASE}/api/saved-community-recipes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ recipeId: communityId }),
+    });
+
+    setSavedBaseIds((p) => (p.includes(baseId) ? p : [...p, baseId]));
+  }
 
   const openModal = (recipe) => {
     setSelectedRecipe(recipe);
@@ -37,6 +94,40 @@ const Home = ({
   }, [selectedRecipe]);
 
   const [communityStats, setCommunityStats] = useState({});
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setSavedBaseIds([]);
+          return;
+        }
+
+        const res = await fetch(`${API_BASE}/api/saved-community-recipes`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await res.json();
+        const baseIds = [];
+
+        if (Array.isArray(data)) {
+          for (const r of data) {
+            const src = r.sourceRecipeId;
+            if (src) {
+              baseIds.push(typeof src === "object" ? src._id : src);
+            }
+          }
+        }
+
+        setSavedBaseIds(baseIds);
+      } catch {
+        setSavedBaseIds([]);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     // seber unikátní ofiko ID (id nebo _id)
@@ -189,10 +280,15 @@ const Home = ({
           <div className="modalOverlay" onClick={() => setSelectedRecipe(null)}>
             <div
               className="selectedRecipeContainer"
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
+              onClick={(e) => e.stopPropagation()}
             >
+              <button
+                className={`saveFloatingBtn ${selectedIsSaved ? "active" : ""}`}
+                onClick={() => toggleSaveOfficial(selectedRecipe)}
+              >
+                {selectedIsSaved ? "SAVED" : "SAVE"}
+              </button>
+
               <div id="forNow">
                 <div className="nameAndPicture">
                   <h2>{selectedRecipe.title}</h2>

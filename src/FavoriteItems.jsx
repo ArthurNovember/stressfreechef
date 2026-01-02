@@ -156,126 +156,8 @@ const FavoriteItems = ({
 
   return (
     <div className="FavoriteCelek">
-      <form onSubmit={handleSubmit}>
-        <div className="AddTopFavorite">
-          <h1>Add To Favorite</h1>
-          <input
-            type="text"
-            className="writeFavorite"
-            onChange={handleFavoriteText}
-            value={FavoriteText}
-            list="itemSuggestions"
-          ></input>
-
-          <datalist id="itemSuggestions">
-            {uniqueItemNames.map((itemName, index) => (
-              <option value={itemName} key={index} />
-            ))}
-          </datalist>
-        </div>
-        <div className="TopAddShop">
-          <div className="buttonAndShopsInput" ref={inputDropdownWrapRef}>
-            <button
-              type="button"
-              onClick={() => setIsDropdownOpenFavorite((prev) => !prev)}
-              className="showShopsInput"
-            >
-              {FavoriteShop.length < 1
-                ? "Shops▾"
-                : FavoriteShop.map((id) => {
-                    const found = shopOptions.find(
-                      (s) => String(s._id) === String(id)
-                    );
-                    return found ? found.name : "Unknown";
-                  }).join(", ")}
-            </button>
-            {isDropdownOpenFavorite && (
-              <ul className="shopCheckboxListInput" style={{ zIndex: 9999 }}>
-                {shopOptions.map(({ _id, name }) => (
-                  <li key={_id}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={FavoriteShop.includes(_id)}
-                        onChange={() => {
-                          setFavoriteShop((prev) =>
-                            prev.includes(_id)
-                              ? prev.filter((s) => s !== _id)
-                              : [...prev, _id]
-                          );
-                        }}
-                      />
-                      {name}
-                    </label>
-                    <button type="button" onClick={() => handleDeleteShop(_id)}>
-                      ❌
-                    </button>
-                  </li>
-                ))}
-
-                <li className="addLi">
-                  <button
-                    type="button"
-                    className="add"
-                    onClick={() =>
-                      addingShop ? setAddingShop(false) : setAddingShop(true)
-                    }
-                  >
-                    Add Shop
-                  </button>
-                </li>
-                {addingShop && (
-                  <li>
-                    <input
-                      type="text"
-                      placeholder="New Shop"
-                      value={newShopName}
-                      onChange={(e) => setNewShopName(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const trimmed = newShopName.trim();
-                        if (
-                          trimmed &&
-                          !shopOptions.some((s) => s.name === trimmed)
-                        ) {
-                          (async () => {
-                            const response = await fetch(
-                              "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
-                              {
-                                method: "POST",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                  Authorization: `Bearer ${localStorage.getItem(
-                                    "token"
-                                  )}`,
-                                },
-                                body: JSON.stringify({ name: trimmed }),
-                              }
-                            );
-                            const newShop = await response.json(); // { _id, name }
-                            setShopOptions((prev) => [...prev, newShop]);
-                          })();
-                        }
-                        setNewShopName("");
-                        setAddingShop(false);
-                      }}
-                    >
-                      <span className="addText">+</span>
-                    </button>
-                  </li>
-                )}
-              </ul>
-            )}
-          </div>
-
-          <button className="addButtonTop">ADD</button>
-        </div>
-      </form>
-
       <div className="itemContainer">
-        <h2>My favorites</h2>
+        <h2>MY FAVORITES</h2>
         <div className="favoriteSelectAndSort">
           <div className="filterShopsFavorite">
             <p>Shop:</p>
@@ -310,19 +192,90 @@ const FavoriteItems = ({
               No Shop
             </label>
           </div>
-          <div className="sort">
-            <label>Sort by:</label>
-            <select
-              value={sortModeFavorite}
-              onChange={(e) => setSortModeFavorite(e.target.value)}
-            >
-              <option value="added">Added</option>
-              <option value="shop">Shop</option>
-            </select>
-          </div>
         </div>
         <div className="ItemButton">
           <ul>
+            {/* ➜ PRVNÍ ŘÁDEK = FORM NA PŘIDÁNÍ */}
+            <li>
+              <form onSubmit={handleSubmit}>
+                <div className="AddTopFavorite">
+                  <input
+                    type="text"
+                    className="writeFavorite"
+                    onChange={handleFavoriteText}
+                    value={FavoriteText}
+                    list="itemSuggestions"
+                    placeholder="Add favorite item…"
+                  />
+
+                  <datalist id="itemSuggestions">
+                    {uniqueItemNames.map((itemName, index) => (
+                      <option value={itemName} key={index} />
+                    ))}
+                  </datalist>
+
+                  <div className="TopAddShop">
+                    <div
+                      className="buttonAndShopsInput"
+                      ref={inputDropdownWrapRef}
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setIsDropdownOpenFavorite((prev) => !prev)
+                        }
+                        className="showShopsInput"
+                      >
+                        {FavoriteShop.length < 1
+                          ? "Shops▾"
+                          : FavoriteShop.map((id) => {
+                              const found = shopOptions.find(
+                                (s) => String(s._id) === String(id)
+                              );
+                              return found ? found.name : "Unknown";
+                            }).join(", ")}
+                      </button>
+
+                      {isDropdownOpenFavorite && (
+                        <ul
+                          className="shopCheckboxListInput"
+                          style={{ zIndex: 9999 }}
+                        >
+                          {shopOptions.map(({ _id, name }) => (
+                            <li key={_id}>
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={FavoriteShop.includes(_id)}
+                                  onChange={() => {
+                                    setFavoriteShop((prev) =>
+                                      prev.includes(_id)
+                                        ? prev.filter((s) => s !== _id)
+                                        : [...prev, _id]
+                                    );
+                                  }}
+                                />
+                                {name}
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteShop(_id)}
+                              >
+                                ❌
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <button className="addButtonTop" type="submit">
+                      ADD
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </li>
             {sortedItemsFavorite.map((item, index) => {
               const isOpen = isDropdownOpen[index] || false;
               return (

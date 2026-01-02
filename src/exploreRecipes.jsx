@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import "./exploreRecipes.css";
 import { Link } from "react-router-dom";
 import StarRating from "./StarRating";
+import { MdAddShoppingCart } from "react-icons/md";
 
 // 🌍 nastav si svou produkční backend URL jako fallback
 const DEPLOYED_BACKEND_URL = "https://stressfreecheff-backend.onrender.com";
@@ -62,6 +63,7 @@ const ExploreRecipes = ({ addItem }) => {
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [savedCommunityIds, setSavedCommunityIds] = useState([]);
 
   const [selectedRecipe, setSelectedRecipe] = useState(null);
 
@@ -91,6 +93,31 @@ const ExploreRecipes = ({ addItem }) => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setSavedCommunityIds([]);
+          return;
+        }
+
+        const res = await fetch(`${API_BASE}/api/saved-community-recipes`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+        const ids = Array.isArray(data)
+          ? data.map((r) => r?.recipeId || r?._id).filter(Boolean)
+          : [];
+
+        setSavedCommunityIds(ids);
+      } catch {
+        setSavedCommunityIds([]);
+      }
+    })();
+  }, []);
 
   // Fetch dat
   useEffect(() => {
@@ -179,6 +206,44 @@ const ExploreRecipes = ({ addItem }) => {
     );
     setDisplayRecipes(sorted);
   };
+
+  async function toggleSaveExplore(recipe) {
+    if (!recipe?._id) return;
+
+    const rid = recipe._id;
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please login to save recipes.");
+      return;
+    }
+
+    // pokud už uložený → UNSAVE
+    if (savedCommunityIds.includes(rid)) {
+      await fetch(`${API_BASE}/api/saved-community-recipes/${rid}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setSavedCommunityIds((p) => p.filter((id) => id !== rid));
+      return;
+    }
+
+    // jinak uložit
+    await fetch(`${API_BASE}/api/saved-community-recipes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ recipeId: rid }),
+    });
+
+    setSavedCommunityIds((p) => (p.includes(rid) ? p : [...p, rid]));
+  }
+
+  const selectedIsSaved = selectedRecipe
+    ? savedCommunityIds.includes(selectedRecipe?._id)
+    : false;
 
   return (
     <div className="explore">
@@ -346,6 +411,13 @@ const ExploreRecipes = ({ addItem }) => {
               e.stopPropagation();
             }}
           >
+            <button
+              className={`saveFloatingBtn ${selectedIsSaved ? "active" : ""}`}
+              onClick={() => toggleSaveExplore(selectedRecipe)}
+            >
+              {selectedIsSaved ? "SAVED" : "SAVE"}
+            </button>
+
             <div id="forNow">
               <div className="nameAndPicture">
                 <h2>{selectedRecipe.title}</h2>
@@ -373,9 +445,8 @@ const ExploreRecipes = ({ addItem }) => {
                 <ol>
                   {selectedRecipe.ingredients.map((ingredient, index) => {
                     return (
-                      <li key={index}>
-                        {" "}
-                        <input type="checkbox" /> {ingredient}{" "}
+                      <li key={index} className="ingredient">
+                        <input type="checkbox" /> {ingredient}
                         <button
                           className="sendToList"
                           onClick={() =>
@@ -385,7 +456,7 @@ const ExploreRecipes = ({ addItem }) => {
                             })
                           }
                         >
-                          Send to shopping list
+                          <MdAddShoppingCart size={18} color="#ffffff" />
                         </button>
                       </li>
                     );

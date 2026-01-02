@@ -131,10 +131,14 @@ const ShoppingList = ({
     return hasShopMatch || isNoShop;
   });
 
-  //Řazení
-
+  // Řazení
   const [sortMode, setSortMode] = useState("added");
   const sortedItems = [...filteredItems];
+
+  if (sortMode === "added") {
+    // nejnovější nahoře
+    sortedItems.reverse();
+  }
 
   if (sortMode === "shop") {
     sortedItems.sort((a, b) => {
@@ -145,7 +149,7 @@ const ShoppingList = ({
       if (!aNoShop && bNoShop) return -1;
 
       if (!aNoShop && !bNoShop) {
-        const aFirstShopName = a.shop[0].name || ""; // fallback pokud není
+        const aFirstShopName = a.shop[0].name || "";
         const bFirstShopName = b.shop[0].name || "";
         return aFirstShopName.localeCompare(bFirstShopName);
       }

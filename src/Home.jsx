@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import StarRating from "./StarRating";
 import { MdAddShoppingCart } from "react-icons/md";
@@ -176,6 +176,41 @@ const Home = ({
     };
   }, [displayRecipes]);
 
+  const recipesToRender = useMemo(() => {
+    // vycházíme z displayRecipes, co dostane Home z Appu
+    const base = [...(displayRecipes || [])];
+
+    // jen když je vybraný FAVORITE → přetřídíme podle stejného ratingu,
+    // jaký ukazují hvězdičky v UI
+    if (sortBy === "favorite") {
+      base.sort((a, b) => {
+        const idA = a?._id || a?.id;
+        const idB = b?._id || b?.id;
+
+        const statsA = communityStats[idA];
+        const statsB = communityStats[idB];
+
+        const ratingA =
+          typeof statsA?.avg === "number"
+            ? statsA.avg
+            : typeof a?.rating === "number"
+            ? a.rating
+            : 0;
+
+        const ratingB =
+          typeof statsB?.avg === "number"
+            ? statsB.avg
+            : typeof b?.rating === "number"
+            ? b.rating
+            : 0;
+
+        return ratingB - ratingA; // seřadit od nejvyššího
+      });
+    }
+
+    return base;
+  }, [displayRecipes, communityStats, sortBy]);
+
   return (
     <main>
       <div className="main">
@@ -186,6 +221,19 @@ const Home = ({
         </div>
         <section className="variants">
           <ul className="HomeUl">
+            <li>
+              <a
+                href="#newest"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSortBy("newest");
+                  bestSortRecipes();
+                }}
+                className={sortBy === "newest" ? "activeSection" : ""}
+              >
+                NEWEST
+              </a>
+            </li>
             <li>
               <a
                 href="#recommended"
@@ -202,25 +250,10 @@ const Home = ({
 
             <li>
               <a
-                href="#newest"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setSortBy("newest");
-                  bestSortRecipes();
-                }}
-                className={sortBy === "newest" ? "activeSection" : ""}
-              >
-                NEWEST
-              </a>
-            </li>
-
-            <li>
-              <a
                 href="#favorite"
                 onClick={(e) => {
                   e.preventDefault();
-                  setSortBy("favorite");
-                  favoriteRecipes();
+                  setSortBy("favorite"); // třídění řešíme lokálně v recipesToRender
                 }}
                 className={sortBy === "favorite" ? "activeSection" : ""}
               >
@@ -245,10 +278,9 @@ const Home = ({
         </section>
 
         <div className="recipeContainer">
-          {displayRecipes.map((recipe) => {
-            const rid = recipe?._id || recipe?.id; // ← TADY vzniká rid
-            const stats = communityStats[rid]; // ← a TADY stats (avg,count)
-
+          {recipesToRender.map((recipe) => {
+            const rid = recipe?._id || recipe?.id;
+            const stats = communityStats[rid];
             return (
               <div className="recipeCard" key={rid}>
                 <a href="#forNow">

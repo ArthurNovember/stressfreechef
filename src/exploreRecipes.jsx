@@ -53,8 +53,12 @@ const getCover = (r) => {
   return { url: url || PLACEHOLDER_IMG, isVideo };
 };
 
+const getEffectiveRating = (r) =>
+  typeof r?.ratingAvg === "number" ? r.ratingAvg : r?.rating || 0;
+
 const ExploreRecipes = ({ addItem }) => {
   const [items, setItems] = useState([]);
+  const [topRated, setTopRated] = useState([]);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [page, setPage] = useState(1);
@@ -86,7 +90,7 @@ const ExploreRecipes = ({ addItem }) => {
   const isVideoSelected = getCover(selectedRecipe).isVideo;
 
   const [displayRecipes, setDisplayRecipes] = useState([]);
-  const [sortBy, setSortBy] = useState("easiest");
+  const [sortBy, setSortBy] = useState("newest");
 
   // Debounce vyhledávání (300 ms)
   useEffect(() => {
@@ -155,10 +159,16 @@ const ExploreRecipes = ({ addItem }) => {
         const data = JSON.parse(raw);
         if (aborted) return;
 
-        setItems(Array.isArray(data.items) ? data.items : []);
-        setTotal(Number(data.total) || 0);
-        setPages(Number(data.pages) || 1);
-        setDisplayRecipes(Array.isArray(data.items) ? data.items : []);
+        const newItems = Array.isArray(data.items) ? data.items : [];
+        const totalFromApi = Number(data.total) || 0;
+        const pagesFromApi = Number(data.pages) || 1;
+
+        setTotal(totalFromApi);
+        setPages(pagesFromApi);
+
+        // když page === 1, je to nový search → přepiš
+        // jinak přidej na konec
+        setItems((prev) => (page === 1 ? newItems : [...prev, ...newItems]));
       } catch (e) {
         if (!aborted) setErr(e?.message || "Failed to load recipes.");
       } finally {
@@ -193,7 +203,9 @@ const ExploreRecipes = ({ addItem }) => {
   };
 
   const favoriteRecipes = () => {
-    const sorted = [...items].sort((a, b) => b.rating - a.rating);
+    const sorted = [...items].sort(
+      (a, b) => (b.ratingAvg ?? b.rating ?? 0) - (a.ratingAvg ?? a.rating ?? 0)
+    );
     setDisplayRecipes(sorted);
   };
 
@@ -206,6 +218,14 @@ const ExploreRecipes = ({ addItem }) => {
     );
     setDisplayRecipes(sorted);
   };
+
+  useEffect(() => {
+    if (sortBy === "easiest") recommendedRecipes();
+    else if (sortBy === "favorite") favoriteRecipes();
+    else if (sortBy === "random") shuffleRecipes();
+    else bestSortRecipes(); // newest
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, sortBy]);
 
   async function toggleSaveExplore(recipe) {
     if (!recipe?._id) return;
@@ -292,20 +312,6 @@ const ExploreRecipes = ({ addItem }) => {
         <ul>
           <li>
             <a
-              href="#recommended"
-              onClick={(e) => {
-                e.preventDefault();
-                setSortBy("easiest");
-                recommendedRecipes();
-              }}
-              className={sortBy === "easiest" ? "activeSection" : ""}
-            >
-              EASIEST
-            </a>
-          </li>
-
-          <li>
-            <a
               href="#newest"
               onClick={(e) => {
                 e.preventDefault();
@@ -315,6 +321,20 @@ const ExploreRecipes = ({ addItem }) => {
               className={sortBy === "newest" ? "activeSection" : ""}
             >
               NEWEST
+            </a>
+          </li>
+
+          <li>
+            <a
+              href="#recommended"
+              onClick={(e) => {
+                e.preventDefault();
+                setSortBy("easiest");
+                recommendedRecipes();
+              }}
+              className={sortBy === "easiest" ? "activeSection" : ""}
+            >
+              EASIEST
             </a>
           </li>
 
@@ -446,7 +466,7 @@ const ExploreRecipes = ({ addItem }) => {
                   {selectedRecipe.ingredients.map((ingredient, index) => {
                     return (
                       <li key={index} className="ingredient">
-                        <input type="checkbox" /> {ingredient}
+                        {ingredient}
                         <button
                           className="sendToList"
                           onClick={() =>
@@ -479,24 +499,20 @@ const ExploreRecipes = ({ addItem }) => {
         </div>
       )}
 
-      {(pages > 1 || total > limit) && (
+      {total > 0 && (
+        <div className="exploreInfo">
+          Showing {displayRecipes.length} of {total}
+        </div>
+      )}
+
+      {page < pages && (
         <div className="explorePages">
           <button
             type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={!canPrev}
+            onClick={() => setPage((p) => p + 1)}
+            disabled={loading}
           >
-            ◀︎ Previous
-          </button>
-          <span>
-            Page {page} / {pages} · {total} results
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(pages, p + 1))}
-            disabled={!canNext}
-          >
-            Next ▶︎
+            {loading ? "Loading..." : "Load more"}
           </button>
         </div>
       )}

@@ -529,7 +529,7 @@ const MyProfile = ({ userInfo, addItem }) => {
                       {selectedRecipe.ingredients.map((ingredient, index) => {
                         return (
                           <li key={index} className="ingredient">
-                            <input type="checkbox" /> {ingredient}
+                            {ingredient}
                             <button
                               className="sendToList"
                               onClick={() =>

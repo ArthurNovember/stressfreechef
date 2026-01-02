@@ -130,7 +130,11 @@ function App() {
   };
 
   const favoriteRecipes = () => {
-    const favoriteSetter = [...recipes].sort((a, b) => b.rating - a.rating);
+    const favoriteSetter = [...recipes].sort((a, b) => {
+      const ra = a.rating || 0;
+      const rb = b.rating || 0;
+      return rb - ra;
+    });
     setDisplayRecipes(favoriteSetter);
   };
 

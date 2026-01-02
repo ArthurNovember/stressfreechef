@@ -264,16 +264,24 @@ function AuthFormRN({
           ]}
         >
           <Text style={[styles.switchText, { color: colors.text }]}>
-            {" "}
             {t(lang, "profile", "authSignUp")}
           </Text>
         </Pressable>
         <Pressable
+          style={[
+            styles.switchBtn,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            },
+            mode === "login" && {
+              backgroundColor: colors.pillActive,
+              borderColor: colors.pillActive,
+            },
+          ]}
           onPress={() => setMode("login")}
-          style={[styles.switchBtn, mode === "login" && styles.switchBtnActive]}
         >
-          <Text style={styles.switchText}>
-            {" "}
+          <Text style={[styles.switchText, { color: colors.text }]}>
             {t(lang, "profile", "authLogin")}
           </Text>
         </Pressable>
@@ -312,7 +320,10 @@ function AuthFormRN({
             autoCapitalize="none"
             keyboardType="email-address"
           />
-          <Text style={[styles.label, { color: colors.text }]}>Password</Text>
+          <Text style={[styles.label, { color: colors.text }]}>
+            {" "}
+            {t(lang, "profile", "password")}
+          </Text>
           <TextInput
             style={[
               styles.input,
@@ -327,7 +338,7 @@ function AuthFormRN({
             secureTextEntry
           />
           <Text style={[styles.label, { color: colors.text }]}>
-            Confirm password
+            {t(lang, "profile", "confirmPassword")}
           </Text>
           <TextInput
             style={[
@@ -351,7 +362,7 @@ function AuthFormRN({
               busy && { opacity: 0.7 },
             ]}
           >
-            <Text style={[styles.primaryBtnText, { color: colors.text }]}>
+            <Text style={[styles.primaryBtnText, { color: "white" }]}>
               {busy
                 ? t(lang, "profile", "pleaseWait")
                 : t(lang, "profile", "authSignUp")}
@@ -362,17 +373,34 @@ function AuthFormRN({
 
       {mode === "login" && (
         <View style={styles.form}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Email</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
           />
-          <Text style={styles.label}>Password</Text>
+          <Text style={[styles.label, { color: colors.text }]}>
+            {" "}
+            {t(lang, "profile", "password")}
+          </Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -386,7 +414,7 @@ function AuthFormRN({
               busy && { opacity: 0.7 },
             ]}
           >
-            <Text style={[styles.primaryBtnText, { color: colors.text }]}>
+            <Text style={[styles.primaryBtnText, { color: "white" }]}>
               {busy
                 ? t(lang, "profile", "pleaseWait")
                 : t(lang, "profile", "authLogin")}
@@ -412,7 +440,93 @@ function MyProfileRN({
   const [items, setItems] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [selected, setSelected] = useState<any | null>(null);
-  const [saved, setSaved] = useState<any[]>([]); // saved community recipes
+  const SAVED_LIMIT = 8;
+
+  const [savedItems, setSavedItems] = useState<any[]>([]);
+  const [savedPage, setSavedPage] = useState(1);
+  const [savedPages, setSavedPages] = useState(1);
+  const [savedLoadingMore, setSavedLoadingMore] = useState(false);
+
+  const MY_LIMIT = 12;
+
+  const [myPage, setMyPage] = useState(1);
+  const [myPages, setMyPages] = useState(1);
+  const [myLoadingMore, setMyLoadingMore] = useState(false);
+
+  const loadMyPage = useCallback(async (pageToLoad: number) => {
+    const token = await getToken();
+    if (!token) throw new Error("Missing token");
+
+    const res = await fetchJSON<{
+      items?: any[];
+      page?: number;
+      pages?: number;
+    }>(`${API_BASE}/api/my-recipes?page=${pageToLoad}&limit=${MY_LIMIT}`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const next = Array.isArray(res?.items) ? res.items : [];
+    setMyPages(Number(res?.pages) || 1);
+
+    setItems((prev) => (pageToLoad === 1 ? next : [...prev, ...next]));
+  }, []);
+
+  const loadMoreMy = useCallback(async () => {
+    if (myLoadingMore) return;
+    if (myPage >= myPages) return;
+
+    try {
+      setMyLoadingMore(true);
+      const nextPage = myPage + 1;
+      await loadMyPage(nextPage);
+      setMyPage(nextPage);
+    } catch (e: any) {
+      // klidně jen log/alert
+      console.log("Load more my failed:", e?.message || String(e));
+    } finally {
+      setMyLoadingMore(false);
+    }
+  }, [myLoadingMore, myPage, myPages, loadMyPage]);
+
+  const loadSavedPage = useCallback(async (pageToLoad: number) => {
+    const token = await getToken();
+    if (!token) throw new Error("Missing token");
+
+    const res = await fetchJSON<{
+      items?: any[];
+      pages?: number;
+    }>(
+      `${API_BASE}/api/saved-community-recipes?page=${pageToLoad}&limit=${SAVED_LIMIT}&sort=newest`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const next = Array.isArray(res?.items) ? res.items : [];
+    setSavedPages(Number(res?.pages) || 1);
+
+    setSavedItems((prev) => (pageToLoad === 1 ? next : [...prev, ...next]));
+  }, []);
+
+  const loadMoreSaved = useCallback(async () => {
+    if (savedLoadingMore) return;
+    if (savedPage >= savedPages) return;
+
+    try {
+      setSavedLoadingMore(true);
+      const nextPage = savedPage + 1;
+      await loadSavedPage(nextPage);
+      setSavedPage(nextPage);
+    } finally {
+      setSavedLoadingMore(false);
+    }
+  }, [savedLoadingMore, savedPage, savedPages, loadSavedPage]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -430,26 +544,14 @@ function MyProfileRN({
         setUser(null);
       }
 
-      const mine = await fetchJSON<{ items?: any[] }>(
-        `${API_BASE}/api/my-recipes?page=1&limit=50`,
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setItems(Array.isArray(mine?.items) ? mine.items : []);
-      const savedData = await fetchJSON<any[]>(
-        `${API_BASE}/api/saved-community-recipes`,
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setSaved(Array.isArray(savedData) ? savedData : []);
+      setMyPage(1);
+      setMyPages(1);
+      setItems([]);
+      await loadMyPage(1);
+      setSavedPage(1);
+      setSavedPages(1);
+      setSavedItems([]);
+      await loadSavedPage(1);
     } catch (e: any) {
       if (isUnauthorizedError(e)) {
         await clearToken();
@@ -523,7 +625,7 @@ function MyProfileRN({
               const txt = await res.text();
               throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
             }
-            setSaved((prev) =>
+            setSavedItems((prev) =>
               prev.filter((r: any) => String(r?._id || r?.id) !== id)
             );
           } catch (e: any) {
@@ -544,7 +646,6 @@ function MyProfileRN({
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" />
         <Text style={{ marginTop: 8, color: colors.text }}>
-          {" "}
           {t(lang, "profile", "loading")}
         </Text>
       </View>
@@ -555,7 +656,6 @@ function MyProfileRN({
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <Text style={[styles.err, { color: colors.danger }]}>
-          {" "}
           {t(lang, "profile", "errorPrefix")}: {err}
         </Text>
         <Pressable
@@ -566,7 +666,6 @@ function MyProfileRN({
           ]}
         >
           <Text style={[styles.primaryBtnText, { color: colors.text }]}>
-            {" "}
             {t(lang, "profile", "retry")}
           </Text>
         </Pressable>
@@ -596,7 +695,6 @@ function MyProfileRN({
             ]}
           >
             <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
-              {" "}
               {t(lang, "profile", "logout")}
             </Text>
           </Pressable>
@@ -607,7 +705,7 @@ function MyProfileRN({
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t(lang, "profile", "savedRecipesTitle")}
         </Text>
-        {saved.length === 0 ? (
+        {savedItems.length === 0 ? (
           <Text
             style={{
               opacity: 0.7,
@@ -618,9 +716,15 @@ function MyProfileRN({
             {t(lang, "profile", "savedEmpty")}
           </Text>
         ) : null}
-
         <FlatList
-          data={saved}
+          data={savedItems}
+          onEndReached={loadMoreSaved}
+          onEndReachedThreshold={0.6}
+          ListFooterComponent={
+            savedLoadingMore ? (
+              <ActivityIndicator style={{ marginHorizontal: 12 }} />
+            ) : null
+          }
           horizontal
           keyExtractor={(r, idx) => String(r?._id || (r as any)?.id || idx)}
           contentContainerStyle={{ padding: 12, gap: 12 }}
@@ -691,7 +795,6 @@ function MyProfileRN({
           }}
         />
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {" "}
           {t(lang, "profile", "myRecipesTitle")}
         </Text>
         {items.length === 0 ? (
@@ -699,11 +802,17 @@ function MyProfileRN({
             {t(lang, "profile", "myEmpty")}
           </Text>
         ) : null}
-
         <FlatList
           data={items}
           keyExtractor={(r) => String(r?._id || r?.id)}
           contentContainerStyle={{ padding: 12, gap: 12 }}
+          onEndReached={loadMoreMy}
+          onEndReachedThreshold={0.6}
+          ListFooterComponent={
+            myLoadingMore ? (
+              <ActivityIndicator style={{ marginVertical: 12 }} />
+            ) : null
+          }
           renderItem={({ item }) => {
             const cover = getCover(item);
             const rid = String(item?._id || item?.id || "");
@@ -877,7 +986,6 @@ function MyProfileRN({
                 onPress={() => setSelected(null)}
               >
                 <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
-                  {" "}
                   {t(lang, "profile", "close")}
                 </Text>
               </Pressable>

@@ -373,8 +373,7 @@ export default function SettingsScreen() {
             },
           ]}
         >
-          (when enabled, StressFreeChef can listen for a short blow sound to
-          move to the next step)
+          {t(lang, "settings", "blowWarning")}
         </Text>
       </View>
 

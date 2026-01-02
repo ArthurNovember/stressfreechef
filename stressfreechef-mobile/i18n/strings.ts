@@ -5,6 +5,11 @@ export const LANG_KEY = "app_lang";
 
 const STRINGS = {
   settings: {
+    blowWarning: {
+      en: "(when enabled, StressFreeChef can listen for a short blow sound to move to the next step)",
+      cs: "(pokud je tato funkce zapnutá, StressFreeChef může naslouchat krátkému fouknutí, kterým se přesune na další krok)",
+    },
+
     loading: {
       en: "Loading settings…",
       cs: "Načítám nastavení…",

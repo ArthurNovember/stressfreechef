@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import "./exploreRecipes.css";
 import { Link } from "react-router-dom";
 import StarRating from "./StarRating";
@@ -71,6 +71,9 @@ const ExploreRecipes = ({ addItem }) => {
   const [randomSeed, setRandomSeed] = useState(() => String(Date.now()));
 
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+
+  const loadMoreRef = useRef(null);
+  const fetchingMoreRef = useRef(false);
 
   const openModal = (recipe) => {
     setSelectedRecipe(recipe);
@@ -192,6 +195,7 @@ const ExploreRecipes = ({ addItem }) => {
         if (!aborted) setErr(e?.message || "Failed to load recipes.");
       } finally {
         if (!aborted) setLoading(false);
+        fetchingMoreRef.current = false;
       }
     };
 
@@ -206,6 +210,35 @@ const ExploreRecipes = ({ addItem }) => {
     setPage(1);
     setItems([]); // 👈 aby se neukazoval starý list do doby, než přijde nová page 1
   }, [debouncedQ, sortBy]);
+
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting) return;
+
+        // pokud už fetchneme nebo už není co načítat, stop
+        if (loading) return;
+        if (page >= pages) return;
+        if (fetchingMoreRef.current) return;
+
+        fetchingMoreRef.current = true;
+        setPage((p) => p + 1);
+      },
+      {
+        root: null,
+        // načti dřív, než user dojede úplně na konec
+        rootMargin: "200px",
+        threshold: 0.01,
+      }
+    );
+
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [loading, page, pages]);
 
   const canPrev = page > 1;
   const canNext = page < pages;
@@ -427,6 +460,8 @@ const ExploreRecipes = ({ addItem }) => {
         })}
       </div>
 
+      <div ref={loadMoreRef} style={{ height: 1 }} />
+
       {selectedRecipe && (
         <div className="modalOverlay" onClick={() => setSelectedRecipe(null)}>
           <div
@@ -500,24 +535,6 @@ const ExploreRecipes = ({ addItem }) => {
               </Link>
             </div>
           </div>
-        </div>
-      )}
-
-      {total > 0 && (
-        <div className="exploreInfo">
-          Showing {displayRecipes.length} of {total}
-        </div>
-      )}
-
-      {page < pages && (
-        <div className="explorePages">
-          <button
-            type="button"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={loading}
-          >
-            {loading ? "Loading..." : "Load more"}
-          </button>
         </div>
       )}
     </div>

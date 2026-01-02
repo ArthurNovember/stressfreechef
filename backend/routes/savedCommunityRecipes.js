@@ -4,15 +4,42 @@ const authenticateToken = require("../middleware/authenticateToken");
 const User = require("../models/User");
 const CommunityRecipe = require("../models/CommunityRecipe");
 
-// GET /api/saved-community-recipes
+// GET /api/saved-community-recipes?page=&limit=&sort=
 router.get("/", authenticateToken, async (req, res) => {
   const userId = req.user._id;
+
   try {
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 12, 1), 50);
+    const skip = (page - 1) * limit;
+
+    const sort = String(req.query.sort || "newest").toLowerCase();
+    let sortSpec = { createdAt: -1 };
+    if (sort === "favorite" || sort === "rating") {
+      sortSpec = { ratingAvg: -1, ratingCount: -1, createdAt: -1 };
+    }
+
+    // 1) vezmi jen IDs uložených receptů
     const user = await User.findById(userId)
-      .populate("savedCommunityRecipes")
+      .select("savedCommunityRecipes")
+      .lean();
+    const ids = user?.savedCommunityRecipes || [];
+
+    const total = ids.length;
+    const pages = Math.max(1, Math.ceil(total / limit));
+
+    if (ids.length === 0) {
+      return res.json({ items: [], page, limit, total, pages });
+    }
+
+    // 2) dotáhni CommunityRecipe dokumenty, globálně seřaď a stránkuj
+    const items = await CommunityRecipe.find({ _id: { $in: ids } })
+      .sort(sortSpec)
+      .skip(skip)
+      .limit(limit)
       .lean();
 
-    res.json(user?.savedCommunityRecipes || []);
+    res.json({ items, page, limit, total, pages });
   } catch (err) {
     console.error("GET saved recipes failed:", err);
     res.status(500).json({ error: "Failed to load saved recipes." });

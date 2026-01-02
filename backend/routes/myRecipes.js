@@ -93,12 +93,13 @@ router.get("/", authenticateToken, async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
     const skip = (page - 1) * limit;
 
+    const q = String(req.query.q || "").trim();
+    const filter = { owner: req.user._id };
+    if (q) filter.title = { $regex: q, $options: "i" };
+
     const [items, total] = await Promise.all([
-      UserRecipe.find({ owner: req.user._id })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      UserRecipe.countDocuments({ owner: req.user._id }),
+      UserRecipe.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      UserRecipe.countDocuments(filter),
     ]);
 
     res.json({ items, page, limit, total, pages: Math.ceil(total / limit) });

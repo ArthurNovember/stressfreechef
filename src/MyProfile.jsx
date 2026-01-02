@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import "./MyRecipes.css";
 import { Link } from "react-router-dom";
 import { deleteMyRecipe } from "./api"; // ⬅️ nahoře
@@ -61,7 +61,17 @@ const MyProfile = ({ userInfo, addItem }) => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [communityRatings, setCommunityRatings] = useState({});
-  const [saved, setSaved] = useState([]);
+
+  const [savedItems, setSavedItems] = useState([]);
+  const [savedPage, setSavedPage] = useState(1);
+  const [savedPages, setSavedPages] = useState(1);
+  const [savedTotal, setSavedTotal] = useState(0);
+  const [savedLoading, setSavedLoading] = useState(false);
+
+  const myLoadMoreRef = useRef(null);
+  const myFetchingMoreRef = useRef(false);
+  const savedLoadMoreRef = useRef(null);
+  const savedFetchingMoreRef = useRef(false);
 
   // --- Account deletion UI state ---
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -119,9 +129,10 @@ const MyProfile = ({ userInfo, addItem }) => {
         throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
       }
 
-      setSaved((prev) =>
+      setSavedItems((prev) =>
         prev.filter((r) => String(r?._id || r?.id) !== String(id))
       );
+      setSavedTotal((t) => Math.max(0, t - 1));
     } catch (e) {
       alert("Removing saved recipe failed: " + (e?.message || e));
     }
@@ -157,39 +168,57 @@ const MyProfile = ({ userInfo, addItem }) => {
     let aborted = false;
 
     const fetchSaved = async () => {
+      setSavedLoading(true);
+
       const token = localStorage.getItem("token");
       if (!token) {
-        setSaved([]);
+        if (!aborted) {
+          setSavedItems([]);
+          setSavedTotal(0);
+          setSavedPages(1);
+          setSavedLoading(false);
+        }
+        savedFetchingMoreRef.current = false;
         return;
       }
 
       try {
-        const res = await fetch(SAVED_API_URL, {
+        const params = new URLSearchParams();
+        params.set("page", String(savedPage));
+        params.set("limit", String(limit));
+        params.set("sort", "newest");
+
+        const res = await fetch(`${SAVED_API_URL}?${params.toString()}`, {
           headers: {
             Accept: "application/json",
             Authorization: `Bearer ${token}`,
           },
         });
+
         const raw = await res.text();
         if (!res.ok)
           throw new Error(`HTTP ${res.status}: ${raw.slice(0, 200)}`);
+
         const data = JSON.parse(raw);
 
         if (!aborted) {
-          const sorted = Array.isArray(data)
-            ? [...data].sort(
-                (a, b) =>
-                  new Date(b?.createdAt || b?.updatedAt || 0) -
-                  new Date(a?.createdAt || a?.updatedAt || 0)
-              )
-            : [];
-          setSaved(sorted);
+          const next = Array.isArray(data.items) ? data.items : [];
+          setSavedItems((prev) =>
+            savedPage === 1 ? next : [...prev, ...next]
+          );
+          setSavedTotal(Number(data.total) || 0);
+          setSavedPages(Number(data.pages) || 1);
         }
       } catch (e) {
         if (!aborted) {
           console.error("Failed to load saved recipes", e);
-          setSaved([]);
+          setSavedItems([]);
+          setSavedTotal(0);
+          setSavedPages(1);
         }
+      } finally {
+        if (!aborted) setSavedLoading(false);
+        savedFetchingMoreRef.current = false;
       }
     };
 
@@ -197,7 +226,7 @@ const MyProfile = ({ userInfo, addItem }) => {
     return () => {
       aborted = true;
     };
-  }, []);
+  }, [savedPage, limit]);
 
   // fetch mých receptů (vyžaduje token)
   useEffect(() => {
@@ -213,7 +242,7 @@ const MyProfile = ({ userInfo, addItem }) => {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(limit));
-
+      if (debouncedQ) params.set("q", debouncedQ);
       setLoading(true);
       setErr("");
 
@@ -230,20 +259,51 @@ const MyProfile = ({ userInfo, addItem }) => {
         const data = JSON.parse(raw);
 
         if (aborted) return;
-        setItems(Array.isArray(data.items) ? data.items : []);
+        const next = Array.isArray(data.items) ? data.items : [];
+        setItems((prev) => (page === 1 ? next : [...prev, ...next]));
         setTotal(Number(data.total) || 0);
         setPages(Number(data.pages) || 1);
       } catch (e) {
         if (!aborted) setErr(e?.message || "Failed to load recipes.");
       } finally {
         if (!aborted) setLoading(false);
+        myFetchingMoreRef.current = false;
       }
     };
     fetchMine();
     return () => {
       aborted = true;
     };
-  }, [page, limit]);
+  }, [page, limit, debouncedQ]);
+
+  useEffect(() => {
+    const el = myLoadMoreRef.current;
+    if (!el) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting) return;
+
+        if (loading) return;
+        if (page >= pages) return;
+        if (myFetchingMoreRef.current) return;
+
+        myFetchingMoreRef.current = true;
+        setPage((p) => p + 1);
+      },
+      { root: null, rootMargin: "250px", threshold: 0.01 }
+    );
+
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [loading, page, pages]);
+
+  useEffect(() => {
+    setItems([]);
+    setPage(1);
+    myFetchingMoreRef.current = false;
+  }, [debouncedQ]);
 
   useEffect(() => {
     // posbírej unikátní community ID publikovaných receptů
@@ -288,6 +348,29 @@ const MyProfile = ({ userInfo, addItem }) => {
     };
   }, [items, API_BASE]);
 
+  useEffect(() => {
+    const el = savedLoadMoreRef.current;
+    if (!el) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting) return;
+
+        if (savedLoading) return;
+        if (savedPage >= savedPages) return;
+        if (savedFetchingMoreRef.current) return;
+
+        savedFetchingMoreRef.current = true;
+        setSavedPage((p) => p + 1);
+      },
+      { root: null, rootMargin: "250px", threshold: 0.01 }
+    );
+
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [savedLoading, savedPage, savedPages]);
+
   const canPrev = page > 1;
   const canNext = page < pages;
 
@@ -315,14 +398,14 @@ const MyProfile = ({ userInfo, addItem }) => {
             <h2 className="MyCategory">SAVED RECIPES</h2>
           </div>
 
-          {saved.length === 0 && (
+          {savedItems.length === 0 && (
             <p style={{ opacity: 0.8, marginTop: 8 }}>
               You don’t have any saved recipes yet.
             </p>
           )}
 
           <div className="recipeContainer2">
-            {saved.map((r) => {
+            {savedItems.map((r) => {
               const { url, isVideo } = getCover(r); // stejná funkce jako u My Recipes
               const title = r?.title || "Untitled";
 
@@ -397,6 +480,12 @@ const MyProfile = ({ userInfo, addItem }) => {
               );
             })}
           </div>
+          {loading && page > 1 && (
+            <p style={{ opacity: 0.8, marginTop: 12, textAlign: "center" }}>
+              Loading more…
+            </p>
+          )}
+          <div ref={myLoadMoreRef} style={{ height: 1 }} />
         </div>
 
         {/* MY RECIPES – skutečná data z /api/my-recipes */}
@@ -564,35 +653,7 @@ const MyProfile = ({ userInfo, addItem }) => {
           )}
         </div>
       </div>
-      {(pages > 1 || total > limit) && (
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            justifyContent: "center",
-            marginTop: 16,
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={!canPrev}
-          >
-            ◀︎ Previous
-          </button>
-          <span>
-            Page {page} / {pages} · {total} results
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(pages, p + 1))}
-            disabled={!canNext}
-          >
-            Next ▶︎
-          </button>
-        </div>
-      )}
+
       <footer className="profileFooter">
         <button onClick={handleDeleteAccount} className="deleteAccount">
           Delete account

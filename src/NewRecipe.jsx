@@ -1,67 +1,109 @@
 import React, { useState } from "react";
+import "./NewRecipe.css";
+
 import {
   createMyRecipe,
   publishMyRecipe,
   uploadRecipeMedia,
-  deleteRecipeMedia,
   uploadStepMedia,
-  deleteStepMedia,
 } from "./api";
-import "./NewRecipe.css";
 
+/* -----------------------------
+   Constants
+----------------------------- */
 const DIFFICULTIES = ["Beginner", "Intermediate", "Hard"];
 
+/* -----------------------------
+   Component
+----------------------------- */
 const NewRecipe = () => {
-  // --- hlavní info
+  /* -----------------------------
+     Main recipe info
+  ----------------------------- */
   const [title, setTitle] = useState("");
   const [difficulty, setDifficulty] = useState("Beginner");
   const [time, setTime] = useState("00:00");
-
   const [isPublic, setIsPublic] = useState(false);
 
-  // --- thumbnail (soubor + preview)
+  /* -----------------------------
+     Thumbnail (file + preview)
+  ----------------------------- */
   const [thumbFile, setThumbFile] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [isVideo, setIsVideo] = useState(false);
+  const [thumbPreview, setThumbPreview] = useState(null);
+  const [thumbIsVideo, setThumbIsVideo] = useState(false);
 
-  // --- kroky: popisy + volitelně soubory
-  const [steps, setSteps] = useState([
-    { description: "", file: null, preview: null }, // file = image/video
-  ]);
-
-  // --- ingredience (jednoduché pole)
+  /* -----------------------------
+     Ingredients
+  ----------------------------- */
   const [ingredients, setIngredients] = useState([""]);
 
-  // --- UI stav
+  /* -----------------------------
+     Steps (description + optional media)
+  ----------------------------- */
+  const [steps, setSteps] = useState([
+    { description: "", file: null, preview: null, type: "text" },
+  ]);
+
+  /* -----------------------------
+     UI state
+  ----------------------------- */
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
 
-  // ------- Handlery: thumbnail ----------
-  const handleFileChange = (e) => {
-    const f = e.target.files?.[0];
-    if (f) {
-      setThumbFile(f);
-      setPreview(URL.createObjectURL(f));
-      setIsVideo(f.type.startsWith("video/")); // 👈 true, pokud je to video
-    } else {
-      setThumbFile(null);
-      setPreview(null);
-      setIsVideo(false);
-    }
-  };
+  /* =============================
+     Handlers – Thumbnail
+  ============================= */
+  function handleThumbnailChange(e) {
+    const file = e.target.files?.[0] || null;
 
-  // ------- Handlery: steps ----------
-  const handleStepFileChange = (i, e) => {
-    const f = e.target.files?.[0] || null;
+    if (!file) {
+      setThumbFile(null);
+      setThumbPreview(null);
+      setThumbIsVideo(false);
+      return;
+    }
+
+    setThumbFile(file);
+    setThumbPreview(URL.createObjectURL(file));
+    setThumbIsVideo(file.type.startsWith("video/"));
+  }
+
+  /* =============================
+     Handlers – Ingredients
+  ============================= */
+  function updateIngredient(index, value) {
+    setIngredients((arr) => arr.map((v, i) => (i === index ? value : v)));
+  }
+
+  function addIngredient() {
+    setIngredients((arr) => [...arr, ""]);
+  }
+
+  function removeIngredient(index) {
+    setIngredients((arr) => arr.filter((_, i) => i !== index));
+  }
+
+  /* =============================
+     Handlers – Steps
+  ============================= */
+  function updateStepDescription(index, value) {
     setSteps((arr) =>
-      arr.map((s, idx) =>
-        idx === i
+      arr.map((s, i) => (i === index ? { ...s, description: value } : s))
+    );
+  }
+
+  function handleStepFileChange(index, e) {
+    const file = e.target.files?.[0] || null;
+
+    setSteps((arr) =>
+      arr.map((s, i) =>
+        i === index
           ? {
               ...s,
-              file: f,
-              preview: f ? URL.createObjectURL(f) : null,
-              type: f
-                ? f.type.startsWith("video/")
+              file,
+              preview: file ? URL.createObjectURL(file) : null,
+              type: file
+                ? file.type.startsWith("video/")
                   ? "video"
                   : "image"
                 : "text",
@@ -69,83 +111,83 @@ const NewRecipe = () => {
           : s
       )
     );
-  };
+  }
 
-  const updateStepDesc = (i, val) => {
-    setSteps((arr) =>
-      arr.map((s, idx) => (idx === i ? { ...s, description: val } : s))
+  function addStep() {
+    setSteps((arr) => [
+      ...arr,
+      { description: "", file: null, preview: null, type: "text" },
+    ]);
+  }
+
+  function removeStep(index) {
+    setSteps((arr) => arr.filter((_, i) => i !== index));
+  }
+
+  /* =============================
+     Validation
+  ============================= */
+  function validate() {
+    if (!title.trim() || !difficulty || !time.trim()) {
+      return "Fill in Title, Difficulty and Time.";
+    }
+
+    const hasTextStep = steps.some(
+      (s) => (s.description || "").trim().length > 0
     );
-  };
 
-  const addStep = () =>
-    setSteps((arr) => [...arr, { description: "", file: null, preview: null }]);
+    if (!hasTextStep) {
+      return "Add at least one step description.";
+    }
 
-  const removeStep = (i) =>
-    setSteps((arr) => arr.filter((_, idx) => idx !== i));
+    return null;
+  }
 
-  // ------- Ingredience ----------
-  const updateIngredient = (i, val) =>
-    setIngredients((arr) => arr.map((v, idx) => (idx === i ? val : v)));
+  /* =============================
+     Submit flow
+  ============================= */
+  async function handleSubmit() {
+    const error = validate();
+    if (error) {
+      setMsg({ type: "error", text: error });
+      return;
+    }
 
-  const addIngredient = () => setIngredients((arr) => [...arr, ""]);
-  const removeIngredient = (i) =>
-    setIngredients((arr) => arr.filter((_, idx) => idx !== i));
-
-  // ------- Submit flow (A2 – jistota public s coverem) ----------
-  const handleSubmit = async () => {
     try {
+      setSaving(true);
       setMsg(null);
 
-      if (!title.trim() || !difficulty || !time.trim()) {
-        setMsg({ type: "error", text: "Fill in Title, Difficulty and Time." });
-        return;
-      }
-
-      const hasAtLeastOneTextStep = steps.some(
-        (s) => (s.description || "").trim().length > 0
-      );
-      if (!hasAtLeastOneTextStep) {
-        setMsg({ type: "error", text: "Add at least one step description." });
-        return;
-      }
-
-      setSaving(true);
-
-      // 1) Vytvořím recept VŽDY jako PRIVATE (public až po uploadech)
+      /* 1️⃣ Create recipe as PRIVATE */
       const payload = {
         title: title.trim(),
         difficulty,
-        time: time.trim(), // string ok (např. "00:20")
-        imgSrc: undefined, // nepoužíváme, bereme Cloudinary image objekt
-        ingredients: ingredients.map((s) => (s || "").trim()).filter(Boolean),
-        // textové kroky (media doplníme uploadem; typ a src řeší BE sám)
+        time: time.trim(),
+        ingredients: ingredients.map((i) => i.trim()).filter(Boolean),
         steps: steps
           .map((s) => ({
             type: "text",
-            description: (s.description || "").trim(),
+            description: s.description.trim(),
           }))
           .filter((s) => s.description),
-        isPublic: false, // 🔒 důležité
+        isPublic: false,
       };
 
       const created = await createMyRecipe(payload);
       const recipeId = created._id;
 
-      // 2) Nahraju THUMBNAIL, pokud je vybraný (uloží do UserRecipe.image)
+      /* 2️⃣ Upload thumbnail */
       if (thumbFile) {
         await uploadRecipeMedia(recipeId, thumbFile);
       }
 
-      // 3) Nahraju MEDIA KE KROKŮM (každý stepIndex)
+      /* 3️⃣ Upload step media */
       await Promise.all(
-        steps.map(async (s, idx) => {
-          if (s.file) {
-            await uploadStepMedia(recipeId, idx, s.file);
-          }
-        })
+        steps.map((s, idx) =>
+          s.file ? uploadStepMedia(recipeId, idx, s.file) : null
+        )
       );
 
-      // 4) Pokud má být PUBLIC -> až TEĎ přepnout (vznikne community kopie s image)
+      /* 4️⃣ Publish (optional) */
       if (isPublic) {
         await publishMyRecipe(recipeId);
       }
@@ -155,44 +197,49 @@ const NewRecipe = () => {
         text: `Recipe created${isPublic ? " and shared publicly" : ""}.`,
       });
 
-      // reset
-      setTitle("");
-      setDifficulty("Beginner");
-      setTime("");
-      setIsPublic(false);
-      setThumbFile(null);
-      setPreview(null);
-      setIngredients([""]);
-      setSteps([{ description: "", file: null, preview: null }]);
+      /* 5️⃣ Reset form */
+      resetForm();
     } catch (e) {
       setMsg({ type: "error", text: e.message || "Save failed." });
     } finally {
       setSaving(false);
     }
-  };
+  }
 
+  function resetForm() {
+    setTitle("");
+    setDifficulty("Beginner");
+    setTime("00:00");
+    setIsPublic(false);
+    setThumbFile(null);
+    setThumbPreview(null);
+    setThumbIsVideo(false);
+    setIngredients([""]);
+    setSteps([{ description: "", file: null, preview: null, type: "text" }]);
+  }
+
+  /* =============================
+     Render
+  ============================= */
   return (
     <div className="new">
       {msg && <p className={msg.type}>{msg.text}</p>}
+
       <div className="creation">
+        {/* MAIN INFO */}
         <div className="mainInfo">
           <div className="nameDifTime">
             <div className="inputAdd">
-              <label>
-                <p>Name of the Recipe: </p>
-              </label>
+              <label>Name of the Recipe</label>
               <input
-                type="text"
-                placeholder="Title..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                placeholder="Title…"
               />
             </div>
 
             <div className="inputAdd">
-              <label>
-                <p>Difficulty</p>
-              </label>
+              <label>Difficulty</label>
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
@@ -206,9 +253,7 @@ const NewRecipe = () => {
             </div>
 
             <div className="inputAdd">
-              <label>
-                <p>Time</p>
-              </label>
+              <label>Time</label>
               <input
                 type="time"
                 value={time}
@@ -217,63 +262,41 @@ const NewRecipe = () => {
             </div>
           </div>
 
-          {/* THUMBNAIL: upload + preview */}
-
+          {/* THUMBNAIL */}
           <div className="uploadContainer">
-            <label htmlFor="uploadID">
+            <label htmlFor="uploadThumb">
               <div className="imagePreview">
-                {preview ? (
-                  isVideo ? (
-                    <video
-                      src={preview}
-                      muted
-                      autoPlay
-                      loop
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "200px",
-                        borderRadius: 8,
-                      }}
-                    />
+                {thumbPreview ? (
+                  thumbIsVideo ? (
+                    <video src={thumbPreview} autoPlay loop muted />
                   ) : (
-                    <img
-                      src={preview}
-                      alt="Preview"
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "200px",
-                        borderRadius: 8,
-                      }}
-                    />
+                    <img src={thumbPreview} alt="Preview" />
                   )
                 ) : (
                   <p>Upload Recipe Thumbnail</p>
                 )}
-              </div>{" "}
+              </div>
             </label>
 
             <input
-              id="uploadID"
-              className="uploads"
+              id="uploadThumb"
               type="file"
               accept="image/*,video/*"
-              onChange={handleFileChange}
               hidden
+              onChange={handleThumbnailChange}
             />
           </div>
 
-          {/* “tlačítko” Add Recipe */}
+          {/* CREATE BUTTON */}
           <img
             className="addRecipe"
             src="https://i.imgur.com/wPktOjd.png"
             alt="Create"
-            style={{
-              cursor: saving ? "not-allowed" : "pointer",
-              opacity: saving ? 0.6 : 1,
-            }}
+            style={{ opacity: saving ? 0.6 : 1 }}
             onClick={() => (!saving ? handleSubmit() : null)}
           />
 
+          {/* VISIBILITY */}
           <div className="public">
             <select
               value={isPublic ? "Public" : "Private"}
@@ -285,35 +308,26 @@ const NewRecipe = () => {
           </div>
         </div>
 
+        {/* INGREDIENTS + STEPS */}
         <div className="stepsAndIngrents">
           {/* INGREDIENTS */}
           <div className="Ingredients">
             <h3>INGREDIENTS</h3>
             <ol>
-              {ingredients.map((val, i) => (
+              {ingredients.map((v, i) => (
                 <li key={i} className="inputWithButton">
                   <input
-                    placeholder="e.g., chicken breast"
-                    value={val}
+                    value={v}
                     onChange={(e) => updateIngredient(i, e.target.value)}
+                    placeholder="e.g. chicken breast"
                   />
                   {ingredients.length > 1 && (
-                    <button
-                      className="X"
-                      type="button"
-                      onClick={() => removeIngredient(i)}
-                    >
-                      X
-                    </button>
+                    <button onClick={() => removeIngredient(i)}>X</button>
                   )}
                 </li>
               ))}
-              <li className="inputWithButton">
-                <button
-                  className="AddIngredient"
-                  type="button"
-                  onClick={addIngredient}
-                >
+              <li>
+                <button className="AddIngredient" onClick={addIngredient}>
                   Add Ingredient
                 </button>
               </li>
@@ -326,72 +340,46 @@ const NewRecipe = () => {
             <ol>
               {steps.map((s, i) => (
                 <li key={i}>
-                  <label htmlFor={`uploadStep-${i}`}>
+                  <label htmlFor={`step-${i}`}>
                     <div className="uploadContainer">
                       <div className="imagePreview">
                         {s.preview ? (
                           s.type === "video" ? (
-                            <video
-                              src={s.preview}
-                              muted
-                              autoPlay
-                              loop
-                              style={{
-                                maxWidth: "100%",
-                                maxHeight: "200px",
-                                borderRadius: 8,
-                              }}
-                            />
+                            <video src={s.preview} autoPlay loop muted />
                           ) : (
-                            <img
-                              src={s.preview}
-                              alt="Step preview"
-                              style={{
-                                maxWidth: "100%",
-                                maxHeight: "200px",
-                                borderRadius: 8,
-                              }}
-                            />
+                            <img src={s.preview} alt="Step preview" />
                           )
                         ) : (
-                          <p>Upload Step Thumbnail (image/video)</p>
+                          <p>Upload Step Media</p>
                         )}
                       </div>
-
-                      <input
-                        id={`uploadStep-${i}`}
-                        className="uploads"
-                        type="file"
-                        accept="image/*,video/*"
-                        onChange={(e) => handleStepFileChange(i, e)}
-                        hidden
-                      />
                     </div>
                   </label>
+
+                  <input
+                    id={`step-${i}`}
+                    type="file"
+                    accept="image/*,video/*"
+                    hidden
+                    onChange={(e) => handleStepFileChange(i, e)}
+                  />
+
                   <textarea
-                    placeholder="Describe the step…"
                     value={s.description}
-                    onChange={(e) => updateStepDesc(i, e.target.value)}
+                    onChange={(e) => updateStepDescription(i, e.target.value)}
+                    placeholder="Describe the step…"
                   />
 
                   {steps.length > 1 && (
-                    <button
-                      className="X"
-                      type="button"
-                      onClick={() => removeStep(i)}
-                    >
-                      X
-                    </button>
+                    <button onClick={() => removeStep(i)}>X</button>
                   )}
                 </li>
               ))}
 
-              <li className="addStep">
-                <div className="photoAndButton">
-                  <button type="button" className="addStep" onClick={addStep}>
-                    Add Step
-                  </button>
-                </div>
+              <li>
+                <button className="AddIngredient" onClick={addStep}>
+                  Add Step
+                </button>
               </li>
             </ol>
           </div>

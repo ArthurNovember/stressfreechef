@@ -18,14 +18,11 @@ import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE, fetchJSON } from "../../lib/api";
 import { useTheme } from "../../theme/ThemeContext";
-
-const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
-
 import { router } from "expo-router";
 import { Video, ResizeMode } from "expo-av";
-
 import { MaterialIcons } from "@expo/vector-icons";
 
+const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
 function StarRatingDisplay({

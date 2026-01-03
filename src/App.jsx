@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
-
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
+
 import ShoppingList from "./ShoppingList";
 import Home from "./Home";
 import FavoriteItems from "./FavoriteItems";
@@ -12,162 +13,171 @@ import NewRecipe from "./NewRecipe";
 import AuthForm from "./AuthForm";
 import MyProfile from "./MyProfile";
 
+/* -----------------------------
+   API config + helpers
+----------------------------- */
+const RAW =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
+  "https://stressfreecheff-backend.onrender.com";
+const API_BASE = String(RAW || "").replace(/\/+$/, "");
+
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+async function readJson(res) {
+  const data = await res.json().catch(() => null);
+  return data;
+}
+
+/* -----------------------------
+   Offline ShoppingList fallback
+----------------------------- */
+const LOCAL_KEY = "sfc_shoppingList";
+
+function loadLocalList() {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalList(list) {
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+}
+
+function genLocalId() {
+  return String(Date.now()) + "_" + Math.random().toString(16).slice(2);
+}
+
+/* -----------------------------
+   Component
+----------------------------- */
 function App() {
-  const [userInfo, setUserInfo] = useState(null); // 🎯 přidat stav pro uživatele
-  const token = localStorage.getItem("token");
+  /* -----------------------------
+     Auth / User
+  ----------------------------- */
+  const [userInfo, setUserInfo] = useState(null);
 
-  // ---- LocalStorage fallback pro shopping list (offline / nepřihlášený uživatel)
-  const LOCAL_KEY = "sfc_shoppingList";
+  // token as "derived value" (will update when App rerenders)
+  const token = useMemo(() => getToken(), [userInfo]);
 
-  const loadLocalList = () => {
-    try {
-      return JSON.parse(localStorage.getItem(LOCAL_KEY)) || [];
-    } catch {
-      return [];
+  async function verifyTokenAndSetUserInfo() {
+    const token = getToken();
+    if (!token) {
+      setUserInfo(null);
+      return;
     }
-  };
 
-  const saveLocalList = (list) => {
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
-  };
+    try {
+      const res = await fetch(`${API_BASE}/api/profile`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-  const genLocalId = () =>
-    String(Date.now()) + "_" + Math.random().toString(16).slice(2);
-  //
+      const data = await readJson(res);
 
-  // 🧠 ověření tokenu
-  const verifyTokenAndSetUserInfo = async () => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const response = await fetch(
-          "https://stressfreecheff-backend.onrender.com/api/profile",
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        const data = await response.json();
-        if (response.ok) {
-          setUserInfo(data.user);
-        } else {
-          localStorage.removeItem("token");
-          setUserInfo(null);
-        }
-      } catch (err) {
-        console.error("Chyba při ověřování tokenu:", err);
+      if (res.ok) {
+        setUserInfo(data?.user ?? null);
+      } else {
+        localStorage.removeItem("token");
         setUserInfo(null);
       }
+    } catch (err) {
+      console.error("Chyba při ověřování tokenu:", err);
+      setUserInfo(null);
     }
-  };
+  }
 
-  useEffect(() => {
-    verifyTokenAndSetUserInfo(); // volá jednotnou funkci
-  }, []);
-
-  //Shoppy
+  /* -----------------------------
+     Shop options
+  ----------------------------- */
   const [shopOptions, setShopOptions] = useState([]);
 
-  const fetchShopOptions = async () => {
-    const token = localStorage.getItem("token");
+  async function fetchShopOptions() {
+    const token = getToken();
     if (!token) {
       setShopOptions([]);
       return;
-    } // guard pro nepřihlášené
+    }
 
     try {
-      const res = await fetch(
-        "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await fetch(`${API_BASE}/api/shopping-list/shop-options`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       if (!res.ok) throw new Error(await res.text());
       setShopOptions(await res.json());
     } catch (e) {
       console.error("Shop options FAIL:", e);
     }
-  };
+  }
 
-  useEffect(() => {
-    fetchShopOptions(); // jen jednou
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
+  /* -----------------------------
+     Recipes (official)
+  ----------------------------- */
+  const [recipes, setRecipes] = useState([]);
   const [displayRecipes, setDisplayRecipes] = useState([]);
-  const [recipes, setRecipes] = useState([]); // ✅ přidat tento stav
 
-  // Změň useEffect:
   useEffect(() => {
-    fetch("https://stressfreecheff-backend.onrender.com/api/recipes")
-      .then((response) => response.json())
+    fetch(`${API_BASE}/api/recipes`)
+      .then((res) => res.json())
       .then((data) => {
-        setRecipes(data); // ✅ Uložení do kompletního seznamu
-        setDisplayRecipes(data); // ✅ Zobrazitelný seznam
+        setRecipes(data);
+        setDisplayRecipes(data);
       })
       .catch((error) => {
         console.error("Chyba při načítání receptů:", error);
       });
   }, []);
 
-  const shuffleRecipes = () => {
+  function shuffleRecipes() {
     const shuffled = [...recipes].sort(() => Math.random() - 0.5);
     setDisplayRecipes(shuffled);
-  };
+  }
 
-  const bestSortRecipes = () => {
+  function bestSortRecipes() {
     const sorted = [...recipes].sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
     setDisplayRecipes(sorted);
-  };
-
-  const favoriteRecipes = () => {
-    const favoriteSetter = [...recipes].sort((a, b) => {
-      const ra = a.rating || 0;
-      const rb = b.rating || 0;
-      return rb - ra;
-    });
-    setDisplayRecipes(favoriteSetter);
-  };
+  }
 
   const difficultyOrder = ["Beginner", "Intermediate", "Hard"];
-  const recommendedRecipes = () => {
-    const recommendedSetter = [...recipes].sort((a, b) => {
+  function recommendedRecipes() {
+    const sorted = [...recipes].sort((a, b) => {
       return (
         difficultyOrder.indexOf(a.difficulty) -
         difficultyOrder.indexOf(b.difficulty)
       );
     });
-    setDisplayRecipes(recommendedSetter);
-  };
+    setDisplayRecipes(sorted);
+  }
 
-  //Shopping List!!!!!!!!!!!!!!!!!!!!!
+  /* -----------------------------
+     Shopping List (online + offline)
+  ----------------------------- */
   const [text, setText] = useState("");
   const [shop, setShop] = useState([]);
   const [newItem, setNewItem] = useState([]);
 
   async function fetchShoppingList() {
-    const token = localStorage.getItem("token");
+    const token = getToken();
+
+    // offline mode (not logged in)
     if (!token) {
-      // nepřihlášený uživatel → nic nenačítej
-      const offline = loadLocalList();
-      setNewItem(offline);
+      setNewItem(loadLocalList());
       return;
     }
 
     try {
-      const res = await fetch(
-        "https://stressfreecheff-backend.onrender.com/api/shopping-list",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await fetch(`${API_BASE}/api/shopping-list`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!res.ok) {
         console.error(
@@ -185,139 +195,121 @@ function App() {
     }
   }
 
-  useEffect(() => {
-    fetchShoppingList();
-    fetchItemSuggestions();
-  }, []);
+  async function addItem(item) {
+    const token = getToken();
 
-  const handleLoginSuccess = async () => {
-    await verifyTokenAndSetUserInfo();
-    await fetchShoppingList(); // 💥 teď se shopping list načte automaticky
-    await fetchShopOptions(); // 🎯 přidáno
-    await fetchFavoriteItems(); // ✅ přidáno
-    await fetchItemSuggestions();
-  };
-
-  const addItem = async (item) => {
-    const token = localStorage.getItem("token");
+    // offline mode
     if (!token) {
-      // offline verze
       const current = loadLocalList();
       const newObj = {
-        _id: genLocalId(), // aby fungovalo mazání/úpravy v UI
-        text: item.text || "",
-        shop: [], // offline bez napojení na shop options
+        _id: genLocalId(),
+        text: item?.text || "",
+        shop: [],
         checked: false,
       };
+
       const updated = [...current, newObj];
       saveLocalList(updated);
       setNewItem(updated);
       return;
     }
-    //online
-    const res = await fetch(
-      "https://stressfreecheff-backend.onrender.com/api/shopping-list",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(item),
-      }
-    );
+
+    // online mode
+    const res = await fetch(`${API_BASE}/api/shopping-list`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(item),
+    });
+
     const updatedList = await res.json();
     setNewItem(updatedList);
     await fetchItemSuggestions();
-  };
+  }
 
-  const updateShoppingItem = async (itemId, updates) => {
-    const token = localStorage.getItem("token");
+  async function updateShoppingItem(itemId, updates) {
+    const token = getToken();
+
+    // offline mode
     if (!token) {
-      // offline verze – umožníme přepínat checked; shop offline ignorujeme
       const current = loadLocalList();
       const updated = current.map((i) =>
         i._id === itemId
           ? {
               ...i,
               ...("checked" in updates ? { checked: updates.checked } : {}),
-              // shop změny necháváme bez efektu v offline módu
             }
           : i
       );
+
       saveLocalList(updated);
       setNewItem(updated);
       return;
     }
 
-    // online verze (původní)
-    const res = await fetch(
-      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${itemId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updates),
-      }
-    );
+    // online mode
+    const res = await fetch(`${API_BASE}/api/shopping-list/${itemId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updates),
+    });
+
     const updatedList = await res.json();
     setNewItem(updatedList);
     await fetchItemSuggestions();
-  };
+  }
 
-  const deleteShoppingItem = async (itemId) => {
-    const token = localStorage.getItem("token");
+  async function deleteShoppingItem(itemId) {
+    const token = getToken();
+
+    // offline mode
     if (!token) {
-      // offline verze
       const current = loadLocalList();
       const updated = current.filter((i) => i._id !== itemId);
+
       saveLocalList(updated);
       setNewItem(updated);
       return;
     }
 
-    // online verze (původní)
-    const res = await fetch(
-      `https://stressfreecheff-backend.onrender.com/api/shopping-list/${itemId}`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    // online mode
+    const res = await fetch(`${API_BASE}/api/shopping-list/${itemId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
     const updatedList = await res.json();
     setNewItem(updatedList);
     await fetchItemSuggestions();
-  };
+  }
 
-  //FavoriteItems!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  //array vlastnosí itemu
+  /* -----------------------------
+     Favorite Items
+  ----------------------------- */
   const [FavoriteNewItem, setFavoriteNewItem] = useState([]);
-  //useState+updatovací funkce textu itemu
   const [FavoriteText, setFavoriteText] = useState("");
-  const handleFavoriteText = (event) => {
-    setFavoriteText(event.target.value);
-  };
-
-  //useState+updatovací funkce shopu itemu
   const [FavoriteShop, setFavoriteShop] = useState([]);
 
-  // Načtení favorites
+  function handleFavoriteText(event) {
+    setFavoriteText(event.target.value);
+  }
+
   async function fetchFavoriteItems() {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) {
       setFavoriteNewItem([]);
       return;
     }
 
     try {
-      const res = await fetch(
-        "https://stressfreecheff-backend.onrender.com/api/favorites",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await fetch(`${API_BASE}/api/favorites`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) throw new Error(await res.text());
       setFavoriteNewItem(await res.json());
     } catch (e) {
@@ -325,77 +317,70 @@ function App() {
     }
   }
 
-  // Vytvoření favorite položky
-  const addFavoriteItem = async (item) => {
-    const token = localStorage.getItem("token");
+  async function addFavoriteItem(item) {
+    const token = getToken();
+
     // item.shop může být: pole objektů { _id, name } nebo pole stringů s _id
-    const shopIds = Array.isArray(item.shop)
+    const shopIds = Array.isArray(item?.shop)
       ? item.shop
-          .map((s) => (typeof s === "string" ? s : s._id))
+          .map((s) => (typeof s === "string" ? s : s?._id))
           .filter(Boolean)
       : [];
 
-    const res = await fetch(
-      "https://stressfreecheff-backend.onrender.com/api/favorites",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: item.text, shop: shopIds }),
-      }
-    );
+    const res = await fetch(`${API_BASE}/api/favorites`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text: item?.text, shop: shopIds }),
+    });
+
     const updated = await res.json();
     setFavoriteNewItem(updated);
     await fetchItemSuggestions();
-  };
+  }
 
-  // Úprava favorite (text / shop)
-  const updateFavoriteItem = async (itemId, updates) => {
-    const token = localStorage.getItem("token");
-    const res = await fetch(
-      `https://stressfreecheff-backend.onrender.com/api/favorites/${itemId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        // updates.shop očekává pole _id
-        body: JSON.stringify(updates),
-      }
-    );
+  async function updateFavoriteItem(itemId, updates) {
+    const token = getToken();
+
+    const res = await fetch(`${API_BASE}/api/favorites/${itemId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updates),
+    });
+
     const updated = await res.json();
     setFavoriteNewItem(updated);
     await fetchItemSuggestions();
-  };
+  }
 
-  // Smazání favorite položky
-  const deleteFavoriteItem = async (itemOrId) => {
-    const id = typeof itemOrId === "string" ? itemOrId : itemOrId._id;
-    const token = localStorage.getItem("token");
-    const res = await fetch(
-      `https://stressfreecheff-backend.onrender.com/api/favorites/${id}`,
-      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
-    );
+  async function deleteFavoriteItem(itemOrId) {
+    const id = typeof itemOrId === "string" ? itemOrId : itemOrId?._id;
+    if (!id) return;
+
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/api/favorites/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
     const updated = await res.json();
     setFavoriteNewItem(updated);
     await fetchItemSuggestions();
-  };
+  }
 
-  useEffect(() => {
-    fetchFavoriteItems();
-  }, []);
-
-  //extra !!!!!!!!!!!!!!!!!!!!!!!!!
-  const id = Date.now(); // Unikátní ID pro každou položku
-
-  //Item Suggestions
+  /* -----------------------------
+     Item Suggestions
+  ----------------------------- */
   const [uniqueItemNames, setUniqueItemNames] = useState([]);
 
-  const fetchItemSuggestions = async () => {
-    const token = localStorage.getItem("token");
+  async function fetchItemSuggestions() {
+    const token = getToken();
+
     try {
       if (!token) {
         // offline fallback: aspoň z lokálně zobrazených položek
@@ -406,17 +391,52 @@ function App() {
         return;
       }
 
-      const res = await fetch(
-        "https://stressfreecheff-backend.onrender.com/api/item-suggestions",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await fetch(`${API_BASE}/api/item-suggestions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       if (!res.ok) throw new Error(await res.text());
       setUniqueItemNames(await res.json());
     } catch (e) {
       console.error("Fetch item suggestions failed:", e);
     }
-  };
+  }
 
+  /* -----------------------------
+     Effects (initial load)
+  ----------------------------- */
+  useEffect(() => {
+    verifyTokenAndSetUserInfo();
+  }, []);
+
+  useEffect(() => {
+    fetchShopOptions();
+  }, []);
+
+  useEffect(() => {
+    fetchShoppingList();
+    fetchItemSuggestions();
+    fetchFavoriteItems();
+  }, []);
+
+  /* -----------------------------
+     UI helpers
+  ----------------------------- */
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function handleLoginSuccess() {
+    await verifyTokenAndSetUserInfo();
+    await fetchShoppingList();
+    await fetchShopOptions();
+    await fetchFavoriteItems();
+    await fetchItemSuggestions();
+  }
+
+  /* -----------------------------
+     Render
+  ----------------------------- */
   return (
     <Router>
       <div>
@@ -428,9 +448,11 @@ function App() {
                   Home
                 </Link>
               </li>
+
               <li>
                 <Link to="/ExploreRecipes">Community Recipes</Link>
               </li>
+
               <li>
                 {token ? (
                   <Link to="/NewRecipe">Add Recipe</Link>
@@ -444,9 +466,11 @@ function App() {
                   </Link>
                 )}
               </li>
+
               <li>
                 <Link to="/shopping-list">Shopping List</Link>
               </li>
+
               <li id="nav">
                 <Link to={userInfo ? "/myprofile" : "/authform"}>
                   {userInfo?.username ? userInfo.username : "MyProfile"}
@@ -456,6 +480,7 @@ function App() {
           </nav>
         </header>
       </div>
+
       <Routes>
         <Route
           path="/"
@@ -464,11 +489,21 @@ function App() {
               displayRecipes={displayRecipes}
               recommendedRecipes={recommendedRecipes}
               bestSortRecipes={bestSortRecipes}
-              favoriteRecipes={favoriteRecipes}
               shuffleRecipes={shuffleRecipes}
               addItem={addItem}
-              setNewItem={setNewItem}
-              newItem={newItem}
+            />
+          }
+        />
+
+        <Route
+          path="/domov"
+          element={
+            <Home
+              displayRecipes={displayRecipes}
+              recommendedRecipes={recommendedRecipes}
+              bestSortRecipes={bestSortRecipes}
+              shuffleRecipes={shuffleRecipes}
+              addItem={addItem}
             />
           }
         />
@@ -484,7 +519,6 @@ function App() {
               newItem={newItem}
               setNewItem={setNewItem}
               addItem={addItem}
-              id={id}
               addFavoriteItem={addFavoriteItem}
               FavoriteNewItem={FavoriteNewItem}
               setFavoriteNewItem={setFavoriteNewItem}
@@ -492,27 +526,12 @@ function App() {
               shopOptions={shopOptions}
               setShopOptions={setShopOptions}
               uniqueItemNames={uniqueItemNames}
-              updateShoppingItem={updateShoppingItem} // ✅ přidáno
-              deleteShoppingItem={deleteShoppingItem} // ✅ přidáno
+              updateShoppingItem={updateShoppingItem}
+              deleteShoppingItem={deleteShoppingItem}
             />
           }
         />
 
-        <Route
-          path="/domov"
-          element={
-            <Home
-              displayRecipes={displayRecipes}
-              recommendedRecipes={recommendedRecipes}
-              bestSortRecipes={bestSortRecipes}
-              favoriteRecipes={favoriteRecipes}
-              shuffleRecipes={shuffleRecipes}
-              addItem={addItem}
-              setNewItem={setNewItem}
-              newItem={newItem}
-            />
-          }
-        />
         <Route
           path="/favoriteItems"
           element={
@@ -530,26 +549,22 @@ function App() {
               shopOptions={shopOptions}
               setShopOptions={setShopOptions}
               uniqueItemNames={uniqueItemNames}
-              updateFavoriteItem={updateFavoriteItem} // ✅ nově
+              updateFavoriteItem={updateFavoriteItem}
             />
           }
         />
-        <Route path="/Recipe" element={<Recipe />} />
 
+        <Route path="/Recipe" element={<Recipe />} />
         <Route
           path="ExploreRecipes"
           element={<ExploreRecipes addItem={addItem} />}
         />
-
         <Route path="MyRecipes" element={<MyRecipes />} />
-
         <Route path="NewRecipe" element={<NewRecipe />} />
-
         <Route
           path="AuthForm"
           element={<AuthForm onLoginSuccess={handleLoginSuccess} />}
         />
-
         <Route
           path="/myprofile"
           element={

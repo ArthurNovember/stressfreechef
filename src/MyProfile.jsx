@@ -1,23 +1,28 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./MyRecipes.css";
 import { Link } from "react-router-dom";
-import { deleteMyRecipe } from "./api"; // ⬅️ nahoře
+import { deleteMyRecipe } from "./api";
 import StarRating from "./StarRating";
 import { MdAddShoppingCart } from "react-icons/md";
 
-// 🌍 backend base (stejný pattern jako v exploreRecipes.jsx)
+/* -----------------------------
+   API config
+----------------------------- */
 const DEPLOYED_BACKEND_URL = "https://stressfreecheff-backend.onrender.com";
 const RAW_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
   DEPLOYED_BACKEND_URL;
+
 const API_BASE = String(RAW_BASE || "").replace(/\/+$/, "");
 
-// endpoint pro moje soukromé recepty
-const API_URL = `${API_BASE}/api/my-recipes`;
+const MY_API_URL = `${API_BASE}/api/my-recipes`;
 const SAVED_API_URL = `${API_BASE}/api/saved-community-recipes`;
 
-// stejné pomocné funkce jako v exploreRecipes.jsx
+/* -----------------------------
+   Media helpers (cover)
+----------------------------- */
 const PLACEHOLDER_IMG = "https://i.imgur.com/CZaFjz2.png";
+
 const isVideoFormat = (fmt = "", url = "") => {
   const f = String(fmt || "")
     .toLowerCase()
@@ -27,16 +32,19 @@ const isVideoFormat = (fmt = "", url = "") => {
     /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(String(url || ""))
   );
 };
+
 const findFirstImageStepSrc = (steps = []) => {
   if (!Array.isArray(steps)) return "";
   const s = steps.find((x) => x?.type === "image" && x?.src);
   return s?.src || "";
 };
+
 const findAnyStepSrc = (steps = []) => {
   if (!Array.isArray(steps)) return "";
   const s = steps.find((x) => x?.src);
   return s?.src || "";
 };
+
 /** Cover pořadí: image.url -> imgSrc -> první image step -> jakýkoli step -> placeholder */
 const getCover = (r) => {
   const url =
@@ -45,38 +53,70 @@ const getCover = (r) => {
     findFirstImageStepSrc(r?.steps) ||
     findAnyStepSrc(r?.steps) ||
     "";
+
   const fmt = r?.image?.format || "";
   const isVideo = isVideoFormat(fmt, url);
+
   return { url: url || PLACEHOLDER_IMG, isVideo };
 };
 
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+/* -----------------------------
+   Component
+----------------------------- */
 const MyProfile = ({ userInfo, addItem }) => {
+  /* =============================
+     State – My recipes
+  ============================= */
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [page, setPage] = useState(1);
-  const [limit] = useState(12);
+  const limit = 12;
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [communityRatings, setCommunityRatings] = useState({});
 
+  /* =============================
+     State – Saved recipes
+  ============================= */
   const [savedItems, setSavedItems] = useState([]);
   const [savedPage, setSavedPage] = useState(1);
   const [savedPages, setSavedPages] = useState(1);
   const [savedTotal, setSavedTotal] = useState(0);
   const [savedLoading, setSavedLoading] = useState(false);
 
+  /* =============================
+     State – Modal
+  ============================= */
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+
+  const selectedMedia = useMemo(() => {
+    if (!selectedRecipe) return null;
+    return getCover(selectedRecipe);
+  }, [selectedRecipe]);
+
+  /* =============================
+     Refs – Infinite scroll
+  ============================= */
   const myLoadMoreRef = useRef(null);
   const myFetchingMoreRef = useRef(false);
+
   const savedLoadMoreRef = useRef(null);
   const savedFetchingMoreRef = useRef(false);
 
-  // --- Account deletion UI state ---
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
-  const [deleting, setDeleting] = useState(false);
+  /* =============================
+     Actions – auth/account
+  ============================= */
+  function handleLogout() {
+    localStorage.removeItem("token");
+    window.location.href = "/AuthForm";
+  }
 
   async function handleDeleteAccount() {
     const sure = window.confirm(
@@ -85,15 +125,17 @@ const MyProfile = ({ userInfo, addItem }) => {
     if (!sure) return;
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const res = await fetch(`${API_BASE}/api/account`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (!res.ok && res.status !== 204) {
         const txt = await res.text();
         throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
       }
+
       localStorage.removeItem("token");
       window.location.href = "/AuthForm";
     } catch (e) {
@@ -101,24 +143,27 @@ const MyProfile = ({ userInfo, addItem }) => {
     }
   }
 
-  //Mazání
-  const handleDelete = async (recipeId) => {
+  /* =============================
+     Actions – CRUD recipes
+  ============================= */
+  async function handleDeleteMyRecipe(recipeId) {
     if (!window.confirm("Do you really want to delete this recipe?")) return;
+
     try {
       await deleteMyRecipe(recipeId);
-      // smaž ho z lokálního seznamu
+
       setItems((prev) => prev.filter((r) => r._id !== recipeId));
-      setTotal((t) => t - 1);
+      setTotal((t) => Math.max(0, t - 1));
     } catch (err) {
       alert("Deletion failed: " + (err?.message || err));
     }
-  };
+  }
 
-  const handleRemoveSaved = async (id) => {
+  async function handleRemoveSaved(id) {
     if (!window.confirm("Remove this recipe from your saved recipes?")) return;
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const res = await fetch(`${SAVED_API_URL}/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
@@ -136,49 +181,64 @@ const MyProfile = ({ userInfo, addItem }) => {
     } catch (e) {
       alert("Removing saved recipe failed: " + (e?.message || e));
     }
-  };
+  }
 
-  const [selectedRecipe, setSelectedRecipe] = useState(null);
-
-  const openModal = (recipe) => {
+  /* =============================
+     Actions – modal
+  ============================= */
+  function openModal(recipe) {
     setSelectedRecipe(recipe);
-  };
-  const closeModal = () => {
-    setSelectedRecipe(null);
-  };
+  }
 
+  function closeModal() {
+    setSelectedRecipe(null);
+  }
+
+  /* =============================
+     Effects – modal scroll lock
+  ============================= */
   useEffect(() => {
-    if (selectedRecipe) {
-      document.body.style.overflow = "hidden";
-    } else {
+    document.body.style.overflow = selectedRecipe ? "hidden" : "auto";
+    return () => {
       document.body.style.overflow = "auto";
-    }
+    };
   }, [selectedRecipe]);
 
-  const ThumbnailUrl = getCover(selectedRecipe).url;
-  const isVideoSelected = getCover(selectedRecipe).isVideo;
-
-  // debounce vyhledávání
+  /* =============================
+     Effects – debounce search
+  ============================= */
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
 
+  /* =============================
+     Effects – reset my list on search change
+  ============================= */
+  useEffect(() => {
+    setItems([]);
+    setPage(1);
+    myFetchingMoreRef.current = false;
+  }, [debouncedQ]);
+
+  /* =============================
+     Effects – fetch saved recipes (paged)
+  ============================= */
   useEffect(() => {
     let aborted = false;
 
     const fetchSaved = async () => {
       setSavedLoading(true);
 
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         if (!aborted) {
           setSavedItems([]);
           setSavedTotal(0);
           setSavedPages(1);
-          setSavedLoading(false);
         }
         savedFetchingMoreRef.current = false;
+        setSavedLoading(false);
         return;
       }
 
@@ -200,15 +260,13 @@ const MyProfile = ({ userInfo, addItem }) => {
           throw new Error(`HTTP ${res.status}: ${raw.slice(0, 200)}`);
 
         const data = JSON.parse(raw);
+        if (aborted) return;
 
-        if (!aborted) {
-          const next = Array.isArray(data.items) ? data.items : [];
-          setSavedItems((prev) =>
-            savedPage === 1 ? next : [...prev, ...next]
-          );
-          setSavedTotal(Number(data.total) || 0);
-          setSavedPages(Number(data.pages) || 1);
-        }
+        const next = Array.isArray(data.items) ? data.items : [];
+
+        setSavedItems((prev) => (savedPage === 1 ? next : [...prev, ...next]));
+        setSavedTotal(Number(data.total) || 0);
+        setSavedPages(Number(data.pages) || 1);
       } catch (e) {
         if (!aborted) {
           console.error("Failed to load saved recipes", e);
@@ -228,38 +286,46 @@ const MyProfile = ({ userInfo, addItem }) => {
     };
   }, [savedPage, limit]);
 
-  // fetch mých receptů (vyžaduje token)
+  /* =============================
+     Effects – fetch my recipes (paged)
+  ============================= */
   useEffect(() => {
     let aborted = false;
+
     const fetchMine = async () => {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         setItems([]);
         setTotal(0);
         setPages(1);
         return;
       }
+
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(limit));
       if (debouncedQ) params.set("q", debouncedQ);
+
       setLoading(true);
       setErr("");
 
       try {
-        const res = await fetch(`${API_URL}?${params.toString()}`, {
+        const res = await fetch(`${MY_API_URL}?${params.toString()}`, {
           headers: {
             Accept: "application/json",
             Authorization: `Bearer ${token}`,
           },
         });
+
         const raw = await res.text();
         if (!res.ok)
           throw new Error(`HTTP ${res.status}: ${raw.slice(0, 200)}`);
-        const data = JSON.parse(raw);
 
+        const data = JSON.parse(raw);
         if (aborted) return;
+
         const next = Array.isArray(data.items) ? data.items : [];
+
         setItems((prev) => (page === 1 ? next : [...prev, ...next]));
         setTotal(Number(data.total) || 0);
         setPages(Number(data.pages) || 1);
@@ -270,12 +336,16 @@ const MyProfile = ({ userInfo, addItem }) => {
         myFetchingMoreRef.current = false;
       }
     };
+
     fetchMine();
     return () => {
       aborted = true;
     };
   }, [page, limit, debouncedQ]);
 
+  /* =============================
+     Effects – infinite scroll: my recipes
+  ============================= */
   useEffect(() => {
     const el = myLoadMoreRef.current;
     if (!el) return;
@@ -299,55 +369,9 @@ const MyProfile = ({ userInfo, addItem }) => {
     return () => obs.disconnect();
   }, [loading, page, pages]);
 
-  useEffect(() => {
-    setItems([]);
-    setPage(1);
-    myFetchingMoreRef.current = false;
-  }, [debouncedQ]);
-
-  useEffect(() => {
-    // posbírej unikátní community ID publikovaných receptů
-    const ids = Array.from(
-      new Set((items || []).map((r) => r?.publicRecipeId).filter(Boolean))
-    );
-
-    if (ids.length === 0) {
-      setCommunityRatings({});
-      return;
-    }
-
-    let aborted = false;
-    (async () => {
-      try {
-        const pairs = await Promise.all(
-          ids.map(async (id) => {
-            const res = await fetch(`${API_BASE}/api/community-recipes/${id}`, {
-              headers: { Accept: "application/json" },
-            });
-            if (!res.ok) return [id, null];
-            const data = await res.json();
-            return [
-              id,
-              {
-                avg: Number(data?.ratingAvg || 0),
-                count: Number(data?.ratingCount || 0),
-              },
-            ];
-          })
-        );
-        if (!aborted) {
-          setCommunityRatings(Object.fromEntries(pairs.filter(Boolean)));
-        }
-      } catch {
-        if (!aborted) setCommunityRatings({});
-      }
-    })();
-
-    return () => {
-      aborted = true;
-    };
-  }, [items, API_BASE]);
-
+  /* =============================
+     Effects – infinite scroll: saved recipes
+  ============================= */
   useEffect(() => {
     const el = savedLoadMoreRef.current;
     if (!el) return;
@@ -371,16 +395,61 @@ const MyProfile = ({ userInfo, addItem }) => {
     return () => obs.disconnect();
   }, [savedLoading, savedPage, savedPages]);
 
-  const canPrev = page > 1;
-  const canNext = page < pages;
+  /* =============================
+     Effects – fetch ratings for published recipes
+  ============================= */
+  useEffect(() => {
+    const ids = Array.from(
+      new Set((items || []).map((r) => r?.publicRecipeId).filter(Boolean))
+    );
 
+    if (ids.length === 0) {
+      setCommunityRatings({});
+      return;
+    }
+
+    let aborted = false;
+
+    (async () => {
+      try {
+        const pairs = await Promise.all(
+          ids.map(async (id) => {
+            const res = await fetch(`${API_BASE}/api/community-recipes/${id}`, {
+              headers: { Accept: "application/json" },
+            });
+            if (!res.ok) return [id, null];
+            const data = await res.json();
+            return [
+              id,
+              {
+                avg: Number(data?.ratingAvg || 0),
+                count: Number(data?.ratingCount || 0),
+              },
+            ];
+          })
+        );
+
+        if (!aborted) {
+          setCommunityRatings(Object.fromEntries(pairs.filter(Boolean)));
+        }
+      } catch {
+        if (!aborted) setCommunityRatings({});
+      }
+    })();
+
+    return () => {
+      aborted = true;
+    };
+  }, [items]);
+
+  /* =============================
+     Render guards
+  ============================= */
   if (!userInfo) return <div>Loading...</div>;
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    window.location.href = "/AuthForm";
-  };
-
+  /* =============================
+     Render
+  ============================= */
   return (
     <div className="myProfile">
       <div className="deleteContainer">
@@ -388,11 +457,15 @@ const MyProfile = ({ userInfo, addItem }) => {
           Logout
         </button>
       </div>
-      <div classname="loginButtons">
+
+      {/* FIX: className typos */}
+      <div className="loginButtons">
         <div className="loginInfo"></div>
-        <div clasName="endButtons"></div>
+        <div className="endButtons"></div>
       </div>
+
       <div className="My">
+        {/* ---------------- SAVED RECIPES ---------------- */}
         <div className="savedRecipes">
           <div className="MyRecipeNewRecipe">
             <h2 className="MyCategory">SAVED RECIPES</h2>
@@ -406,7 +479,7 @@ const MyProfile = ({ userInfo, addItem }) => {
 
           <div className="recipeContainer2">
             {savedItems.map((r) => {
-              const { url, isVideo } = getCover(r); // stejná funkce jako u My Recipes
+              const { url, isVideo } = getCover(r);
               const title = r?.title || "Untitled";
 
               const ratingValue =
@@ -480,15 +553,18 @@ const MyProfile = ({ userInfo, addItem }) => {
               );
             })}
           </div>
-          {loading && page > 1 && (
+
+          {savedLoading && savedPage > 1 && (
             <p style={{ opacity: 0.8, marginTop: 12, textAlign: "center" }}>
               Loading more…
             </p>
           )}
-          <div ref={myLoadMoreRef} style={{ height: 1 }} />
+
+          {/* FIX: správný sentinel pro saved */}
+          <div ref={savedLoadMoreRef} style={{ height: 1 }} />
         </div>
 
-        {/* MY RECIPES – skutečná data z /api/my-recipes */}
+        {/* ---------------- MY RECIPES ---------------- */}
         <div className="myRecipes">
           <div className="MyRecipeNewRecipe" style={{ gap: 12 }}>
             <h2 className="MyCategory">MY RECIPES</h2>
@@ -510,9 +586,9 @@ const MyProfile = ({ userInfo, addItem }) => {
 
           <div className="recipeContainer2">
             {items.map((r) => {
-              const { url, isVideo } = getCover(r); // stejná logika jako Explore
+              const { url, isVideo } = getCover(r);
               const title = r?.title || "Untitled";
-              const rating = Math.max(0, Math.round(r?.rating || 0));
+
               return (
                 <div className="recipeCard2" key={r?._id}>
                   <a href="#forNow" title={title}>
@@ -549,8 +625,10 @@ const MyProfile = ({ userInfo, addItem }) => {
                       />
                     )}
                   </a>
+
                   <div className="texto">
                     <h3 title={title}>{title}</h3>
+
                     <StarRating
                       value={
                         r?.publicRecipeId
@@ -569,90 +647,97 @@ const MyProfile = ({ userInfo, addItem }) => {
                     <p>Difficulty: {r?.difficulty || "—"}</p>
                     <p>Time: {r?.time || "—"} ⏱️</p>
                   </div>
+
                   <img
                     src="https://i.imgur.com/aRJEINp.png"
                     className="deleteButton"
-                    onClick={() => handleDelete(r._id)}
+                    onClick={() => handleDeleteMyRecipe(r._id)}
+                    alt="Delete my recipe"
                   />
                 </div>
               );
             })}
           </div>
 
-          {selectedRecipe && (
-            <div
-              className="modalOverlay"
-              onClick={() => setSelectedRecipe(null)}
-            >
-              <div
-                className="selectedRecipeContainer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-              >
-                <div id="forNow">
-                  <div className="nameAndPicture">
-                    <h2>{selectedRecipe.title}</h2>
-                    {isVideoSelected ? (
-                      <video
-                        onClick={() => openModal(r)}
-                        src={ThumbnailUrl || PLACEHOLDER_IMG}
-                        preload="metadata"
-                        playsInline
-                        muted
-                        loop
-                        autoPlay
-                      />
-                    ) : (
-                      <img
-                        onClick={() => openModal(r)}
-                        src={ThumbnailUrl || PLACEHOLDER_IMG}
-                        alt={selectedRecipe.title}
-                        loading="lazy"
-                      />
-                    )}
-                  </div>
-
-                  <div className="displayIngredience">
-                    <ol>
-                      {selectedRecipe.ingredients.map((ingredient, index) => {
-                        return (
-                          <li key={index} className="ingredient">
-                            {ingredient}
-                            <button
-                              className="sendToList"
-                              onClick={() =>
-                                addItem({
-                                  text: ingredient,
-                                  shop: [],
-                                })
-                              }
-                            >
-                              <MdAddShoppingCart size={18} color="#ffffff" />
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  </div>
-                </div>
-                <div id="startparent">
-                  <Link
-                    to="/Recipe"
-                    state={{
-                      recipe: selectedRecipe,
-                      communityRecipeId:
-                        selectedRecipe?.publicRecipeId || undefined,
-                    }}
-                  >
-                    <button className="getStarted">GET STARTED</button>
-                  </Link>
-                </div>
-              </div>
-            </div>
+          {loading && page > 1 && (
+            <p style={{ opacity: 0.8, marginTop: 12, textAlign: "center" }}>
+              Loading more…
+            </p>
           )}
+
+          <div ref={myLoadMoreRef} style={{ height: 1 }} />
         </div>
       </div>
+
+      {/* ---------------- MODAL ---------------- */}
+      {selectedRecipe && (
+        <div className="modalOverlay" onClick={closeModal}>
+          <div
+            className="selectedRecipeContainer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div id="forNow">
+              <div className="nameAndPicture">
+                <h2>{selectedRecipe.title}</h2>
+
+                {selectedMedia?.isVideo ? (
+                  <video
+                    src={selectedMedia.url || PLACEHOLDER_IMG}
+                    preload="metadata"
+                    playsInline
+                    muted
+                    loop
+                    autoPlay
+                  />
+                ) : (
+                  <img
+                    src={selectedMedia?.url || PLACEHOLDER_IMG}
+                    alt={selectedRecipe.title}
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = PLACEHOLDER_IMG;
+                    }}
+                  />
+                )}
+              </div>
+
+              <div className="displayIngredience">
+                <ol>
+                  {selectedRecipe.ingredients.map((ingredient, index) => (
+                    <li key={index} className="ingredient">
+                      {ingredient}
+                      <button
+                        className="sendToList"
+                        onClick={() =>
+                          addItem({
+                            text: ingredient,
+                            shop: [],
+                          })
+                        }
+                      >
+                        <MdAddShoppingCart size={18} color="#ffffff" />
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+
+            <div id="startparent">
+              <Link
+                to="/Recipe"
+                state={{
+                  recipe: selectedRecipe,
+                  communityRecipeId:
+                    selectedRecipe?.publicRecipeId || undefined,
+                }}
+              >
+                <button className="getStarted">GET STARTED</button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="profileFooter">
         <button onClick={handleDeleteAccount} className="deleteAccount">

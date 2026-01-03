@@ -1,12 +1,13 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./exploreRecipes.css";
 import { Link } from "react-router-dom";
 import StarRating from "./StarRating";
 import { MdAddShoppingCart } from "react-icons/md";
 
-// 🌍 nastav si svou produkční backend URL jako fallback
+/* -----------------------------
+   API config
+----------------------------- */
 const DEPLOYED_BACKEND_URL = "https://stressfreecheff-backend.onrender.com";
-
 const RAW_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
   DEPLOYED_BACKEND_URL;
@@ -16,7 +17,13 @@ const API_URL = `${API_BASE}/api/community-recipes`;
 
 const PLACEHOLDER_IMG = "https://i.imgur.com/CZaFjz2.png";
 
-/** Rozhodni, zda je URL/format video */
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+/* -----------------------------
+   Media helpers
+----------------------------- */
 const isVideoFormat = (fmt = "", url = "") => {
   const f = String(fmt || "")
     .toLowerCase()
@@ -53,75 +60,137 @@ const getCover = (r) => {
   return { url: url || PLACEHOLDER_IMG, isVideo };
 };
 
-const getEffectiveRating = (r) =>
-  typeof r?.ratingAvg === "number" ? r.ratingAvg : r?.rating || 0;
+/* -----------------------------
+   Deterministic random helper
+----------------------------- */
+const hash = (str) => {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+};
 
+const randomSort = (list, seed) =>
+  [...list].sort((a, b) => {
+    const ida = String(a?._id || "");
+    const idb = String(b?._id || "");
+    return hash(seed + ida) - hash(seed + idb);
+  });
+
+/* -----------------------------
+   Component
+----------------------------- */
 const ExploreRecipes = ({ addItem }) => {
+  /* -----------------------------
+     State
+  ----------------------------- */
   const [items, setItems] = useState([]);
-  const [topRated, setTopRated] = useState([]);
+  const [displayRecipes, setDisplayRecipes] = useState([]);
+
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
+
+  const [sortBy, setSortBy] = useState("newest");
+  const [randomSeed, setRandomSeed] = useState(() => String(Date.now()));
+
   const [page, setPage] = useState(1);
-  const [limit] = useState(14);
+  const limit = 14;
+
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
+
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+
   const [savedCommunityIds, setSavedCommunityIds] = useState([]);
-  const [randomSeed, setRandomSeed] = useState(() => String(Date.now()));
 
   const [selectedRecipe, setSelectedRecipe] = useState(null);
 
+  /* -----------------------------
+     Refs (infinite scroll)
+  ----------------------------- */
   const loadMoreRef = useRef(null);
   const fetchingMoreRef = useRef(false);
 
-  const openModal = (recipe) => {
-    setSelectedRecipe(recipe);
-  };
-  const closeModal = () => {
-    setSelectedRecipe(null);
-  };
+  /* -----------------------------
+     Derived
+  ----------------------------- */
+  const selectedIsSaved = selectedRecipe
+    ? savedCommunityIds.includes(selectedRecipe?._id)
+    : false;
 
-  const hash = (str) => {
-    let h = 2166136261;
-    for (let i = 0; i < str.length; i++) {
-      h ^= str.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return h >>> 0;
-  };
-
-  const randomSort = (list, seed) =>
-    [...list].sort((a, b) => {
-      const ida = String(a?._id || "");
-      const idb = String(b?._id || "");
-      return hash(seed + ida) - hash(seed + idb);
-    });
-
-  useEffect(() => {
-    if (selectedRecipe) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "auto";
-    }
+  const selectedMedia = useMemo(() => {
+    if (!selectedRecipe) return { url: PLACEHOLDER_IMG, isVideo: false };
+    return getCover(selectedRecipe);
   }, [selectedRecipe]);
 
-  const ThumbnailUrl = getCover(selectedRecipe).url;
-  const isVideoSelected = getCover(selectedRecipe).isVideo;
+  /* -----------------------------
+     Actions
+  ----------------------------- */
+  function openModal(recipe) {
+    setSelectedRecipe(recipe);
+  }
 
-  const [displayRecipes, setDisplayRecipes] = useState([]);
-  const [sortBy, setSortBy] = useState("newest");
+  async function toggleSaveExplore(recipe) {
+    if (!recipe?._id) return;
 
-  // Debounce vyhledávání (300 ms)
+    const rid = recipe._id;
+    const token = getToken();
+
+    if (!token) {
+      alert("Please login to save recipes.");
+      return;
+    }
+
+    // UNSAVE
+    if (savedCommunityIds.includes(rid)) {
+      await fetch(`${API_BASE}/api/saved-community-recipes/${rid}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setSavedCommunityIds((p) => p.filter((id) => id !== rid));
+      return;
+    }
+
+    // SAVE
+    await fetch(`${API_BASE}/api/saved-community-recipes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ recipeId: rid }),
+    });
+
+    setSavedCommunityIds((p) => (p.includes(rid) ? p : [...p, rid]));
+  }
+
+  /* -----------------------------
+     Effects
+  ----------------------------- */
+
+  // 1) Body scroll lock for modal
+  useEffect(() => {
+    document.body.style.overflow = selectedRecipe ? "hidden" : "auto";
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [selectedRecipe]);
+
+  // 2) Debounce search input
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
 
+  // 3) Load saved community ids (for SAVE button state)
   useEffect(() => {
     (async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         if (!token) {
           setSavedCommunityIds([]);
           return;
@@ -143,7 +212,13 @@ const ExploreRecipes = ({ addItem }) => {
     })();
   }, []);
 
-  // Fetch dat
+  // 4) Reset list when query/sort changes
+  useEffect(() => {
+    setPage(1);
+    setItems([]);
+  }, [debouncedQ, sortBy]);
+
+  // 5) Fetch paged community recipes
   useEffect(() => {
     let aborted = false;
 
@@ -155,7 +230,6 @@ const ExploreRecipes = ({ addItem }) => {
       params.set("page", String(page));
       params.set("limit", String(limit));
       params.set("sort", sortBy);
-
       if (debouncedQ) params.set("q", debouncedQ);
 
       try {
@@ -163,6 +237,7 @@ const ExploreRecipes = ({ addItem }) => {
         const res = await fetch(url, {
           headers: { Accept: "application/json" },
         });
+
         const contentType = (
           res.headers.get("content-type") || ""
         ).toLowerCase();
@@ -188,8 +263,6 @@ const ExploreRecipes = ({ addItem }) => {
         setTotal(totalFromApi);
         setPages(pagesFromApi);
 
-        // když page === 1, je to nový search → přepiš
-        // jinak přidej na konec
         setItems((prev) => (page === 1 ? newItems : [...prev, ...newItems]));
       } catch (e) {
         if (!aborted) setErr(e?.message || "Failed to load recipes.");
@@ -205,12 +278,7 @@ const ExploreRecipes = ({ addItem }) => {
     };
   }, [page, limit, debouncedQ, sortBy]);
 
-  // reset page na 1 při změně hledání
-  useEffect(() => {
-    setPage(1);
-    setItems([]); // 👈 aby se neukazoval starý list do doby, než přijde nová page 1
-  }, [debouncedQ, sortBy]);
-
+  // 6) Infinite scroll observer
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el) return;
@@ -220,7 +288,6 @@ const ExploreRecipes = ({ addItem }) => {
         const first = entries[0];
         if (!first?.isIntersecting) return;
 
-        // pokud už fetchneme nebo už není co načítat, stop
         if (loading) return;
         if (page >= pages) return;
         if (fetchingMoreRef.current) return;
@@ -228,96 +295,30 @@ const ExploreRecipes = ({ addItem }) => {
         fetchingMoreRef.current = true;
         setPage((p) => p + 1);
       },
-      {
-        root: null,
-        // načti dřív, než user dojede úplně na konec
-        rootMargin: "200px",
-        threshold: 0.01,
-      }
+      { root: null, rootMargin: "200px", threshold: 0.01 }
     );
 
     obs.observe(el);
     return () => obs.disconnect();
   }, [loading, page, pages]);
 
-  const canPrev = page > 1;
-  const canNext = page < pages;
-
-  const bestSortRecipes = (list) =>
-    [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  const favoriteRecipes = (list) =>
-    [...list].sort(
-      (a, b) => (b.ratingAvg ?? b.rating ?? 0) - (a.ratingAvg ?? a.rating ?? 0)
-    );
-  const difficultyOrder = ["Beginner", "Intermediate", "Hard"];
-  const recommendedRecipes = (list) =>
-    [...list].sort(
-      (a, b) =>
-        difficultyOrder.indexOf(a.difficulty) -
-        difficultyOrder.indexOf(b.difficulty)
-    );
-
+  // 7) Build display list (server sort + random local)
   useEffect(() => {
     if (sortBy === "random") {
       setDisplayRecipes(randomSort(items, randomSeed));
     } else {
-      // server už poslal správně seřazené items
       setDisplayRecipes(items);
     }
   }, [items, sortBy, randomSeed]);
 
-  async function toggleSaveExplore(recipe) {
-    if (!recipe?._id) return;
-
-    const rid = recipe._id;
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Please login to save recipes.");
-      return;
-    }
-
-    // pokud už uložený → UNSAVE
-    if (savedCommunityIds.includes(rid)) {
-      await fetch(`${API_BASE}/api/saved-community-recipes/${rid}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setSavedCommunityIds((p) => p.filter((id) => id !== rid));
-      return;
-    }
-
-    // jinak uložit
-    await fetch(`${API_BASE}/api/saved-community-recipes`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ recipeId: rid }),
-    });
-
-    setSavedCommunityIds((p) => (p.includes(rid) ? p : [...p, rid]));
-  }
-
-  const selectedIsSaved = selectedRecipe
-    ? savedCommunityIds.includes(selectedRecipe?._id)
-    : false;
-
+  /* -----------------------------
+     Render
+  ----------------------------- */
   return (
     <div className="explore">
       <h2>EXPLORE RECIPES</h2>
 
       <div className="searchAndViews">
-        {/*}
-        <div className="views">
-          <button type="button">GRID VIEW</button>
-          <button type="button" disabled>
-            SWIPE VIEW
-          </button>
-        </div>*/}
-
         <input
           type="text"
           placeholder="Search recipes..."
@@ -348,6 +349,7 @@ const ExploreRecipes = ({ addItem }) => {
           No results found. Try a different keyword.
         </p>
       )}
+
       <section className="variantsExplore">
         <ul>
           <li>
@@ -409,7 +411,7 @@ const ExploreRecipes = ({ addItem }) => {
         {displayRecipes.map((r) => {
           const { url, isVideo } = getCover(r);
           const title = r?.title || "Untitled";
-          const rating = Math.max(0, Math.round(r?.rating || 0));
+
           return (
             <div className="recipeCard1" key={r?._id || `${title}-${url}`}>
               <a href="#forNow" title={title}>
@@ -442,7 +444,9 @@ const ExploreRecipes = ({ addItem }) => {
                   />
                 )}
               </a>
+
               <h3>{title}</h3>
+
               <StarRating
                 value={
                   typeof r?.ratingAvg === "number"
@@ -453,6 +457,7 @@ const ExploreRecipes = ({ addItem }) => {
                 showValue
                 count={r?.ratingCount}
               />
+
               <p>Difficulty: {r?.difficulty || "—"}</p>
               <p>Time: {r?.time || "—"} ⏱️</p>
             </div>
@@ -460,15 +465,15 @@ const ExploreRecipes = ({ addItem }) => {
         })}
       </div>
 
+      {/* sentinel pro infinite scroll */}
       <div ref={loadMoreRef} style={{ height: 1 }} />
 
+      {/* Modal */}
       {selectedRecipe && (
         <div className="modalOverlay" onClick={() => setSelectedRecipe(null)}>
           <div
             className="selectedRecipeContainer"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
+            onClick={(e) => e.stopPropagation()}
           >
             <button
               className={`saveFloatingBtn ${selectedIsSaved ? "active" : ""}`}
@@ -480,10 +485,10 @@ const ExploreRecipes = ({ addItem }) => {
             <div id="forNow">
               <div className="nameAndPicture">
                 <h2>{selectedRecipe.title}</h2>
-                {isVideoSelected ? (
+
+                {selectedMedia.isVideo ? (
                   <video
-                    onClick={() => openModal(r)}
-                    src={ThumbnailUrl || PLACEHOLDER_IMG}
+                    src={selectedMedia.url || PLACEHOLDER_IMG}
                     preload="metadata"
                     playsInline
                     muted
@@ -492,37 +497,38 @@ const ExploreRecipes = ({ addItem }) => {
                   />
                 ) : (
                   <img
-                    onClick={() => openModal(r)}
-                    src={ThumbnailUrl || PLACEHOLDER_IMG}
+                    src={selectedMedia.url || PLACEHOLDER_IMG}
                     alt={selectedRecipe.title}
                     loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = PLACEHOLDER_IMG;
+                    }}
                   />
                 )}
               </div>
 
               <div className="displayIngredience">
                 <ol>
-                  {selectedRecipe.ingredients.map((ingredient, index) => {
-                    return (
-                      <li key={index} className="ingredient">
-                        {ingredient}
-                        <button
-                          className="sendToList"
-                          onClick={() =>
-                            addItem({
-                              text: ingredient,
-                              shop: [],
-                            })
-                          }
-                        >
-                          <MdAddShoppingCart size={18} color="#ffffff" />
-                        </button>
-                      </li>
-                    );
-                  })}
+                  {selectedRecipe.ingredients.map((ingredient, index) => (
+                    <li key={index} className="ingredient">
+                      {ingredient}
+                      <button
+                        className="sendToList"
+                        onClick={() =>
+                          addItem({
+                            text: ingredient,
+                            shop: [],
+                          })
+                        }
+                      >
+                        <MdAddShoppingCart size={18} color="#ffffff" />
+                      </button>
+                    </li>
+                  ))}
                 </ol>
               </div>
             </div>
+
             <div id="startparent">
               <Link
                 to="/Recipe"

@@ -1,106 +1,143 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import "./AuthForm.css";
-import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
+/* -----------------------------
+   API config
+----------------------------- */
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
+  "https://stressfreecheff-backend.onrender.com";
+
+/* -----------------------------
+   Component
+----------------------------- */
 const AuthForm = ({ onLoginSuccess }) => {
-  const [isSignUp, setIsSignUp] = useState(true);
-  const [isLogin, setIsLogin] = useState(false);
+  const navigate = useNavigate();
+
+  /* =============================
+     State – mode
+  ============================= */
+  // "signup" | "login"
+  const [mode, setMode] = useState("signup");
+
+  /* =============================
+     State – form fields
+  ============================= */
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const navigate = useNavigate(); // 🎯 přidat pod useState
 
-  const handleSignup = async () => {
+  /* =============================
+     Helpers – validation
+  ============================= */
+  function validateSignup() {
+    if (!username.trim() || !email.trim() || !password.trim()) {
+      alert("Please fill in all required fields.");
+      return false;
+    }
     if (password !== confirmPassword) {
       alert("Passwords do not match.");
-      return;
+      return false;
     }
+    return true;
+  }
+
+  function validateLogin() {
+    if (!email.trim() || !password.trim()) {
+      alert("Please enter email and password.");
+      return false;
+    }
+    return true;
+  }
+
+  /* =============================
+     Actions – signup
+  ============================= */
+  async function handleSignup() {
+    if (!validateSignup()) return;
 
     try {
-      const response = await fetch(
-        "https://stressfreecheff-backend.onrender.com/api/register",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ username, email, password }),
-        }
-      );
+      const res = await fetch(`${API_BASE}/api/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password }),
+      });
 
-      const data = await response.json();
+      const data = await res.json();
 
-      if (response.ok) {
-        alert("Registration was successful.");
-        setIsSignUp(false); // Přepne tě na login
-        setIsLogin(true);
-      } else {
+      if (!res.ok) {
         alert(data.error || "Registration error.");
+        return;
       }
-    } catch (error) {
+
+      alert("Registration successful. You can now log in.");
+      setMode("login");
+    } catch {
       alert("Server communication error.");
     }
-  };
+  }
 
-  const handleLogin = async () => {
+  /* =============================
+     Actions – login
+  ============================= */
+  async function handleLogin() {
+    if (!validateLogin()) return;
+
     try {
-      const response = await fetch(
-        "https://stressfreecheff-backend.onrender.com/api/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password }),
-        }
-      );
+      const res = await fetch(`${API_BASE}/api/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-      const data = await response.json();
+      const data = await res.json();
 
-      if (response.ok) {
-        alert("Login successful!");
-        localStorage.setItem("token", data.token);
-        onLoginSuccess();
-        navigate("/myprofile"); // ✅ automatický přechod
-      } else {
+      if (!res.ok) {
         alert(data.error || "Login error.");
+        return;
       }
-    } catch (error) {
+
+      localStorage.setItem("token", data.token);
+      onLoginSuccess?.();
+      navigate("/myprofile");
+    } catch {
       alert("Server communication error.");
     }
-  };
+  }
 
+  /* =============================
+     Render
+  ============================= */
   return (
     <div className="authfull">
       <div className="FormContainer">
+        {/* MODE SWITCH */}
         <button
-          style={{
-            backgroundColor: isSignUp ? "rgb(139, 14, 13)" : "rgb(46, 45, 45)",
-          }}
           className="formStyleA"
-          onClick={() => {
-            setIsSignUp(true);
-            setIsLogin(false);
+          style={{
+            backgroundColor:
+              mode === "signup" ? "rgb(139, 14, 13)" : "rgb(46, 45, 45)",
           }}
+          onClick={() => setMode("signup")}
         >
           SIGN UP
         </button>
+
         <button
-          style={{
-            backgroundColor: isLogin ? "rgb(139, 14, 13)" : "rgb(46, 45, 45)",
-          }}
           className="formStyleB"
-          onClick={() => {
-            setIsLogin(true);
-            setIsSignUp(false);
+          style={{
+            backgroundColor:
+              mode === "login" ? "rgb(139, 14, 13)" : "rgb(46, 45, 45)",
           }}
+          onClick={() => setMode("login")}
         >
           LOG IN
         </button>
 
-        {isSignUp && (
+        {/* SIGN UP */}
+        {mode === "signup" && (
           <div className="signOption">
             <div className="labelWithInputs">
               <div className="labelWithInput">
@@ -109,17 +146,19 @@ const AuthForm = ({ onLoginSuccess }) => {
                   className="formInput"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                ></input>
+                />
               </div>
+
               <div className="labelWithInput">
                 <label>Email:</label>
                 <input
                   className="formInput"
-                  type="email "
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                ></input>
+                />
               </div>
+
               <div className="labelWithInput">
                 <label>Password:</label>
                 <input
@@ -127,7 +166,7 @@ const AuthForm = ({ onLoginSuccess }) => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                ></input>
+                />
               </div>
 
               <div className="labelWithInput">
@@ -137,16 +176,18 @@ const AuthForm = ({ onLoginSuccess }) => {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                ></input>
+                />
               </div>
             </div>
+
             <button className="signup" onClick={handleSignup}>
               SIGN UP
             </button>
           </div>
         )}
 
-        {isLogin && (
+        {/* LOG IN */}
+        {mode === "login" && (
           <div className="signOption">
             <div className="labelWithInputs">
               <div className="labelWithInput">
@@ -156,8 +197,9 @@ const AuthForm = ({ onLoginSuccess }) => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                ></input>
+                />
               </div>
+
               <div className="labelWithInput">
                 <label>Password:</label>
                 <input
@@ -165,9 +207,10 @@ const AuthForm = ({ onLoginSuccess }) => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                ></input>
+                />
               </div>
             </div>
+
             <button className="signup" onClick={handleLogin}>
               LOG IN
             </button>

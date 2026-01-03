@@ -1,42 +1,73 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import StarRating from "./StarRating";
 import { MdAddShoppingCart } from "react-icons/md";
+import StarRating from "./StarRating";
 
+/* -----------------------------
+   API config
+----------------------------- */
 const RAW =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
   "https://stressfreecheff-backend.onrender.com";
+
 const API_BASE = String(RAW || "").replace(/\/+$/, "");
 
+/* -----------------------------
+   Helpers
+----------------------------- */
+function getBaseId(recipe) {
+  return String(recipe?._id || recipe?.id || "");
+}
+
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+function pickDisplayedRating(recipe, statsForRecipe) {
+  // rating in UI should match sorting when FAVORITE
+  if (typeof statsForRecipe?.avg === "number") return statsForRecipe.avg;
+  if (typeof recipe?.rating === "number") return recipe.rating;
+  return 0;
+}
+
+/* -----------------------------
+   Component
+----------------------------- */
 const Home = ({
   displayRecipes,
   recommendedRecipes,
   bestSortRecipes,
-  favoriteRecipes,
   shuffleRecipes,
   addItem,
-  setNewItem,
-  NewItem,
 }) => {
+  /* -----------------------------
+     State
+  ----------------------------- */
+  const [sortBy, setSortBy] = useState("newest");
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [savedBaseIds, setSavedBaseIds] = useState([]);
-  const selectedBaseId = selectedRecipe
-    ? String(selectedRecipe._id || selectedRecipe.id || "")
-    : "";
+  const [communityStats, setCommunityStats] = useState({});
 
+  /* -----------------------------
+     Derived state
+  ----------------------------- */
+  const selectedBaseId = selectedRecipe ? getBaseId(selectedRecipe) : "";
   const selectedIsSaved = selectedBaseId
     ? savedBaseIds.includes(selectedBaseId)
     : false;
 
-  const [sortBy, setSortBy] = useState("newest");
+  /* -----------------------------
+     Actions
+  ----------------------------- */
+  function openModal(recipe) {
+    setSelectedRecipe(recipe);
+  }
 
   async function toggleSaveOfficial(recipe) {
-    if (!recipe) return;
-
-    const baseId = String(recipe._id || recipe.id || "");
+    const baseId = getBaseId(recipe);
     if (!baseId) return;
 
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) {
       alert("Please login to save recipes.");
       return;
@@ -50,22 +81,23 @@ const Home = ({
         headers: { Authorization: `Bearer ${token}` },
       }
     );
+
     const ensure = await ensureRes.json();
     const communityId = ensure?._id;
     if (!communityId) return;
 
-    // 2) pokud už uložené → UNSAVE
+    // 2) if already saved -> UNSAVE
     if (savedBaseIds.includes(baseId)) {
       await fetch(`${API_BASE}/api/saved-community-recipes/${communityId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setSavedBaseIds((p) => p.filter((id) => id !== baseId));
+      setSavedBaseIds((prev) => prev.filter((id) => id !== baseId));
       return;
     }
 
-    // 3) jinak uložit
+    // 3) else SAVE
     await fetch(`${API_BASE}/api/saved-community-recipes`, {
       method: "POST",
       headers: {
@@ -75,39 +107,45 @@ const Home = ({
       body: JSON.stringify({ recipeId: communityId }),
     });
 
-    setSavedBaseIds((p) => (p.includes(baseId) ? p : [...p, baseId]));
+    setSavedBaseIds((prev) =>
+      prev.includes(baseId) ? prev : [...prev, baseId]
+    );
   }
 
-  const openModal = (recipe) => {
-    setSelectedRecipe(recipe);
-  };
-  const closeModal = () => {
-    setSelectedRecipe(null);
-  };
+  function onPickSort(nextSort) {
+    setSortBy(nextSort);
 
+    // only these sorts depend on App's functions
+    if (nextSort === "newest") bestSortRecipes();
+    if (nextSort === "easiest") recommendedRecipes();
+    if (nextSort === "random") shuffleRecipes();
+    // favorite is handled locally in recipesToRender memo
+  }
+
+  /* -----------------------------
+     Effects
+  ----------------------------- */
+
+  // 1) Lock body scroll when modal is open
   useEffect(() => {
-    if (selectedRecipe) {
-      document.body.style.overflow = "hidden";
-    } else {
+    document.body.style.overflow = selectedRecipe ? "hidden" : "auto";
+    return () => {
       document.body.style.overflow = "auto";
-    }
+    };
   }, [selectedRecipe]);
 
-  const [communityStats, setCommunityStats] = useState({});
-
+  // 2) Load saved recipes (base/source ids)
   useEffect(() => {
     (async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         if (!token) {
           setSavedBaseIds([]);
           return;
         }
 
         const res = await fetch(`${API_BASE}/api/saved-community-recipes`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         const data = await res.json();
@@ -115,10 +153,10 @@ const Home = ({
 
         if (Array.isArray(data)) {
           for (const r of data) {
-            const src = r.sourceRecipeId;
-            if (src) {
-              baseIds.push(typeof src === "object" ? src._id : src);
-            }
+            const src = r?.sourceRecipeId;
+            if (!src) continue;
+
+            baseIds.push(typeof src === "object" ? src._id : src);
           }
         }
 
@@ -129,8 +167,8 @@ const Home = ({
     })();
   }, []);
 
+  // 3) Load community stats for recipes currently displayed
   useEffect(() => {
-    // seber unikátní ofiko ID (id nebo _id)
     const ids = Array.from(
       new Set(
         (displayRecipes || []).map((r) => r?._id || r?.id).filter(Boolean)
@@ -143,17 +181,19 @@ const Home = ({
     }
 
     let aborted = false;
+
     (async () => {
       try {
         const pairs = await Promise.all(
           ids.map(async (rid) => {
-            // zajistí/vrátí community dvojče pro ofiko recipe
             const res = await fetch(
               `${API_BASE}/api/community-recipes/ensure-from-recipe/${rid}`,
               { method: "POST" }
             );
+
             const data = await res.json();
             if (!res.ok || !data?._id) return [rid, null];
+
             return [
               rid,
               {
@@ -164,8 +204,10 @@ const Home = ({
             ];
           })
         );
-        if (!aborted)
+
+        if (!aborted) {
           setCommunityStats(Object.fromEntries(pairs.filter(Boolean)));
+        }
       } catch {
         if (!aborted) setCommunityStats({});
       }
@@ -176,41 +218,30 @@ const Home = ({
     };
   }, [displayRecipes]);
 
+  /* -----------------------------
+     Memo
+  ----------------------------- */
   const recipesToRender = useMemo(() => {
-    // vycházíme z displayRecipes, co dostane Home z Appu
     const base = [...(displayRecipes || [])];
 
-    // jen když je vybraný FAVORITE → přetřídíme podle stejného ratingu,
-    // jaký ukazují hvězdičky v UI
     if (sortBy === "favorite") {
       base.sort((a, b) => {
         const idA = a?._id || a?.id;
         const idB = b?._id || b?.id;
 
-        const statsA = communityStats[idA];
-        const statsB = communityStats[idB];
+        const ratingA = pickDisplayedRating(a, communityStats[idA]);
+        const ratingB = pickDisplayedRating(b, communityStats[idB]);
 
-        const ratingA =
-          typeof statsA?.avg === "number"
-            ? statsA.avg
-            : typeof a?.rating === "number"
-            ? a.rating
-            : 0;
-
-        const ratingB =
-          typeof statsB?.avg === "number"
-            ? statsB.avg
-            : typeof b?.rating === "number"
-            ? b.rating
-            : 0;
-
-        return ratingB - ratingA; // seřadit od nejvyššího
+        return ratingB - ratingA;
       });
     }
 
     return base;
   }, [displayRecipes, communityStats, sortBy]);
 
+  /* -----------------------------
+     Render
+  ----------------------------- */
   return (
     <main>
       <div className="main">
@@ -219,6 +250,8 @@ const Home = ({
             Stress Free <span className="chef">Chef</span>
           </p>
         </div>
+
+        {/* Sort tabs */}
         <section className="variants">
           <ul className="HomeUl">
             <li>
@@ -226,21 +259,20 @@ const Home = ({
                 href="#newest"
                 onClick={(e) => {
                   e.preventDefault();
-                  setSortBy("newest");
-                  bestSortRecipes();
+                  onPickSort("newest");
                 }}
                 className={sortBy === "newest" ? "activeSection" : ""}
               >
                 NEWEST
               </a>
             </li>
+
             <li>
               <a
                 href="#recommended"
                 onClick={(e) => {
-                  e.preventDefault(); // ať to neskáče na #
-                  setSortBy("easiest"); // nastavíme aktivní sort
-                  recommendedRecipes(); // zavoláme tvoji funkci
+                  e.preventDefault();
+                  onPickSort("easiest");
                 }}
                 className={sortBy === "easiest" ? "activeSection" : ""}
               >
@@ -253,7 +285,7 @@ const Home = ({
                 href="#favorite"
                 onClick={(e) => {
                   e.preventDefault();
-                  setSortBy("favorite"); // třídění řešíme lokálně v recipesToRender
+                  onPickSort("favorite");
                 }}
                 className={sortBy === "favorite" ? "activeSection" : ""}
               >
@@ -266,8 +298,7 @@ const Home = ({
                 href="#random"
                 onClick={(e) => {
                   e.preventDefault();
-                  setSortBy("random");
-                  shuffleRecipes();
+                  onPickSort("random");
                 }}
                 className={sortBy === "random" ? "activeSection" : ""}
               >
@@ -277,23 +308,22 @@ const Home = ({
           </ul>
         </section>
 
+        {/* Cards grid */}
         <div className="recipeContainer">
           {recipesToRender.map((recipe) => {
             const rid = recipe?._id || recipe?.id;
             const stats = communityStats[rid];
+
             return (
               <div className="recipeCard" key={rid}>
                 <a href="#forNow">
                   <img onClick={() => openModal(recipe)} src={recipe.imgSrc} />
                 </a>
+
                 <h3>{recipe.title}</h3>
 
                 <StarRating
-                  value={
-                    typeof stats?.avg === "number"
-                      ? stats.avg
-                      : recipe?.rating || 0
-                  }
+                  value={pickDisplayedRating(recipe, stats)}
                   readOnly
                   showValue
                   count={stats?.count}
@@ -308,6 +338,7 @@ const Home = ({
           })}
         </div>
 
+        {/* Modal */}
         {selectedRecipe && (
           <div className="modalOverlay" onClick={() => setSelectedRecipe(null)}>
             <div
@@ -329,36 +360,34 @@ const Home = ({
 
                 <div className="displayIngredience">
                   <ol>
-                    {selectedRecipe.ingredients.map((ingredient, index) => {
-                      return (
-                        <li key={index} className="ingredient">
-                          {" "}
-                          {ingredient}
-                          <button
-                            className="sendToList"
-                            onClick={() =>
-                              addItem({
-                                text: ingredient,
-                                shop: [],
-                              })
-                            }
-                          >
-                            <MdAddShoppingCart size={18} color="#ffffff" />
-                          </button>
-                        </li>
-                      );
-                    })}
+                    {selectedRecipe.ingredients.map((ingredient, index) => (
+                      <li key={index} className="ingredient">
+                        {ingredient}
+                        <button
+                          className="sendToList"
+                          onClick={() =>
+                            addItem({
+                              text: ingredient,
+                              shop: [],
+                            })
+                          }
+                        >
+                          <MdAddShoppingCart size={18} color="#ffffff" />
+                        </button>
+                      </li>
+                    ))}
                   </ol>
                 </div>
               </div>
+
               <div id="startparent">
                 <Link
                   to="/Recipe"
                   state={{
                     recipe: selectedRecipe,
                     communityRecipeId:
-                      communityStats[selectedRecipe?._id || selectedRecipe?.id]
-                        ?.id || undefined,
+                      communityStats[getBaseId(selectedRecipe)]?.id ||
+                      undefined,
                   }}
                 >
                   <button className="getStarted">GET STARTED</button>

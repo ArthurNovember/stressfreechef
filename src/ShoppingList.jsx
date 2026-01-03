@@ -1,8 +1,19 @@
-import React from "react";
-import { useState, useRef, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./ShoppingList.css";
 import { Link } from "react-router-dom";
 
+/* -----------------------------
+   API config
+----------------------------- */
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
+  "https://stressfreecheff-backend.onrender.com";
+
+const API = String(API_BASE || "").replace(/\/+$/, "");
+
+/* -----------------------------
+   Component
+----------------------------- */
 const ShoppingList = ({
   text,
   setText,
@@ -11,7 +22,7 @@ const ShoppingList = ({
   newItem,
   setNewItem,
   addItem,
-  id,
+  // id, // ❌ nepoužívá se → pryč
   addFavoriteItem,
   FavoriteNewItem,
   deleteFavoriteItem,
@@ -23,9 +34,32 @@ const ShoppingList = ({
 }) => {
   const hasToken = !!localStorage.getItem("token");
 
-  //zavření dropdownů
+  /* =============================
+     Refs – click outside
+  ============================= */
   const dropdownRefs = useRef({});
   const inputDropdownRef = useRef(null);
+
+  /* =============================
+     State – UI
+  ============================= */
+  const [obrazek, setObrazek] = useState("https://i.imgur.com/DmXZvGl.png");
+
+  const [isDropdownOpen, setIsDropDownOpen] = useState({});
+  const [isDropdownOpenInput, setIsDropdownOpenInput] = useState(false);
+
+  const [addingShop, setAddingShop] = useState(false);
+  const [newShopName, setNewShopName] = useState("");
+
+  /* =============================
+     State – filter/sort
+  ============================= */
+  const [filterShops, setFilterShops] = useState([]);
+  const [sortMode, setSortMode] = useState("added");
+
+  /* =============================
+     Effect – close dropdowns on outside click
+  ============================= */
   useEffect(() => {
     const handleClickOutside = (e) => {
       const clickedInsideInput =
@@ -45,27 +79,37 @@ const ShoppingList = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  //
-
+  /* =============================
+     Handlers – input
+  ============================= */
   const handleTextChange = (event) => {
     setText(event.target.value);
-  };
-  const handleShopChange = (event) => {
-    setShop(event.target.value);
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    if (!text.trim()) return;
+
     addItem({ text: text, shop: shop });
     setText("");
   };
 
+  /* =============================
+     Handlers – item CRUD
+  ============================= */
   const deleteItem = async (itemId) => {
     await deleteShoppingItem(itemId);
   };
 
-  const [obrazek, setObrazek] = useState("https://i.imgur.com/DmXZvGl.png");
+  // checkbox
+  const toggleChecked = async (_id, currentChecked) => {
+    const newChecked = !currentChecked;
+    await updateShoppingItem(_id, { checked: newChecked });
+  };
 
+  /* =============================
+     Handlers – per-item shop toggle
+  ============================= */
   const handleToggleShop = async (itemId, shopId) => {
     const item = newItem.find((i) => i._id === itemId);
     if (!item) return;
@@ -83,22 +127,19 @@ const ShoppingList = ({
     await updateShoppingItem(itemId, { shop: updatedShops });
   };
 
-  const [addingShop, setAddingShop] = useState(false);
-  const [newShopName, setNewShopName] = useState("");
-
+  /* =============================
+     Handlers – shop options CRUD
+  ============================= */
   const handleDeleteShop = async (shopToDeleteId) => {
     try {
       const token = localStorage.getItem("token");
 
-      await fetch(
-        `https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options/${shopToDeleteId}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      await fetch(`${API}/api/shopping-list/shop-options/${shopToDeleteId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      // 🧼 Lokálně taky smaž (aby se UI hned aktualizovalo)
+      // Lokálně taky smaž (aby se UI hned aktualizovalo)
       setShopOptions((prev) => prev.filter((s) => s._id !== shopToDeleteId));
       setNewItem((prevItems) =>
         prevItems.map((item) => ({
@@ -111,17 +152,46 @@ const ShoppingList = ({
     }
   };
 
-  const [isDropdownOpen, setIsDropDownOpen] = useState({});
+  async function handleAddShop() {
+    const trimmed = newShopName.trim();
+    if (!trimmed) return;
 
+    const exists = shopOptions.some(
+      (s) => s.name.toLowerCase() === trimmed.toLowerCase()
+    );
+
+    if (exists) {
+      setNewShopName("");
+      setAddingShop(false);
+      return;
+    }
+
+    const res = await fetch(`${API}/api/shopping-list/shop-options`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({ name: trimmed }),
+    });
+
+    const newShop = await res.json();
+    setShopOptions((prev) => [...prev, newShop]);
+
+    setNewShopName("");
+    setAddingShop(false);
+  }
+
+  /* =============================
+     Handlers – dropdown toggle
+  ============================= */
   const ToggleDropDown = (index) => {
     setIsDropDownOpen((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
-  const [isDropdownOpenInput, setIsDropdownOpenInput] = useState(false);
-
-  //Filtrování
-  const [filterShops, setFilterShops] = useState([]);
-
+  /* =============================
+     Derived – filtering
+  ============================= */
   const filteredItems = newItem.filter((item) => {
     if (filterShops.length === 0) return true;
 
@@ -131,8 +201,9 @@ const ShoppingList = ({
     return hasShopMatch || isNoShop;
   });
 
-  // Řazení
-  const [sortMode, setSortMode] = useState("added");
+  /* =============================
+     Derived – sorting
+  ============================= */
   const sortedItems = [...filteredItems];
 
   if (sortMode === "added") {
@@ -158,12 +229,9 @@ const ShoppingList = ({
     });
   }
 
-  //checkbox
-  const toggleChecked = async (_id, currentChecked) => {
-    const newChecked = !currentChecked;
-    await updateShoppingItem(_id, { checked: newChecked });
-  };
-
+  /* =============================
+     Render
+  ============================= */
   return (
     <div className="celek">
       <div className="filterAndShoppingList">
@@ -176,6 +244,7 @@ const ShoppingList = ({
                     filterShops.length === 0 ? "active" : ""
                   }`}
                   onClick={() => setFilterShops([])}
+                  type="button"
                 >
                   All
                 </button>
@@ -186,6 +255,7 @@ const ShoppingList = ({
                     <button
                       key={shop._id}
                       className={`filter-btn ${active ? "active" : ""}`}
+                      type="button"
                       onClick={() => {
                         setFilterShops((prev) =>
                           active
@@ -203,6 +273,7 @@ const ShoppingList = ({
                   className={`filter-btn ${
                     filterShops.includes("No Shop") ? "active" : ""
                   }`}
+                  type="button"
                   onClick={() => {
                     setFilterShops((prev) =>
                       prev.includes("No Shop")
@@ -220,21 +291,22 @@ const ShoppingList = ({
               <Link to="/favoriteItems">
                 <img
                   src={obrazek}
+                  alt="Favorites"
                   onMouseEnter={() =>
                     setObrazek("https://i.imgur.com/PwVAgWN.png")
                   }
                   onMouseLeave={() =>
                     setObrazek("https://i.imgur.com/DmXZvGl.png")
                   }
-                ></img>
+                />
               </Link>
             </div>
           </div>
         )}
+
         <div className="shoppingList">
           <ol>
             <li>
-              {" "}
               <form className="addForm" onSubmit={handleSubmit}>
                 <input
                   type="text"
@@ -246,9 +318,10 @@ const ShoppingList = ({
                 />
                 <datalist id="itemSuggestions">
                   {uniqueItemNames.map((itemName, index) => (
-                    <option value={itemName} />
+                    <option key={`${itemName}-${index}`} value={itemName} />
                   ))}
                 </datalist>
+
                 <div className="nadpisADropdown">
                   {hasToken && (
                     <div className="buttonAndShopsInput" ref={inputDropdownRef}>
@@ -268,6 +341,7 @@ const ShoppingList = ({
                               })
                               .join(", ")}
                       </button>
+
                       {isDropdownOpenInput && (
                         <ul
                           className="shopCheckboxListInput"
@@ -298,6 +372,7 @@ const ShoppingList = ({
                               </button>
                             </li>
                           ))}
+
                           <li className="addLi">
                             <button
                               type="button"
@@ -316,40 +391,7 @@ const ShoppingList = ({
                                 value={newShopName}
                                 onChange={(e) => setNewShopName(e.target.value)}
                               />
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const trimmed = newShopName.trim();
-                                  if (
-                                    trimmed &&
-                                    !shopOptions.some(
-                                      (shop) => shop.name === trimmed
-                                    )
-                                  ) {
-                                    const response = await fetch(
-                                      "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
-                                      {
-                                        method: "POST",
-                                        headers: {
-                                          "Content-Type": "application/json",
-                                          Authorization: `Bearer ${localStorage.getItem(
-                                            "token"
-                                          )}`,
-                                        },
-                                        body: JSON.stringify({ name: trimmed }),
-                                      }
-                                    );
-
-                                    const newShop = await response.json();
-                                    setShopOptions((prev) => [
-                                      ...prev,
-                                      newShop,
-                                    ]);
-                                  }
-                                  setNewShopName("");
-                                  setAddingShop(false);
-                                }}
-                              >
+                              <button type="button" onClick={handleAddShop}>
                                 <span className="addText">+</span>
                               </button>
                             </li>
@@ -363,15 +405,19 @@ const ShoppingList = ({
                 <input className="submit" type="submit" value="Send to list" />
               </form>
             </li>
+
             {sortedItems.map((item, index) => {
               const favMatch = FavoriteNewItem.find(
                 (fav) =>
                   fav.text?.trim().toLowerCase() ===
                   item.text?.trim().toLowerCase()
               );
+
               const isFavorite = !!favMatch;
-              const favoriteId = favMatch?._id; // ← Tohle je ID, které chce backend u DELETE
+              const favoriteId = favMatch?._id;
+
               const isOpen = isDropdownOpen[index] || false;
+
               return (
                 <li key={item._id || index}>
                   <div className="nameAndCheck">
@@ -396,6 +442,7 @@ const ShoppingList = ({
                       </span>
                     </label>
                   </div>
+
                   <div
                     className="buttonAndShops"
                     ref={(el) => (dropdownRefs.current[index] = el)}
@@ -435,9 +482,8 @@ const ShoppingList = ({
                                 )}
                                 onChange={() =>
                                   handleToggleShop(item._id, shop._id)
-                                } // ✅ změna tady
+                                }
                               />
-
                               {shop.name}
                             </label>
                             <button
@@ -468,38 +514,7 @@ const ShoppingList = ({
                               value={newShopName}
                               onChange={(e) => setNewShopName(e.target.value)}
                             />
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                const trimmed = newShopName.trim();
-                                const exists = shopOptions.some(
-                                  (s) =>
-                                    s.name.toLowerCase() ===
-                                    trimmed.toLowerCase()
-                                );
-
-                                if (trimmed && !exists) {
-                                  const res = await fetch(
-                                    "https://stressfreecheff-backend.onrender.com/api/shopping-list/shop-options",
-                                    {
-                                      method: "POST",
-                                      headers: {
-                                        "Content-Type": "application/json",
-                                        Authorization: `Bearer ${localStorage.getItem(
-                                          "token"
-                                        )}`,
-                                      },
-                                      body: JSON.stringify({ name: trimmed }),
-                                    }
-                                  );
-                                  const newShop = await res.json();
-                                  setShopOptions((prev) => [...prev, newShop]);
-                                }
-
-                                setNewShopName("");
-                                setAddingShop(false);
-                              }}
-                            >
+                            <button type="button" onClick={handleAddShop}>
                               <span className="addText">+</span>
                             </button>
                           </li>
@@ -509,16 +524,15 @@ const ShoppingList = ({
 
                     <button
                       className="srdce"
+                      type="button"
                       onClick={() => {
                         if (!hasToken) {
                           alert("Log in to unlock the favorites feature.");
                           return;
                         }
                         if (isFavorite && favoriteId) {
-                          // 🗑️ smaž správné favorite _id
                           deleteFavoriteItem(favoriteId);
                         } else {
-                          // ➕ přidej do favorites (pošli text + shop IDs)
                           addFavoriteItem({
                             text: item.text,
                             shop: (item.shop || []).map((s) => s._id),
@@ -529,11 +543,11 @@ const ShoppingList = ({
                     >
                       <i className="fas fa-heart"></i>
                     </button>
+
                     <button
                       className="deleteItem"
-                      onClick={() => {
-                        deleteItem(item._id);
-                      }}
+                      type="button"
+                      onClick={() => deleteItem(item._id)}
                     >
                       <i className="fas fa-times"></i>
                     </button>
@@ -544,6 +558,7 @@ const ShoppingList = ({
           </ol>
         </div>
       </div>
+
       <div className="addItem"></div>
     </div>
   );

@@ -1,19 +1,47 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./Recipe.css";
 import { useLocation, Link } from "react-router-dom";
 import StarRating from "./StarRating";
 
-const RAW =
+/* -----------------------------
+   API config
+----------------------------- */
+const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
   "https://stressfreecheff-backend.onrender.com";
-const API_BASE = String(RAW || "").replace(/\/+$/, "");
 
+/* -----------------------------
+   Helpers
+----------------------------- */
+function getInitialCommunityId(recipe, locationState) {
+  if (locationState?.communityRecipeId) return locationState.communityRecipeId;
+
+  if (
+    typeof recipe?.ratingAvg === "number" ||
+    typeof recipe?.ratingCount === "number"
+  ) {
+    return recipe?._id || null;
+  }
+
+  if (recipe?.publicRecipeId) return recipe.publicRecipeId;
+
+  return null;
+}
+
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+/* -----------------------------
+   Component
+----------------------------- */
 const Recipe = () => {
   const location = useLocation();
-  const { recipe } = location.state || {};
+  const recipe = location.state?.recipe;
+
   const [currentStep, setCurrentStep] = useState(0);
 
-  if (!recipe || !recipe.steps) {
+  if (!recipe || !Array.isArray(recipe.steps)) {
     return (
       <div>
         <p>Recipe not found</p>
@@ -24,45 +52,60 @@ const Recipe = () => {
     );
   }
 
-  // 1) community ID může přijít z Explore/MyProfile, nebo jde o community přímo
-  const initialCommunityId =
-    location?.state?.communityRecipeId ||
-    (typeof recipe?.ratingAvg === "number" ||
-    typeof recipe?.ratingCount === "number"
-      ? recipe?._id
-      : null) ||
-    recipe?.publicRecipeId ||
-    null;
+  /* =============================
+     Community rating state
+  ============================= */
+  const initialCommunityId = useMemo(
+    () => getInitialCommunityId(recipe, location.state),
+    [recipe, location.state]
+  );
 
   const [communityId, setCommunityId] = useState(initialCommunityId);
   const [ensuring, setEnsuring] = useState(false);
 
-  // 2) ofiko (Home) → zajistit community kopii
+  const [community, setCommunity] = useState({
+    avg: Number(recipe?.ratingAvg ?? recipe?.rating ?? 0) || 0,
+    count: Number(recipe?.ratingCount ?? 0) || 0,
+  });
+
+  const [myRating, setMyRating] = useState(0);
+  const [rateMsg, setRateMsg] = useState(null);
+
+  const canRateCommunity = Boolean(communityId) && !ensuring;
+  const step = recipe.steps[currentStep];
+
+  /* =============================
+     Effect – ensure community recipe
+  ============================= */
   useEffect(() => {
     const isOfficial =
       !initialCommunityId &&
+      recipe?._id &&
       typeof recipe?.ratingAvg !== "number" &&
-      typeof recipe?.ratingCount !== "number" &&
-      recipe?._id;
+      typeof recipe?.ratingCount !== "number";
+
     if (!isOfficial) return;
 
     let aborted = false;
+
     (async () => {
       try {
         setEnsuring(true);
+
         const res = await fetch(
           `${API_BASE}/api/community-recipes/ensure-from-recipe/${recipe._id}`,
           { method: "POST" }
         );
+
         const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || "ensure failed");
+        if (!res.ok) throw new Error(data?.error || "Ensure failed");
+
         if (!aborted) {
           setCommunityId(data._id);
-          setCommunity((prev) => ({
-            ...prev,
-            avg: data.ratingAvg || 0,
-            count: data.ratingCount || 0,
-          }));
+          setCommunity({
+            avg: Number(data.ratingAvg || 0),
+            count: Number(data.ratingCount || 0),
+          });
         }
       } catch (e) {
         console.error("ensure community failed:", e);
@@ -70,51 +113,53 @@ const Recipe = () => {
         if (!aborted) setEnsuring(false);
       }
     })();
+
     return () => {
       aborted = true;
     };
   }, [recipe?._id, initialCommunityId]);
 
-  // ⬇️ PŘIDEJ do Recipe.jsx (třeba hned pod ensure useEffect)
+  /* =============================
+     Effect – fetch community stats
+  ============================= */
   useEffect(() => {
     if (!communityId) return;
+
     let aborted = false;
+
     (async () => {
       try {
         const res = await fetch(
           `${API_BASE}/api/community-recipes/${communityId}`
         );
         const data = await res.json();
+
         if (!res.ok)
           throw new Error(data?.error || "Failed to load community stats");
+
         if (!aborted) {
           setCommunity({
-            avg: Number(data?.ratingAvg || 0),
-            count: Number(data?.ratingCount || 0),
+            avg: Number(data.ratingAvg || 0),
+            count: Number(data.ratingCount || 0),
           });
         }
       } catch (e) {
         console.warn("Failed to fetch community recipe:", e?.message || e);
       }
     })();
+
     return () => {
       aborted = true;
     };
   }, [communityId]);
 
-  const [myRating, setMyRating] = useState(0);
-  const [rateMsg, setRateMsg] = useState(null);
-  const [community, setCommunity] = useState({
-    avg: Number(recipe?.ratingAvg ?? recipe?.rating ?? 0) || 0,
-    count: Number(recipe?.ratingCount ?? 0) || 0,
-  });
-
-  const step = recipe.steps[currentStep];
-  const canRateCommunity = Boolean(communityId) && !ensuring;
-
-  async function submitRating(intValue) {
+  /* =============================
+     Actions – rating
+  ============================= */
+  async function submitRating(value) {
     try {
       setRateMsg(null);
+
       if (!canRateCommunity) {
         setRateMsg({
           type: "error",
@@ -122,9 +167,13 @@ const Recipe = () => {
         });
         return;
       }
-      const token = localStorage.getItem("token");
+
+      const token = getToken();
       if (!token) {
-        setRateMsg({ type: "error", text: "You must be logged in to rate." });
+        setRateMsg({
+          type: "error",
+          text: "You must be logged in to rate.",
+        });
         return;
       }
 
@@ -136,16 +185,21 @@ const Recipe = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ value: intValue }), // 1..5
+          body: JSON.stringify({ value }),
         }
       );
 
       const raw = await res.text();
-      if (!res.ok) throw new Error(raw || "Failed to rate.");
+      if (!res.ok) throw new Error(raw || "Failed to rate");
+
       const data = JSON.parse(raw);
 
-      setMyRating(intValue);
-      setCommunity({ avg: data.ratingAvg, count: data.ratingCount });
+      setMyRating(value);
+      setCommunity({
+        avg: data.ratingAvg,
+        count: data.ratingCount,
+      });
+
       setRateMsg({
         type: "ok",
         text: `Thanks! ★${data.ratingAvg.toFixed(2)} (${data.ratingCount})`,
@@ -155,6 +209,9 @@ const Recipe = () => {
     }
   }
 
+  /* =============================
+     Render
+  ============================= */
   return (
     <div className="Recipe">
       <div
@@ -163,6 +220,7 @@ const Recipe = () => {
           backgroundImage: `url(${recipe.image?.url || recipe.imgSrc})`,
         }}
       />
+
       <div className="imgAndTextRecipe">
         <div className="imgContainer">
           {step.type === "image" ? (
@@ -216,11 +274,12 @@ const Recipe = () => {
 
                 <StarRating
                   value={myRating || community.avg}
-                  onRate={canRateCommunity ? (v) => submitRating(v) : undefined}
+                  onRate={canRateCommunity ? submitRating : undefined}
                   showValue
                   count={community.count}
                   size={28}
                 />
+
                 {!canRateCommunity && (
                   <p style={{ marginTop: 6, opacity: 0.85 }}>
                     {ensuring
@@ -228,16 +287,18 @@ const Recipe = () => {
                       : "This recipe cannot be rated."}
                   </p>
                 )}
+
                 {rateMsg && (
                   <p
                     style={{
                       marginTop: 8,
-                      color: rateMsg.type === "ok" ? "limegreen" : "tcdomato",
+                      color: rateMsg.type === "ok" ? "limegreen" : "tomato",
                     }}
                   >
                     {rateMsg.text}
                   </p>
                 )}
+
                 <Link to="/domov">
                   <button>Back to HOME</button>
                 </Link>

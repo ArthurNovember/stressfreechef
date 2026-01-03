@@ -1,8 +1,12 @@
 // app/favorites.tsx
+
+/* =========================
+   IMPORTS
+========================= */
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { t, Lang, LANG_KEY } from "../i18n/strings";
 import { useTheme } from "../theme/ThemeContext";
-import { MaterialIcons } from "@expo/vector-icons"; // ⬅️ ikony
+import { MaterialIcons } from "@expo/vector-icons";
 import {
   ActivityIndicator,
   Alert,
@@ -14,16 +18,15 @@ import {
   Text,
   TextInput,
   View,
-  Image,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { API_BASE, fetchJSON } from "../lib/api";
 
-const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
-
-/** ===== Typy ===== */
+/* =========================
+   TYPES
+========================= */
 type ShopOption = {
   _id: string;
   name: string;
@@ -35,13 +38,19 @@ type FavoriteItem = {
   shop: ShopOption[];
 };
 
-/** ===== Helpers ===== */
+/* =========================
+   CONSTS + STORAGE
+========================= */
+const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
 const TOKEN_KEY = "token";
 
 async function getToken() {
   return (await AsyncStorage.getItem(TOKEN_KEY)) || "";
 }
 
+/* =========================
+   HELPERS (pure)
+========================= */
 const isUnauthorizedError = (e: any) => {
   const msg = String(e?.message ?? e ?? "");
   return (
@@ -51,10 +60,14 @@ const isUnauthorizedError = (e: any) => {
   );
 };
 
-/** ===== Hlavní screen ===== */
+/* =========================
+   SCREEN
+========================= */
 export default function FavoritesScreen() {
   const router = useRouter();
-  const { colors } = useTheme(); // 🎨 TADY theme barvy
+  const { colors } = useTheme();
+
+  /* ---------- base state ---------- */
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -79,7 +92,7 @@ export default function FavoritesScreen() {
   // filtrování jako v shopping.tsx
   const [filterShopIds, setFilterShopIds] = useState<string[]>([]);
 
-  // 👉 přidej:
+  // lang
   const [lang, setLang] = useState<Lang>("en");
 
   useEffect(() => {
@@ -89,7 +102,9 @@ export default function FavoritesScreen() {
     })();
   }, []);
 
-  /** ==== HW back tlačítko → vždy zpět na shopping tab ==== */
+  /* =========================
+     HW back → zpět na shopping tab
+  ========================= */
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -101,15 +116,18 @@ export default function FavoritesScreen() {
         "hardwareBackPress",
         onBackPress
       );
-
       return () => sub.remove();
     }, [router])
   );
 
-  /** ==== Načtení favorites + shop options ==== */
+  /* =========================
+     LOAD favorites + shops
+     (fix: závisí na lang, aby error text byl správně)
+  ========================= */
   const loadAll = useCallback(async () => {
     setLoading(true);
     setErr(null);
+
     try {
       const token = await getToken();
 
@@ -125,15 +143,12 @@ export default function FavoritesScreen() {
       setFavorites(Array.isArray(favoritesRes) ? favoritesRes : []);
       setShopOptions(Array.isArray(shopsRes) ? shopsRes : []);
     } catch (e: any) {
-      if (isUnauthorizedError(e)) {
-        setErr(t(lang, "shopping", "sessionExpired"));
-      } else {
-        setErr(e?.message || String(e));
-      }
+      if (isUnauthorizedError(e)) setErr(t(lang, "shopping", "sessionExpired"));
+      else setErr(e?.message || String(e));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [lang]);
 
   useFocusEffect(
     useCallback(() => {
@@ -141,7 +156,9 @@ export default function FavoritesScreen() {
     }, [loadAll])
   );
 
-  /** ==== Filtrování favorites podle shopů (stejné jako shopping.tsx) ==== */
+  /* =========================
+     DERIVED
+  ========================= */
   const processedFavorites = useMemo(() => {
     let res = [...favorites];
 
@@ -155,11 +172,21 @@ export default function FavoritesScreen() {
       });
     }
 
-    // volitelné: nejnovější nahoře (pokud backend vrací podle vytvoření)
+    // nejnovější nahoře (pokud backend vrací podle vytvoření)
     return res.reverse();
   }, [favorites, filterShopIds]);
 
-  /** ==== PATCH favorite (stejně jako updateFavoriteItem na webu) ==== */
+  const editingFavorite = useMemo(() => {
+    if (!editingFavoriteId) return null;
+    return favorites.find((f) => f._id === editingFavoriteId) || null;
+  }, [editingFavoriteId, favorites]);
+
+  const noShopActive = filterShopIds.includes("No Shop");
+
+  /* =========================
+     ACTIONS: Favorites
+  ========================= */
+
   const updateFavorite = useCallback(
     async (id: string, updates: { shop?: string[] }) => {
       try {
@@ -173,10 +200,9 @@ export default function FavoritesScreen() {
           body: JSON.stringify(updates),
         });
 
-        const updated: FavoriteItem[] = await res.json();
-        if (!res.ok) {
+        const updated: FavoriteItem[] = await res.json().catch(() => []);
+        if (!res.ok)
           throw new Error((updated as any)?.error || `HTTP ${res.status}`);
-        }
 
         setFavorites(Array.isArray(updated) ? updated : []);
       } catch (e: any) {
@@ -186,10 +212,9 @@ export default function FavoritesScreen() {
         );
       }
     },
-    []
+    [lang]
   );
 
-  /** ==== Přidání nového favorite ==== */
   const handleAddFavorite = useCallback(async () => {
     const trimmed = newText.trim();
     if (!trimmed) return;
@@ -211,16 +236,12 @@ export default function FavoritesScreen() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          text: trimmed,
-          shop: newFavoriteShopIds,
-        }),
+        body: JSON.stringify({ text: trimmed, shop: newFavoriteShopIds }),
       });
 
-      const updated: FavoriteItem[] = await res.json();
-      if (!res.ok) {
+      const updated: FavoriteItem[] = await res.json().catch(() => []);
+      if (!res.ok)
         throw new Error((updated as any)?.error || `HTTP ${res.status}`);
-      }
 
       setFavorites(Array.isArray(updated) ? updated : []);
       setNewText("");
@@ -233,87 +254,83 @@ export default function FavoritesScreen() {
     } finally {
       setSavingFavorite(false);
     }
-  }, [newText, newFavoriteShopIds]);
+  }, [lang, newText, newFavoriteShopIds]);
 
-  /** ==== Přidání z favorite do shopping listu ==== */
-  const addToShoppingList = useCallback(async (fav: FavoriteItem) => {
-    try {
-      const token = await getToken();
-      if (!token) {
+  const addToShoppingList = useCallback(
+    async (fav: FavoriteItem) => {
+      try {
+        const token = await getToken();
+        if (!token) {
+          Alert.alert(
+            t(lang, "shopping", "loginRequiredFavoritesTitle"),
+            t(lang, "shopping", "loginRequiredFavoritesMsg")
+          );
+          return;
+        }
+
+        const shopIds = Array.isArray(fav.shop)
+          ? fav.shop.map((s) => s._id).filter(Boolean)
+          : [];
+
+        const res = await fetch(`${BASE}/api/shopping-list`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ text: fav.text, shop: shopIds }),
+        });
+
+        const updatedList = await res.json().catch(() => ({}));
+        if (!res.ok)
+          throw new Error((updatedList as any)?.error || `HTTP ${res.status}`);
+
         Alert.alert(
-          t(lang, "shopping", "loginRequiredFavoritesTitle"),
-          t(lang, "shopping", "loginRequiredFavoritesMsg")
+          t(lang, "favorites", "addedToShoppingTitle"),
+          t(lang, "favorites", "addedToShoppingMsg")
         );
-        return;
-      }
-
-      const shopIds = Array.isArray(fav.shop)
-        ? fav.shop.map((s) => s._id).filter(Boolean)
-        : [];
-
-      const res = await fetch(`${BASE}/api/shopping-list`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          text: fav.text,
-          shop: shopIds,
-        }),
-      });
-
-      const updatedList = await res.json();
-      if (!res.ok) {
-        throw new Error(updatedList?.error || `HTTP ${res.status}`);
-      }
-
-      Alert.alert(
-        t(lang, "favorites", "addedToShoppingTitle"),
-        t(lang, "favorites", "addedToShoppingMsg")
-      );
-    } catch (e: any) {
-      Alert.alert(
-        t(lang, "shopping", "failedAddItem"),
-        e?.message || String(e)
-      );
-    }
-  }, []);
-
-  /** ==== Smazání favorite ==== */
-  const deleteFavorite = useCallback(async (favoriteId: string) => {
-    try {
-      const token = await getToken();
-      if (!token) {
+      } catch (e: any) {
         Alert.alert(
-          t(lang, "shopping", "loginRequiredFavoritesTitle"),
-          t(lang, "shopping", "loginRequiredFavoritesMsg")
+          t(lang, "shopping", "failedAddItem"),
+          e?.message || String(e)
         );
-        return;
       }
+    },
+    [lang]
+  );
 
-      const res = await fetch(`${BASE}/api/favorites/${favoriteId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  const deleteFavorite = useCallback(
+    async (favoriteId: string) => {
+      try {
+        const token = await getToken();
+        if (!token) {
+          Alert.alert(
+            t(lang, "shopping", "loginRequiredFavoritesTitle"),
+            t(lang, "shopping", "loginRequiredFavoritesMsg")
+          );
+          return;
+        }
 
-      const updated: FavoriteItem[] = await res.json();
-      if (!res.ok) {
-        throw new Error((updated as any)?.error || `HTTP ${res.status}`);
+        const res = await fetch(`${BASE}/api/favorites/${favoriteId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const updated: FavoriteItem[] = await res.json().catch(() => []);
+        if (!res.ok)
+          throw new Error((updated as any)?.error || `HTTP ${res.status}`);
+
+        setFavorites(Array.isArray(updated) ? updated : []);
+      } catch (e: any) {
+        Alert.alert(
+          t(lang, "shopping", "failedUpdateFavorites"),
+          e?.message || String(e)
+        );
       }
+    },
+    [lang]
+  );
 
-      setFavorites(Array.isArray(updated) ? updated : []);
-    } catch (e: any) {
-      Alert.alert(
-        t(lang, "shopping", "failedUpdateFavorites"),
-        e?.message || String(e)
-      );
-    }
-  }, []);
-
-  /** ==== Toggle shop u jednoho favorite (modal) ==== */
   const toggleShopForFavorite = useCallback(
     async (fav: FavoriteItem, shopId: string) => {
       const currentIds = (fav.shop || []).map((s) =>
@@ -329,7 +346,9 @@ export default function FavoritesScreen() {
     [updateFavorite]
   );
 
-  /** ==== Add / delete shop options (Manage shops) ==== */
+  /* =========================
+     ACTIONS: Shop options
+  ========================= */
   const handleAddShopOption = useCallback(async () => {
     const trimmed = addingShopName.trim();
     if (!trimmed) return;
@@ -353,10 +372,9 @@ export default function FavoritesScreen() {
         body: JSON.stringify({ name: trimmed }),
       });
 
-      const newShop = await res.json();
-      if (!res.ok) {
-        throw new Error(newShop?.error || `HTTP ${res.status}`);
-      }
+      const newShop = await res.json().catch(() => null);
+      if (!res.ok)
+        throw new Error((newShop as any)?.error || `HTTP ${res.status}`);
 
       setShopOptions((prev) => [...prev, newShop]);
       setAddingShopName("");
@@ -368,66 +386,69 @@ export default function FavoritesScreen() {
     } finally {
       setAddingShopBusy(false);
     }
-  }, [addingShopName, shopOptions]);
+  }, [addingShopName, shopOptions, lang]);
 
-  const deleteShopOption = useCallback((shopToDeleteId: string) => {
-    Alert.alert(
-      t(lang, "shopping", "deleteShopTitle"),
-      t(lang, "shopping", "deleteShopMsg"),
-      [
-        { text: t(lang, "shopping", "cancel"), style: "cancel" },
-        {
-          text: t(lang, "shopping", "delete"),
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const token = await getToken();
-              const res = await fetch(
-                `${BASE}/api/shopping-list/shop-options/${shopToDeleteId}`,
-                {
-                  method: "DELETE",
-                  headers: { Authorization: `Bearer ${token}` },
+  const deleteShopOption = useCallback(
+    (shopToDeleteId: string) => {
+      Alert.alert(
+        t(lang, "shopping", "deleteShopTitle"),
+        t(lang, "shopping", "deleteShopMsg"),
+        [
+          { text: t(lang, "shopping", "cancel"), style: "cancel" },
+          {
+            text: t(lang, "shopping", "delete"),
+            style: "destructive",
+            onPress: async () => {
+              try {
+                const token = await getToken();
+                const res = await fetch(
+                  `${BASE}/api/shopping-list/shop-options/${shopToDeleteId}`,
+                  {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}` },
+                  }
+                );
+
+                if (!res.ok) {
+                  const body = await res.text();
+                  throw new Error(body || `HTTP ${res.status}`);
                 }
-              );
 
-              if (!res.ok) {
-                const body = await res.text();
-                throw new Error(body || `HTTP ${res.status}`);
+                setShopOptions((prev) =>
+                  prev.filter((s) => s._id !== shopToDeleteId)
+                );
+
+                // lokální cleanup (aby UI hned sedělo)
+                setFavorites((prev) =>
+                  prev.map((item) => ({
+                    ...item,
+                    shop: (item.shop || []).filter(
+                      (s) => s._id !== shopToDeleteId
+                    ),
+                  }))
+                );
+                setNewFavoriteShopIds((prev) =>
+                  prev.filter((id) => id !== shopToDeleteId)
+                );
+              } catch (e: any) {
+                Alert.alert("Failed to delete shop", e?.message || String(e));
               }
-
-              setShopOptions((prev) =>
-                prev.filter((s) => s._id !== shopToDeleteId)
-              );
-
-              setFavorites((prev) =>
-                prev.map((item) => ({
-                  ...item,
-                  shop: (item.shop || []).filter(
-                    (s) => s._id !== shopToDeleteId
-                  ),
-                }))
-              );
-
-              setNewFavoriteShopIds((prev) =>
-                prev.filter((id) => id !== shopToDeleteId)
-              );
-            } catch (e: any) {
-              Alert.alert("Failed to delete shop", e?.message || String(e));
-            }
+            },
           },
-        },
-      ]
-    );
-  }, []);
+        ]
+      );
+    },
+    [lang]
+  );
 
-  /** ==== loading / error ==== */
-
+  /* =========================
+     LOADING / ERROR
+  ========================= */
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" />
         <Text style={[styles.centerText, { color: colors.text }]}>
-          {" "}
           {t(lang, "favorites", "loading")}
         </Text>
       </View>
@@ -438,18 +459,15 @@ export default function FavoritesScreen() {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <Text style={[styles.centerText, { color: colors.danger }]}>{err}</Text>
+
         <Pressable
           style={[
             styles.primaryBtn,
-            {
-              marginTop: 12,
-              backgroundColor: colors.pillActive,
-            },
+            { marginTop: 12, backgroundColor: colors.pillActive },
           ]}
           onPress={loadAll}
         >
           <Text style={[styles.primaryBtnText, { color: colors.text }]}>
-            {" "}
             {t(lang, "shopping", "retry")}
           </Text>
         </Pressable>
@@ -457,12 +475,9 @@ export default function FavoritesScreen() {
     );
   }
 
-  const editingFavorite =
-    editingFavoriteId != null
-      ? favorites.find((f) => f._id === editingFavoriteId) || null
-      : null;
-  const noShopActive = filterShopIds.includes("No Shop");
-  /** ==== UI ==== */
+  /* =========================
+     UI
+  ========================= */
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={styles.headerRow}>
@@ -473,7 +488,7 @@ export default function FavoritesScreen() {
         </Pressable>
       </View>
 
-      {/* 🔹 INPUT NA NOVÝ FAVORITE */}
+      {/* INPUT NA NOVÝ FAVORITE */}
       <View style={{ paddingHorizontal: 12, paddingBottom: 4 }}>
         <View
           style={[
@@ -561,10 +576,7 @@ export default function FavoritesScreen() {
           <Pressable
             style={[
               styles.manageShopsBtn,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
+              { backgroundColor: colors.card, borderColor: colors.border },
             ]}
             onPress={() => setManageShopsVisible(true)}
           >
@@ -592,25 +604,22 @@ export default function FavoritesScreen() {
           </Pressable>
         </View>
 
-        {/* 🔹 FILTR JAKO V SHOPPINGLISTU */}
+        {/* FILTR */}
         <Text style={{ color: colors.text, fontSize: 20, paddingTop: 10 }}>
           {t(lang, "shopping", "filterByShop")}
         </Text>
+
         {shopOptions.length > 0 && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             style={{ marginTop: 8, marginBottom: 4 }}
           >
-            {/* All */}
             <Pressable
               onPress={() => setFilterShopIds([])}
               style={[
                 styles.chip,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                },
+                { backgroundColor: colors.card, borderColor: colors.border },
                 filterShopIds.length === 0 && {
                   backgroundColor: colors.pillActive,
                   borderColor: colors.pillActive,
@@ -628,7 +637,6 @@ export default function FavoritesScreen() {
               </Text>
             </Pressable>
 
-            {/* jednotlivé shopy */}
             {shopOptions.map((shop) => {
               const active = filterShopIds.includes(shop._id);
               return (
@@ -666,8 +674,6 @@ export default function FavoritesScreen() {
               );
             })}
 
-            {/* No Shop */}
-
             <Pressable
               onPress={() => {
                 setFilterShopIds((prev) =>
@@ -678,10 +684,7 @@ export default function FavoritesScreen() {
               }}
               style={[
                 styles.chip,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                },
+                { backgroundColor: colors.card, borderColor: colors.border },
                 noShopActive && {
                   backgroundColor: colors.pillActive,
                   borderColor: colors.pillActive,
@@ -702,11 +705,9 @@ export default function FavoritesScreen() {
         )}
       </View>
 
-      {/* 🔹 SEZNAM FAVORITES (filtrovaný) */}
+      {/* LIST */}
       {processedFavorites.length === 0 ? (
-        <View
-          style={[styles.center, { backgroundColor: colors.background }]}
-        ></View>
+        <View style={[styles.center, { backgroundColor: colors.background }]} />
       ) : (
         <ScrollView
           contentContainerStyle={{ padding: 12, paddingBottom: 24 }}
@@ -723,10 +724,7 @@ export default function FavoritesScreen() {
                 key={item._id}
                 style={[
                   styles.row,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                  },
+                  { backgroundColor: colors.card, borderColor: colors.border },
                 ]}
               >
                 <View style={{ flex: 1 }}>
@@ -778,6 +776,7 @@ export default function FavoritesScreen() {
                       color={colors.text}
                     />
                   </Pressable>
+
                   <Pressable
                     style={[styles.smallBtn, { backgroundColor: "#7a0202ff" }]}
                     onPress={() => deleteFavorite(item._id)}
@@ -805,6 +804,7 @@ export default function FavoritesScreen() {
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               {editingFavorite?.text || t(lang, "shopping", "itemFallback")}
             </Text>
+
             <Text
               style={[styles.modalSubtitle, { color: colors.secondaryText }]}
             >
@@ -816,6 +816,7 @@ export default function FavoritesScreen() {
                 const itemShopIds =
                   editingFavorite?.shop?.map((s) => String(s._id)) || [];
                 const active = itemShopIds.includes(shop._id);
+
                 return (
                   <View
                     key={shop._id}
@@ -841,6 +842,7 @@ export default function FavoritesScreen() {
                       >
                         {shop.name}
                       </Text>
+
                       {active && (
                         <Text
                           style={[styles.modalRowText, { color: colors.text }]}
@@ -856,9 +858,9 @@ export default function FavoritesScreen() {
 
             <View style={{ marginTop: 12 }}>
               <Text style={styles.label}>
-                {" "}
                 {t(lang, "shopping", "addNewShopLabel")}
               </Text>
+
               <View style={styles.addShopRow}>
                 <TextInput
                   value={addingShopName}
@@ -876,6 +878,7 @@ export default function FavoritesScreen() {
                     },
                   ]}
                 />
+
                 <Pressable
                   style={[
                     styles.primaryBtn,
@@ -888,7 +891,7 @@ export default function FavoritesScreen() {
                   disabled={addingShopBusy}
                   onPress={handleAddShopOption}
                 >
-                  <Text style={[styles.primaryBtnText]}>
+                  <Text style={styles.primaryBtnText}>
                     {addingShopBusy ? "…" : "+"}
                   </Text>
                 </Pressable>
@@ -907,7 +910,6 @@ export default function FavoritesScreen() {
               onPress={() => setEditingFavoriteId(null)}
             >
               <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
-                {" "}
                 {t(lang, "shopping", "close")}
               </Text>
             </Pressable>
@@ -925,7 +927,6 @@ export default function FavoritesScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {" "}
               {t(lang, "shopping", "manageShopsTitle")}
             </Text>
 
@@ -941,6 +942,7 @@ export default function FavoritesScreen() {
                   <Text style={[styles.modalRowText, { color: colors.text }]}>
                     {shop.name}
                   </Text>
+
                   <Pressable
                     style={styles.modalDeleteShopBtn}
                     onPress={() => deleteShopOption(shop._id)}
@@ -961,6 +963,7 @@ export default function FavoritesScreen() {
               <Text style={styles.label}>
                 {t(lang, "shopping", "addNewShopLabel")}
               </Text>
+
               <View style={styles.addShopRow}>
                 <TextInput
                   value={addingShopName}
@@ -1005,7 +1008,6 @@ export default function FavoritesScreen() {
               onPress={() => setManageShopsVisible(false)}
             >
               <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
-                {" "}
                 {t(lang, "shopping", "close")}
               </Text>
             </Pressable>
@@ -1016,13 +1018,11 @@ export default function FavoritesScreen() {
   );
 }
 
-/** ===== Styly ===== */
+/* =========================
+   STYLES
+========================= */
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#0f0f0fff",
-    paddingTop: 40,
-  },
+  screen: { flex: 1, backgroundColor: "#0f0f0fff", paddingTop: 40 },
   center: {
     flex: 1,
     backgroundColor: "#0f0f0fff",
@@ -1030,23 +1030,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
   },
-  centerText: {
-    color: "#e0e0e0",
-    textAlign: "center",
-  },
-  headerRow: {
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-  },
-  backText: {
-    color: "#d0d0d0",
-    marginBottom: 4,
-  },
-  title: {
-    color: "#ffffff",
-    fontSize: 24,
-    fontWeight: "800",
-  },
+  centerText: { color: "#e0e0e0", textAlign: "center" },
+  headerRow: { paddingHorizontal: 12, paddingBottom: 8 },
+  backText: { color: "#d0d0d0", marginBottom: 4 },
+
   newItemCard: {
     marginTop: 8,
     marginBottom: 12,
@@ -1056,6 +1043,7 @@ const styles = StyleSheet.create({
     borderColor: "#030303ff",
     borderWidth: 1,
   },
+
   input: {
     backgroundColor: "#1a1919",
     borderWidth: 1,
@@ -1066,17 +1054,11 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginBottom: 8,
   },
-  label: {
-    color: "#d0d0d0",
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  shopsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: 2,
-  },
+
+  label: { color: "#d0d0d0", fontSize: 12, marginBottom: 4 },
+
+  shopsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 2 },
+
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -1094,18 +1076,9 @@ const styles = StyleSheet.create({
     borderColor: "#444",
     backgroundColor: "#181818",
   },
-  chipActive: {
-    backgroundColor: "#8b0e0d",
-    borderColor: "#aa2b2a",
-  },
-  chipText: {
-    color: "#ccc",
-    fontSize: 12,
-  },
-  chipTextActive: {
-    color: "#fff",
-    fontWeight: "700",
-  },
+  chipText: { color: "#ccc", fontSize: 12 },
+  chipTextActive: { color: "#fff", fontWeight: "700" },
+
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -1116,15 +1089,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#151515",
   },
-  itemText: {
-    color: "#f5f5f5",
-    fontSize: 19,
-    marginBottom: 4,
-  },
-  itemIndex: {
-    color: "#9b2929ff",
-    fontWeight: "800",
-  },
+
+  itemText: { color: "#f5f5f5", fontSize: 19, marginBottom: 4 },
+  itemIndex: { color: "#9b2929ff", fontWeight: "800" },
+
   shopsBtn: {
     alignSelf: "flex-start",
     paddingHorizontal: 10,
@@ -1134,10 +1102,8 @@ const styles = StyleSheet.create({
     borderColor: "#444",
     backgroundColor: "#222",
   },
-  shopsBtnText: {
-    color: "#ccc",
-    fontSize: 11,
-  },
+  shopsBtnText: { color: "#ccc", fontSize: 11 },
+
   rowButtons: {
     marginLeft: 8,
     alignItems: "flex-end",
@@ -1145,23 +1111,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
+
   smallBtn: {
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
     marginBottom: 4,
   },
-  addBtn: {
-    backgroundColor: "#670404ff",
-  },
-  deleteBtn: {
-    backgroundColor: "#4d2626",
-  },
-  smallBtnText: {
-    color: "#ffffff",
-    fontWeight: "700",
-    fontSize: 12,
-  },
+  smallBtnText: { color: "#ffffff", fontWeight: "700", fontSize: 12 },
+
   primaryBtn: {
     backgroundColor: "#171111ff",
     borderRadius: 12,
@@ -1169,10 +1127,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
   },
-  primaryBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-  },
+  primaryBtnText: { color: "#fff", fontWeight: "700" },
+
   secondaryBtn: {
     borderRadius: 10,
     paddingVertical: 8,
@@ -1182,10 +1138,8 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     backgroundColor: "#434343",
   },
-  secondaryBtnText: {
-    color: "#e0e0e0",
-    fontWeight: "700",
-  },
+  secondaryBtnText: { color: "#e0e0e0", fontWeight: "700" },
+
   manageShopsBtn: {
     marginTop: 8,
     alignSelf: "flex-start",
@@ -1196,32 +1150,18 @@ const styles = StyleSheet.create({
     borderColor: "#444",
     backgroundColor: "#222",
   },
-  manageShopsText: {
-    color: "#ddd",
-    fontSize: 12,
-    fontWeight: "600",
-  },
+  manageShopsText: { color: "#ddd", fontSize: 12, fontWeight: "600" },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
     padding: 16,
   },
-  modalCard: {
-    backgroundColor: "#212121",
-    borderRadius: 16,
-    padding: 16,
-  },
-  modalTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  modalSubtitle: {
-    color: "#ddd",
-    marginTop: 8,
-    fontWeight: "700",
-  },
+  modalCard: { backgroundColor: "#212121", borderRadius: 16, padding: 16 },
+  modalTitle: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  modalSubtitle: { color: "#ddd", marginTop: 8, fontWeight: "700" },
+
   modalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1230,14 +1170,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#333",
   },
-  modalRowText: {
-    color: "#eee",
-  },
-  addShopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-  },
+  modalRowText: { color: "#eee" },
+
+  addShopRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
+
   modalDeleteShopBtn: {
     marginLeft: 8,
     paddingHorizontal: 8,
@@ -1246,8 +1182,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  modalDeleteShopText: {
-    color: "#fff",
-    fontWeight: "700",
-  },
+  modalDeleteShopText: { color: "#fff", fontWeight: "700" },
 });

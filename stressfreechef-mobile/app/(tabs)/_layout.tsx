@@ -2,24 +2,27 @@ import React, { useEffect, useState } from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { t, Lang, LANG_KEY } from "../../i18n/strings";
 import { useTheme } from "../../theme/ThemeContext";
-import {
-  useFonts,
-  Montserrat_800ExtraBold,
-} from "@expo-google-fonts/montserrat";
 
+/* -----------------------------
+   Helpers
+----------------------------- */
+async function loadStoredLang(): Promise<Lang> {
+  const stored = await AsyncStorage.getItem(LANG_KEY);
+  return stored === "cs" || stored === "en" ? stored : "cs";
+}
+
+/* -----------------------------
+   Layout
+----------------------------- */
 export default function Layout() {
   const [lang, setLang] = useState<Lang>("cs");
-  const { colors } = useTheme(); // ← čteme theme barvy
+  const { colors } = useTheme();
 
   useEffect(() => {
-    (async () => {
-      const stored = await AsyncStorage.getItem(LANG_KEY);
-      if (stored === "cs" || stored === "en") {
-        setLang(stored);
-      }
-    })();
+    loadStoredLang().then(setLang);
   }, []);
 
   return (
@@ -27,11 +30,11 @@ export default function Layout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.card, // ← přepíná se podle tématu
-          borderTopColor: colors.border, // jemná linka
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
         },
-        tabBarActiveTintColor: colors.pillActive, // aktivní ikona = accent
-        tabBarInactiveTintColor: colors.text, // neaktivní
+        tabBarActiveTintColor: colors.pillActive,
+        tabBarInactiveTintColor: colors.text,
       }}
     >
       <Tabs.Screen

@@ -1,5 +1,9 @@
 // app/settings.tsx
-import { useEffect, useState } from "react";
+
+/* =========================
+   IMPORTS
+========================= */
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,21 +12,25 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { API_BASE } from "../lib/api";
 import { getLocales } from "expo-localization";
-import { t, Lang, LANG_KEY } from "../i18n/strings";
-import { useTheme } from "../theme/ThemeContext"; // ← napojení na ThemeProvider
 
+import { API_BASE } from "../lib/api";
+import { t, Lang, LANG_KEY } from "../i18n/strings";
+import { useTheme } from "../theme/ThemeContext";
+
+/* =========================
+   CONSTS + STORAGE
+========================= */
 const TOKEN_KEY = "token";
 const BLOW_NEXT_KEY = "settings:blowNextEnabled";
 
 async function getToken() {
   try {
-    const t = await AsyncStorage.getItem(TOKEN_KEY);
-    return t || "";
+    return (await AsyncStorage.getItem(TOKEN_KEY)) || "";
   } catch {
     return "";
   }
@@ -32,93 +40,126 @@ async function clearToken() {
   try {
     await AsyncStorage.removeItem(TOKEN_KEY);
   } catch {
-    // klidně ignoruj chybu, není kritická
+    // ignore
   }
 }
 
+async function loadStoredLang(): Promise<"en" | "cs" | null> {
+  try {
+    const stored = await AsyncStorage.getItem(LANG_KEY);
+    return stored === "en" || stored === "cs" ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function getSystemLang(): "en" | "cs" {
+  const primary = getLocales()?.[0];
+  const tag = (
+    primary?.languageTag ||
+    primary?.languageCode ||
+    ""
+  ).toLowerCase();
+  return tag.startsWith("cs") ? "cs" : "en";
+}
+
+async function loadBlowNext(): Promise<boolean> {
+  try {
+    const stored = await AsyncStorage.getItem(BLOW_NEXT_KEY);
+    return stored === "1";
+  } catch {
+    return false;
+  }
+}
+
+/* =========================
+   HELPERS (pure)
+========================= */
+function pickCancelText(lang: Lang) {
+  // fallback, pokud nemáš i18n klíče pro cancel/delete
+  // (nechci ti je vnutit bez jistoty)
+  return lang === "cs" ? "Zrušit" : "Cancel";
+}
+
+function pickDeleteText(lang: Lang) {
+  return lang === "cs" ? "Smazat" : "Delete";
+}
+
+/* =========================
+   SCREEN
+========================= */
 export default function SettingsScreen() {
-  const { theme, setTheme, colors } = useTheme(); // ← globální theme
+  const { theme, setTheme, colors } = useTheme();
+
   const [lang, setLang] = useState<Lang>("en");
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [hasToken, setHasToken] = useState(false);
   const [blowNext, setBlowNext] = useState(false);
 
+  /* =========================
+     INIT
+  ========================= */
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
       try {
-        const storedLang = (await AsyncStorage.getItem(LANG_KEY)) as
-          | "en"
-          | "cs"
-          | null;
+        const storedLang = await loadStoredLang();
+        const systemLang = getSystemLang();
 
-        // 🌍 LANGUAGE – nejdřív uložený, jinak systém
-        const locales = getLocales();
-        const primary = locales[0];
+        const nextLang: "en" | "cs" = storedLang ?? systemLang;
 
-        const tag = (
-          primary?.languageTag ||
-          primary?.languageCode ||
-          ""
-        ).toLowerCase();
-        const systemLang: "en" | "cs" = tag.startsWith("cs") ? "cs" : "en";
-
-        let nextLang: "en" | "cs" = systemLang;
-
-        if (storedLang === "en" || storedLang === "cs") {
-          nextLang = storedLang;
-        } else {
+        // pokud nebylo uložené, uložíme systémové
+        if (!storedLang) {
           await AsyncStorage.setItem(LANG_KEY, systemLang);
         }
 
-        setLang(nextLang);
-
-        // 🔐 jestli je user přihlášen
         const token = await AsyncStorage.getItem(TOKEN_KEY);
-        setHasToken(!!token);
+        const blow = await loadBlowNext();
 
-        // 💨 BLOW-NEXT – načtení
-        const storedBlow = await AsyncStorage.getItem(BLOW_NEXT_KEY);
-        setBlowNext(storedBlow === "1");
+        if (cancelled) return;
+
+        setLang(nextLang);
+        setHasToken(!!token);
+        setBlowNext(blow);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // 🎨 přepnutí tématu přes ThemeContext
-  async function handleThemeChange(next: "light" | "dark") {
-    await setTheme(next); // ThemeProvider se postará o AsyncStorage + repaint
-  }
+  /* =========================
+     ACTIONS
+  ========================= */
+  const handleThemeChange = useCallback(
+    async (next: "light" | "dark") => {
+      await setTheme(next);
+    },
+    [setTheme]
+  );
 
-  async function handleLangChange(next: "en" | "cs") {
+  const handleLangChange = useCallback(async (next: "en" | "cs") => {
     setLang(next);
     await AsyncStorage.setItem(LANG_KEY, next);
-  }
+  }, []);
 
-  async function toggleBlowNext() {
-    const next = !blowNext;
-    setBlowNext(next);
-    await AsyncStorage.setItem(BLOW_NEXT_KEY, next ? "1" : "0");
-  }
+  const toggleBlowNext = useCallback(async () => {
+    setBlowNext((prev) => {
+      const next = !prev;
+      AsyncStorage.setItem(BLOW_NEXT_KEY, next ? "1" : "0").catch(() => {});
+      return next;
+    });
+  }, []);
 
-  function confirmDeleteProfile() {
-    Alert.alert(
-      t(lang, "settings", "confirmDeleteTitle"),
-      t(lang, "settings", "confirmDeleteMessage"),
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: actuallyDeleteProfile,
-        },
-      ]
-    );
-  }
-
-  async function actuallyDeleteProfile() {
+  const actuallyDeleteProfile = useCallback(async () => {
     try {
+      setDeleting(true);
+
       const token = await getToken();
       if (!token) {
         Alert.alert(
@@ -139,6 +180,7 @@ export default function SettingsScreen() {
       }
 
       await clearToken();
+      setHasToken(false);
 
       Alert.alert(
         t(lang, "settings", "deletedTitle"),
@@ -151,19 +193,32 @@ export default function SettingsScreen() {
         t(lang, "settings", "deleteFailedTitle"),
         e?.message || String(e)
       );
+    } finally {
+      setDeleting(false);
     }
-  }
+  }, [lang]);
 
+  const confirmDeleteProfile = useCallback(() => {
+    Alert.alert(
+      t(lang, "settings", "confirmDeleteTitle"),
+      t(lang, "settings", "confirmDeleteMessage"),
+      [
+        { text: pickCancelText(lang), style: "cancel" },
+        {
+          text: pickDeleteText(lang),
+          style: "destructive",
+          onPress: actuallyDeleteProfile,
+        },
+      ]
+    );
+  }, [lang, actuallyDeleteProfile]);
+
+  /* =========================
+     LOADING
+  ========================= */
   if (loading) {
     return (
-      <View
-        style={[
-          styles.center,
-          {
-            backgroundColor: colors.background,
-          },
-        ]}
-      >
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" />
         <Text style={{ marginTop: 8, color: colors.text }}>
           {t(lang, "settings", "loading")}
@@ -172,28 +227,18 @@ export default function SettingsScreen() {
     );
   }
 
+  /* =========================
+     UI
+  ========================= */
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.background,
-        },
-      ]}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* HEADER */}
       <View style={styles.headerRow}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <MaterialIcons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
-        <Text
-          style={[
-            styles.headerTitle,
-            {
-              color: colors.text,
-            },
-          ]}
-        >
+
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
           {t(lang, "settings", "headerTitle")}
         </Text>
       </View>
@@ -203,22 +248,17 @@ export default function SettingsScreen() {
         <Text
           style={[
             styles.sectionTitle,
-            {
-              color: colors.secondaryText ?? colors.text,
-            },
+            { color: colors.secondaryText ?? colors.text },
           ]}
         >
           {t(lang, "settings", "themeTitle")}
         </Text>
+
         <View style={styles.row}>
-          {/* DARK */}
           <Pressable
             style={[
               styles.pill,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
+              { backgroundColor: colors.card, borderColor: colors.border },
               theme === "dark" && {
                 backgroundColor: colors.pillActive,
                 borderColor: colors.pillActive,
@@ -237,14 +277,10 @@ export default function SettingsScreen() {
             </Text>
           </Pressable>
 
-          {/* LIGHT */}
           <Pressable
             style={[
               styles.pill,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
+              { backgroundColor: colors.card, borderColor: colors.border },
               theme === "light" && {
                 backgroundColor: colors.pillActive,
                 borderColor: colors.pillActive,
@@ -270,21 +306,17 @@ export default function SettingsScreen() {
         <Text
           style={[
             styles.sectionTitle,
-            {
-              color: colors.secondaryText ?? colors.text,
-            },
+            { color: colors.secondaryText ?? colors.text },
           ]}
         >
           {t(lang, "settings", "langTitle")}
         </Text>
+
         <View style={styles.row}>
           <Pressable
             style={[
               styles.pill,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
+              { backgroundColor: colors.card, borderColor: colors.border },
               lang === "en" && {
                 backgroundColor: colors.pillActive,
                 borderColor: colors.pillActive,
@@ -302,13 +334,11 @@ export default function SettingsScreen() {
               English
             </Text>
           </Pressable>
+
           <Pressable
             style={[
               styles.pill,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
+              { backgroundColor: colors.card, borderColor: colors.border },
               lang === "cs" && {
                 backgroundColor: colors.pillActive,
                 borderColor: colors.pillActive,
@@ -339,15 +369,13 @@ export default function SettingsScreen() {
         >
           {t(lang, "settings", "handsfreeTitle")}
         </Text>
+
         <View style={styles.row}>
           <Pressable
             onPress={toggleBlowNext}
             style={[
               styles.pill,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
+              { backgroundColor: colors.card, borderColor: colors.border },
               blowNext && {
                 backgroundColor: colors.pillActive,
                 borderColor: colors.pillActive,
@@ -365,14 +393,8 @@ export default function SettingsScreen() {
             </Text>
           </Pressable>
         </View>
-        <Text
-          style={[
-            styles.helper,
-            {
-              color: colors.muted,
-            },
-          ]}
-        >
+
+        <Text style={[styles.helper, { color: colors.muted }]}>
           {t(lang, "settings", "blowWarning")}
         </Text>
       </View>
@@ -390,7 +412,10 @@ export default function SettingsScreen() {
           </Text>
 
           <Pressable
-            style={[styles.deleteBtn, { backgroundColor: "#962626ff" }]}
+            style={[
+              styles.deleteBtn,
+              { backgroundColor: "#962626ff", opacity: deleting ? 0.7 : 1 },
+            ]}
             onPress={confirmDeleteProfile}
             disabled={deleting}
           >
@@ -406,14 +431,7 @@ export default function SettingsScreen() {
             )}
           </Pressable>
 
-          <Text
-            style={[
-              styles.helper,
-              {
-                color: colors.muted,
-              },
-            ]}
-          >
+          <Text style={[styles.helper, { color: colors.muted }]}>
             {t(lang, "settings", "dangerHelper")}
           </Text>
         </View>
@@ -422,17 +440,17 @@ export default function SettingsScreen() {
   );
 }
 
+/* =========================
+   STYLES
+========================= */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // konkrétní barvu přepíšeme z ThemeContextu
-    backgroundColor: "#141414ff",
     paddingHorizontal: 16,
     paddingTop: 40,
   },
   center: {
     flex: 1,
-    backgroundColor: "#141414ff",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -448,7 +466,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#f4f4f4ff", // přepsáno inline podle theme
   },
   section: {
     marginBottom: 24,
@@ -456,7 +473,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#e0e0e0ff", // přepsáno inline
     marginBottom: 8,
   },
   row: {
@@ -468,15 +484,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#444",
-    backgroundColor: "#222",
-  },
-  pillActive: {
-    backgroundColor: "#760101",
-    borderColor: "#760101",
   },
   pillText: {
-    color: "#cccccc",
     fontWeight: "600",
   },
   pillTextActive: {
@@ -485,7 +494,6 @@ const styles = StyleSheet.create({
   helper: {
     marginTop: 6,
     fontSize: 12,
-    color: "#999999",
   },
   deleteBtn: {
     flexDirection: "row",
@@ -495,7 +503,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: "#940000ff",
   },
   deleteBtnText: {
     color: "#ffffff",

@@ -1,10 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { t, Lang, LANG_KEY } from "../../i18n/strings";
-import { useTheme } from "../../theme/ThemeContext";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import * as Clipboard from "expo-clipboard";
-
-import { useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,27 +11,33 @@ import {
   TextInput,
   View,
 } from "react-native";
+
+import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import * as Clipboard from "expo-clipboard";
 import * as ImagePicker from "expo-image-picker";
+
+import { t, Lang, LANG_KEY } from "../../i18n/strings";
+import { useTheme } from "../../theme/ThemeContext";
 import { API_BASE, fetchJSON } from "../../lib/api";
 
-const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
-const TOKEN_KEY = "token";
-
-async function getToken() {
-  return (await AsyncStorage.getItem(TOKEN_KEY)) || "";
-}
+/* =========================
+   TYPES
+========================= */
 
 type LocalMediaType = "image" | "video";
 
 type LocalStep = {
   description: string;
-  timerInput: string; // "mm:ss" nebo "90"
+  timerInput: string; // "hh:mm:ss" / "mm:ss" / "90"
   localUri?: string | null;
   mediaType?: LocalMediaType | null;
 };
 
-// nahoře u ostatních typů a state věcí
+const DIFFICULTIES = ["Beginner", "Intermediate", "Hard"] as const;
+type Difficulty = (typeof DIFFICULTIES)[number];
+
 type AiStepInput = {
   description: string;
   timerSeconds?: number;
@@ -46,12 +46,34 @@ type AiStepInput = {
 type AiRecipeInput = {
   title: string;
   difficulty?: Difficulty;
-  time: string; // např. "00:20"
+  time: string; // "00:20"
   ingredients: string[];
   steps: AiStepInput[];
 };
 
-// helper: seconds → "HH:MM:SS"
+type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
+/* =========================
+   CONSTS
+========================= */
+
+const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
+const TOKEN_KEY = "token";
+
+/* =========================
+   HELPERS (pure)
+========================= */
+
+function translateDifficulty(lang: Lang, diff: string) {
+  if (lang === "cs") {
+    if (diff === "Beginner") return "Začátečník";
+    if (diff === "Intermediate") return "Pokročilý";
+    if (diff === "Hard") return "Expert";
+  }
+  return diff;
+}
+
+// seconds → "HH:MM:SS" (input string)
 function secondsToHmsInput(total: number | undefined | null): string {
   if (!Number.isFinite(Number(total)) || !total || total <= 0) return "";
   const t = Number(total);
@@ -64,8 +86,46 @@ function secondsToHmsInput(total: number | undefined | null): string {
   ).padStart(2, "0")}`;
 }
 
-const DIFFICULTIES = ["Beginner", "Intermediate", "Hard"] as const;
-type Difficulty = (typeof DIFFICULTIES)[number];
+function clampInt(raw: string, max: number): number {
+  const cleaned = raw.replace(/\D/g, "");
+  if (!cleaned) return 0;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(n, max);
+}
+
+function splitTimerHMS(timer: string) {
+  let h = 0;
+  let m = 0;
+  let s = 0;
+
+  const parts = String(timer || "")
+    .split(":")
+    .filter(Boolean);
+
+  if (parts.length === 1) {
+    const sec = Number(parts[0]);
+    if (Number.isFinite(sec) && sec > 0) {
+      h = Math.floor(sec / 3600);
+      const rem = sec % 3600;
+      m = Math.floor(rem / 60);
+      s = rem % 60;
+    }
+  } else if (parts.length === 2) {
+    m = clampInt(parts[0], 59);
+    s = clampInt(parts[1], 59);
+  } else if (parts.length >= 3) {
+    h = clampInt(parts[0], 99);
+    m = clampInt(parts[1], 59);
+    s = clampInt(parts[2], 59);
+  }
+
+  return {
+    h: String(h).padStart(2, "0"),
+    m: String(m).padStart(2, "0"),
+    s: String(s).padStart(2, "0"),
+  };
+}
 
 function parseTimerInput(raw: string): number | null {
   const value = raw.trim();
@@ -73,7 +133,7 @@ function parseTimerInput(raw: string): number | null {
 
   const parts = value.split(":");
 
-  // jen číslo => sekundy
+  // just number => seconds
   if (parts.length === 1) {
     const sec = Number(parts[0]);
     if (!Number.isFinite(sec) || sec <= 0) return null;
@@ -123,6 +183,38 @@ function parseTimerInput(raw: string): number | null {
   return null;
 }
 
+function convertRecipeTimeToDate(time: string): Date {
+  const d = new Date(0);
+  if (!time) return d;
+
+  const parts = time.split(":");
+  const h = Number(parts[0] ?? 0);
+  const m = Number(parts[1] ?? 0);
+
+  d.setHours(Number.isFinite(h) ? h : 0);
+  d.setMinutes(Number.isFinite(m) ? m : 0);
+  d.setSeconds(0);
+
+  return d;
+}
+
+/* =========================
+   ACTIONS (async)
+========================= */
+
+async function getToken(): Promise<string> {
+  return (await AsyncStorage.getItem(TOKEN_KEY)) || "";
+}
+
+async function loadLang(): Promise<Lang> {
+  try {
+    const stored = await AsyncStorage.getItem(LANG_KEY);
+    return stored === "cs" || stored === "en" ? stored : "en";
+  } catch {
+    return "en";
+  }
+}
+
 async function pickMediaFromLibrary(): Promise<{
   uri: string;
   mediaType: LocalMediaType;
@@ -143,41 +235,41 @@ async function pickMediaFromLibrary(): Promise<{
   const asset = result.assets[0];
   const mediaType: LocalMediaType = asset.type === "video" ? "video" : "image";
 
-  return {
-    uri: asset.uri,
-    mediaType,
-  };
+  return { uri: asset.uri, mediaType };
 }
 
 async function uploadRecipeMediaMobile(
   token: string,
   recipeId: string,
   uri: string
-) {
-  const formData = new FormData();
-  formData.append("recipeId", recipeId);
+): Promise<ActionResult<true>> {
+  try {
+    const formData = new FormData();
+    formData.append("recipeId", recipeId);
 
-  const fileName = uri.split("/").pop() || "recipe-media";
-  const ext = fileName.split(".").pop()?.toLowerCase();
-  const isVideo =
-    ext && ["mp4", "mov", "avi", "mkv", "webm"].includes(ext as string);
+    const fileName = uri.split("/").pop() || "recipe-media";
+    const ext = fileName.split(".").pop()?.toLowerCase();
+    const isVideo = !!(
+      ext && ["mp4", "mov", "avi", "mkv", "webm"].includes(ext)
+    );
 
-  formData.append("file", {
-    uri,
-    name: fileName,
-    type: isVideo ? "video/mp4" : "image/jpeg",
-  } as any);
+    formData.append("file", {
+      uri,
+      name: fileName,
+      type: isVideo ? "video/mp4" : "image/jpeg",
+    } as any);
 
-  const res = await fetch(`${BASE}/api/uploads/recipe-media`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
+    const res = await fetch(`${BASE}/api/uploads/recipe-media`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
 
-  if (!res.ok) {
-    throw new Error(await res.text());
+    if (!res.ok) return { ok: false, error: await res.text() };
+
+    return { ok: true, data: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "Upload failed." };
   }
 }
 
@@ -187,228 +279,253 @@ async function uploadStepMediaMobile(
   stepIndex: number,
   uri: string,
   mediaType: LocalMediaType
-) {
-  const formData = new FormData();
-  formData.append("recipeId", recipeId);
-  formData.append("stepIndex", String(stepIndex));
+): Promise<ActionResult<true>> {
+  try {
+    const formData = new FormData();
+    formData.append("recipeId", recipeId);
+    formData.append("stepIndex", String(stepIndex));
 
-  const fileName = uri.split("/").pop() || `step-${stepIndex}`;
-  formData.append("file", {
-    uri,
-    name: fileName,
-    type: mediaType === "video" ? "video/mp4" : "image/jpeg",
-  } as any);
+    const fileName = uri.split("/").pop() || `step-${stepIndex}`;
+    formData.append("file", {
+      uri,
+      name: fileName,
+      type: mediaType === "video" ? "video/mp4" : "image/jpeg",
+    } as any);
 
-  const res = await fetch(`${BASE}/api/uploads/recipe-step-media`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
+    const res = await fetch(`${BASE}/api/uploads/recipe-step-media`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
 
-  if (!res.ok) {
-    throw new Error(await res.text());
+    if (!res.ok) return { ok: false, error: await res.text() };
+
+    return { ok: true, data: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "Upload failed." };
   }
 }
 
-async function publishRecipeMobile(token: string, recipeId: string) {
-  const res = await fetch(`${BASE}/api/my-recipes/${recipeId}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ isPublic: true }),
-  });
-  if (!res.ok) {
-    throw new Error(await res.text());
+async function publishRecipeMobile(
+  token: string,
+  recipeId: string
+): Promise<ActionResult<true>> {
+  try {
+    const res = await fetch(`${BASE}/api/my-recipes/${recipeId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ isPublic: true }),
+    });
+
+    if (!res.ok) return { ok: false, error: await res.text() };
+    return { ok: true, data: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "Publish failed." };
   }
 }
 
-function clampInt(raw: string, max: number): number {
-  const cleaned = raw.replace(/\D/g, ""); // jen čísla
-  if (!cleaned) return 0;
-  const n = Number(cleaned);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.min(n, max);
-}
+/* =========================
+   AI IMPORT (pure-ish)
+========================= */
 
-function splitTimerHMS(timer: string) {
-  let h = 0;
-  let m = 0;
-  let s = 0;
-
-  const parts = timer.split(":").filter(Boolean);
-
-  if (parts.length === 1) {
-    const sec = Number(parts[0]);
-    if (Number.isFinite(sec) && sec > 0) {
-      h = Math.floor(sec / 3600);
-      const rem = sec % 3600;
-      m = Math.floor(rem / 60);
-      s = rem % 60;
-    }
-  } else if (parts.length === 2) {
-    m = clampInt(parts[0], 59);
-    s = clampInt(parts[1], 59);
-  } else if (parts.length >= 3) {
-    h = clampInt(parts[0], 99);
-    m = clampInt(parts[1], 59);
-    s = clampInt(parts[2], 59);
+function validateAiRecipeInput(
+  lang: Lang,
+  parsed: any
+): ActionResult<AiRecipeInput> {
+  if (!parsed || typeof parsed !== "object") {
+    return {
+      ok: false,
+      error:
+        lang === "cs"
+          ? "Očekávám JSON objekt s vlastnostmi title, time, ingredients a steps."
+          : "Expected a JSON object with title, time, ingredients and steps.",
+    };
   }
 
-  return {
-    h: String(h).padStart(2, "0"),
-    m: String(m).padStart(2, "0"),
-    s: String(s).padStart(2, "0"),
-  };
+  if (!parsed.title || typeof parsed.title !== "string") {
+    return {
+      ok: false,
+      error: lang === "cs" ? "Chybí title." : "Missing title.",
+    };
+  }
+
+  if (!parsed.time || typeof parsed.time !== "string") {
+    return {
+      ok: false,
+      error: lang === "cs" ? "Chybí time (HH:MM)." : "Missing time (HH:MM).",
+    };
+  }
+
+  if (!Array.isArray(parsed.ingredients) || parsed.ingredients.length === 0) {
+    return {
+      ok: false,
+      error:
+        lang === "cs"
+          ? "Chybí ingredients (alespoň jedna ingredience)."
+          : "Missing ingredients (at least one item).",
+    };
+  }
+
+  if (!Array.isArray(parsed.steps) || parsed.steps.length === 0) {
+    return {
+      ok: false,
+      error:
+        lang === "cs"
+          ? "Chybí steps (alespoň jeden krok s description)."
+          : "Missing steps (at least one step with description).",
+    };
+  }
+
+  return { ok: true, data: parsed as AiRecipeInput };
 }
 
-function convertRecipeTimeToDate(time: string): Date {
-  const d = new Date(0);
-  if (!time) return d;
-
-  const parts = time.split(":");
-  const h = Number(parts[0] ?? 0);
-  const m = Number(parts[1] ?? 0);
-
-  d.setHours(Number.isFinite(h) ? h : 0);
-  d.setMinutes(Number.isFinite(m) ? m : 0);
-  d.setSeconds(0);
-
-  return d;
-}
+/* =========================
+   SCREEN
+========================= */
 
 export default function NewRecipeScreen() {
   const router = useRouter();
-  const { colors } = useTheme(); // 🎨 sem si sáhneš na barvy
-  // hlavní info
+  const { colors } = useTheme();
+
+  // base fields
   const [title, setTitle] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty>("Beginner");
-  const [time, setTime] = useState(""); // např. "00:20" nebo "20 min"
-
+  const [time, setTime] = useState(""); // "HH:MM"
   const [isPublic, setIsPublic] = useState(false);
 
   // thumbnail
   const [thumbUri, setThumbUri] = useState<string | null>(null);
   const [thumbMediaType, setThumbMediaType] = useState<LocalMediaType>("image");
 
-  // kroky
+  // steps + ingredients
   const [steps, setSteps] = useState<LocalStep[]>([
     { description: "", timerInput: "", localUri: null, mediaType: null },
   ]);
-
-  // ingredience
   const [ingredients, setIngredients] = useState<string[]>([""]);
 
-  // UI stav
+  // UI
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
   const [lang, setLang] = useState<Lang>("en");
   const [showTimePicker, setShowTimePicker] = useState(false);
 
+  // AI mode
   const [aiMode, setAiMode] = useState(false);
   const [aiText, setAiText] = useState("");
   const [aiImportErr, setAiImportErr] = useState<string | null>(null);
 
-  function importFromAiJson(raw: string) {
-    setAiImportErr(null);
+  // init lang
+  useEffect(() => {
+    (async () => setLang(await loadLang()))();
+  }, []);
 
-    let parsed: any;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      setAiImportErr(
-        lang === "cs" ? "Text není validní JSON." : "Text is not valid JSON."
-      );
-      return;
-    }
+  /* =========================
+     DERIVED
+  ========================= */
 
-    if (!parsed || typeof parsed !== "object") {
-      setAiImportErr(
-        lang === "cs"
-          ? "Očekávám JSON objekt s vlastnostmi title, time, ingredients a steps."
-          : "Expected a JSON object with title, time, ingredients and steps."
-      );
-      return;
-    }
+  const timePickerDate = useMemo(() => convertRecipeTimeToDate(time), [time]);
 
-    const data = parsed as AiRecipeInput;
+  /* =========================
+     HANDLERS
+  ========================= */
 
-    if (!data.title || typeof data.title !== "string") {
-      setAiImportErr(
-        lang === "cs" ? "Chybí title (název receptu)." : "Missing title."
-      );
-      return;
-    }
+  const handlePickThumb = useCallback(async () => {
+    const picked = await pickMediaFromLibrary();
+    if (!picked) return;
+    setThumbUri(picked.uri);
+    setThumbMediaType(picked.mediaType);
+  }, []);
 
-    if (!data.time || typeof data.time !== "string") {
-      setAiImportErr(
-        lang === "cs"
-          ? "Chybí time (čas ve formátu HH:MM)."
-          : "Missing time (HH:MM)."
-      );
-      return;
-    }
+  const handlePickStepMedia = useCallback(async (index: number) => {
+    const picked = await pickMediaFromLibrary();
+    if (!picked) return;
 
-    if (!Array.isArray(data.ingredients) || data.ingredients.length === 0) {
-      setAiImportErr(
-        lang === "cs"
-          ? "Chybí ingredients (alespoň jedna ingredience)."
-          : "Missing ingredients (at least one item)."
-      );
-      return;
-    }
-
-    if (!Array.isArray(data.steps) || data.steps.length === 0) {
-      setAiImportErr(
-        lang === "cs"
-          ? "Chybí steps (alespoň jeden krok s description)."
-          : "Missing steps (at least one step with description)."
-      );
-      return;
-    }
-
-    // ✅ přepíšeme formulář
-    setTitle(data.title.trim());
-
-    if (data.difficulty && DIFFICULTIES.includes(data.difficulty)) {
-      setDifficulty(data.difficulty);
-    } else {
-      setDifficulty("Beginner");
-    }
-
-    setTime(data.time.trim());
-
-    setIngredients(
-      data.ingredients.map((i) => String(i || "").trim()).filter(Boolean)
+    setSteps((prev) =>
+      prev.map((s, i) =>
+        i === index
+          ? { ...s, localUri: picked.uri, mediaType: picked.mediaType }
+          : s
+      )
     );
+  }, []);
 
-    const mappedSteps: LocalStep[] = data.steps.map((s) => ({
-      description: String(s.description || "").trim(),
-      timerInput: secondsToHmsInput(s.timerSeconds),
-      localUri: null,
-      mediaType: null,
-    }));
+  const updateStepDesc = useCallback((index: number, value: string) => {
+    setSteps((prev) =>
+      prev.map((s, i) => (i === index ? { ...s, description: value } : s))
+    );
+  }, []);
 
-    setSteps(
-      mappedSteps.length > 0
-        ? mappedSteps
-        : [
-            {
-              description: "",
-              timerInput: "",
-              localUri: null,
-              mediaType: null,
-            },
-          ]
+  const addStep = useCallback(() => {
+    setSteps((prev) => [
+      ...prev,
+      { description: "", timerInput: "", localUri: null, mediaType: null },
+    ]);
+  }, []);
+
+  const removeStep = useCallback((index: number) => {
+    setSteps((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const updateIngredient = useCallback((index: number, value: string) => {
+    setIngredients((prev) => prev.map((ing, i) => (i === index ? value : ing)));
+  }, []);
+
+  const addIngredient = useCallback(() => {
+    setIngredients((prev) => [...prev, ""]);
+  }, []);
+
+  const removeIngredient = useCallback((index: number) => {
+    setIngredients((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  function updateStepTimerPart(
+    index: number,
+    part: "h" | "m" | "s",
+    raw: string
+  ) {
+    setSteps((prev) =>
+      prev.map((step, i) => {
+        if (i !== index) return step;
+
+        const current = splitTimerHMS(step.timerInput);
+        const max = part === "h" ? 99 : 59;
+        const n = clampInt(raw, max);
+
+        const nextH = part === "h" ? n : Number(current.h);
+        const nextM = part === "m" ? n : Number(current.m);
+        const nextS = part === "s" ? n : Number(current.s);
+
+        const formatted = `${String(nextH).padStart(2, "0")}:${String(
+          nextM
+        ).padStart(2, "0")}:${String(nextS).padStart(2, "0")}`;
+
+        return { ...step, timerInput: formatted };
+      })
     );
   }
 
-  const handleCopyAiPrompt = async () => {
+  function handleRecipeTimeChange(date: Date | undefined) {
+    if (!date) {
+      setShowTimePicker(false);
+      return;
+    }
+
+    const h = date.getHours();
+    const m = date.getMinutes();
+
+    const formatted = `${String(h).padStart(2, "0")}:${String(m).padStart(
+      2,
+      "0"
+    )}`;
+    setTime(formatted);
+    setShowTimePicker(false);
+  }
+
+  const handleCopyAiPrompt = useCallback(async () => {
     const prompt =
       lang === "cs"
         ? `Přepiš prosím následující recept do strukturovaného JSON formátu:
@@ -470,126 +587,72 @@ Here is the recipe:`;
         ? "Prompt pro AI byl zkopírován."
         : "AI prompt has been copied."
     );
-  };
+  }, [lang]);
 
-  function handleRecipeTimeChange(date: Date | undefined) {
-    if (!date) {
-      setShowTimePicker(false);
-      return;
-    }
+  const importFromAiJson = useCallback(
+    (raw: string) => {
+      setAiImportErr(null);
 
-    const h = date.getHours();
-    const m = date.getMinutes();
+      let parsed: any;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        setAiImportErr(
+          lang === "cs" ? "Text není validní JSON." : "Text is not valid JSON."
+        );
+        return;
+      }
 
-    const formatted = `${String(h).padStart(2, "0")}:${String(m).padStart(
-      2,
-      "0"
-    )}`;
+      const validated = validateAiRecipeInput(lang, parsed);
+      if (!validated.ok) {
+        setAiImportErr(validated.error);
+        return;
+      }
 
-    setTime(formatted);
-    setShowTimePicker(false);
-  }
+      const data = validated.data;
 
-  function updateStepTimerPart(
-    index: number,
-    part: "h" | "m" | "s",
-    raw: string
-  ) {
-    setSteps((prev) =>
-      prev.map((step, i) => {
-        if (i !== index) return step;
+      // ✅ apply into the form
+      setTitle(data.title.trim());
 
-        const current = splitTimerHMS(step.timerInput);
-        const max = part === "h" ? 99 : 59;
-        const n = clampInt(raw, max);
+      if (data.difficulty && DIFFICULTIES.includes(data.difficulty))
+        setDifficulty(data.difficulty);
+      else setDifficulty("Beginner");
 
-        const nextH = part === "h" ? n : Number(current.h);
-        const nextM = part === "m" ? n : Number(current.m);
-        const nextS = part === "s" ? n : Number(current.s);
+      setTime(data.time.trim());
 
-        const formatted = `${String(nextH).padStart(2, "0")}:${String(
-          nextM
-        ).padStart(2, "0")}:${String(nextS).padStart(2, "0")}`;
+      setIngredients(
+        data.ingredients.map((i) => String(i || "").trim()).filter(Boolean)
+      );
 
-        return { ...step, timerInput: formatted };
-      })
-    );
-  }
+      const mappedSteps: LocalStep[] = data.steps.map((s) => ({
+        description: String(s.description || "").trim(),
+        timerInput: secondsToHmsInput(s.timerSeconds),
+        localUri: null,
+        mediaType: null,
+      }));
 
-  useEffect(() => {
-    (async () => {
-      const stored = await AsyncStorage.getItem(LANG_KEY);
-      if (stored === "cs" || stored === "en") setLang(stored);
-    })();
-  }, []);
+      setSteps(
+        mappedSteps.length > 0
+          ? mappedSteps
+          : [
+              {
+                description: "",
+                timerInput: "",
+                localUri: null,
+                mediaType: null,
+              },
+            ]
+      );
+    },
+    [lang]
+  );
 
-  function translateDifficulty(lang: Lang, diff: string) {
-    if (lang === "cs") {
-      if (diff === "Beginner") return "Začátečník";
-      if (diff === "Intermediate") return "Pokročílý";
-      if (diff === "Hard") return "Expert";
-    }
-    return diff;
-  }
-
-  const handlePickThumb = async () => {
-    const picked = await pickMediaFromLibrary();
-    if (!picked) return;
-    setThumbUri(picked.uri);
-    setThumbMediaType(picked.mediaType);
-  };
-
-  const handlePickStepMedia = async (index: number) => {
-    const picked = await pickMediaFromLibrary();
-    if (!picked) return;
-
-    setSteps((prev) =>
-      prev.map((s, i) =>
-        i === index
-          ? {
-              ...s,
-              localUri: picked.uri,
-              mediaType: picked.mediaType,
-            }
-          : s
-      )
-    );
-  };
-
-  const updateStepDesc = (index: number, value: string) => {
-    setSteps((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, description: value } : s))
-    );
-  };
-
-  const addStep = () => {
-    setSteps((prev) => [
-      ...prev,
-      { description: "", timerInput: "", localUri: null, mediaType: null },
-    ]);
-  };
-
-  const removeStep = (index: number) => {
-    setSteps((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const updateIngredient = (index: number, value: string) => {
-    setIngredients((prev) => prev.map((ing, i) => (i === index ? value : ing)));
-  };
-
-  const addIngredient = () => {
-    setIngredients((prev) => [...prev, ""]);
-  };
-
-  const removeIngredient = (index: number) => {
-    setIngredients((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     try {
       setErr(null);
       setSuccessMsg(null);
 
+      // ---- basic validation
       if (!title.trim() || !difficulty || !time.trim()) {
         setErr(t(lang, "newRecipe", "errorFillMainFields"));
         return;
@@ -603,21 +666,20 @@ Here is the recipe:`;
         return;
       }
 
-      // validace timerů
+      // ---- timer validation
       for (let i = 0; i < steps.length; i++) {
         const raw = steps[i].timerInput.trim();
         if (!raw) continue;
         const seconds = parseTimerInput(raw);
         if (!seconds) {
-          // ❌ nevalidní timer → ukončit
           setErr(
             lang === "cs"
               ? `Krok ${
                   i + 1
-                }: Časovač musí být ve formátu "mm:ss" nebo jako počet sekund.`
+                }: Časovač musí být ve formátu "mm:ss", "hh:mm:ss" nebo jako počet sekund.`
               : `Step ${
                   i + 1
-                }: Timer must be in format "mm:ss" or a number of seconds.`
+                }: Timer must be in "mm:ss", "hh:mm:ss" or a number of seconds.`
           );
           return;
         }
@@ -634,20 +696,15 @@ Here is the recipe:`;
         return;
       }
 
-      // kroky do payloadu – stejně jako web + navíc timerSeconds
+      // ---- payload steps (web parity + timerSeconds)
       const payloadSteps = steps
         .map((s) => {
           const description = (s.description || "").trim();
-          const base: any = {
-            type: "text",
-            description,
-          };
+          const base: any = { type: "text", description };
 
           const rawTimer = s.timerInput.trim();
           const seconds = rawTimer ? parseTimerInput(rawTimer) : null;
-          if (seconds && seconds > 0) {
-            base.timerSeconds = seconds;
-          }
+          if (seconds && seconds > 0) base.timerSeconds = seconds;
 
           return base;
         })
@@ -665,7 +722,7 @@ Here is the recipe:`;
         isPublic: false, // stejně jako web – public až po uploadech
       };
 
-      // 1) vytvoř my-recipe
+      // 1) create my-recipe
       const created = await fetchJSON<any>(`${BASE}/api/my-recipes`, {
         method: "POST",
         headers: {
@@ -674,18 +731,21 @@ Here is the recipe:`;
         },
         body: JSON.stringify(payload),
       });
-      const recipeId = created._id as string;
 
-      // 2) thumbnail
+      const recipeId = String(created?._id || "");
+      if (!recipeId) throw new Error("Recipe creation failed (missing _id).");
+
+      // 2) thumbnail upload
       if (thumbUri) {
-        await uploadRecipeMediaMobile(token, recipeId, thumbUri);
+        const up = await uploadRecipeMediaMobile(token, recipeId, thumbUri);
+        if (!up.ok) throw new Error(up.error);
       }
 
-      // 3) media ke krokům – indexy držíme stejné jako na webu
-      await Promise.all(
+      // 3) steps media upload (keep original indices)
+      const uploads = await Promise.all(
         steps.map(async (s, index) => {
           if (s.localUri && s.mediaType) {
-            await uploadStepMediaMobile(
+            return uploadStepMediaMobile(
               token,
               recipeId,
               index,
@@ -693,20 +753,23 @@ Here is the recipe:`;
               s.mediaType
             );
           }
+          return { ok: true, data: true } as ActionResult<true>;
         })
       );
 
-      // 4) publish (pokud je zvoleno Public)
+      const failed = uploads.find((r) => !r.ok) as
+        | ActionResult<true>
+        | undefined;
+      if (failed && !failed.ok) throw new Error(failed.error);
+
+      // 4) publish if chosen
       if (isPublic) {
-        await publishRecipeMobile(token, recipeId);
+        const pub = await publishRecipeMobile(token, recipeId);
+        if (!pub.ok) throw new Error(pub.error);
       }
 
       setSuccessMsg(
-        lang === "cs"
-          ? isPublic
-            ? t(lang, "newRecipe", "recipeCreatedPublic")
-            : t(lang, "newRecipe", "recipeCreated")
-          : isPublic
+        isPublic
           ? t(lang, "newRecipe", "recipeCreatedPublic")
           : t(lang, "newRecipe", "recipeCreated")
       );
@@ -718,22 +781,30 @@ Here is the recipe:`;
           : "The recipe was successfully created."
       );
 
-      // reset formuláře
+      // reset form
       setTitle("");
       setDifficulty("Beginner");
       setTime("");
       setIsPublic(false);
       setThumbUri(null);
+      setThumbMediaType("image");
       setSteps([
         { description: "", timerInput: "", localUri: null, mediaType: null },
       ]);
       setIngredients([""]);
+      setAiText("");
+      setAiImportErr(null);
+      setAiMode(false);
     } catch (e: any) {
       setErr(e?.message || t(lang, "newRecipe", "saveFailed"));
     } finally {
       setSaving(false);
     }
-  };
+  }, [title, difficulty, time, steps, ingredients, isPublic, thumbUri, lang]);
+
+  /* =========================
+     UI
+  ========================= */
 
   return (
     <ScrollView
@@ -750,7 +821,7 @@ Here is the recipe:`;
         <Text style={[styles.success, { color: "#7cd992" }]}>{successMsg}</Text>
       )}
 
-      {/* Hlavní info */}
+      {/* MAIN INFO */}
       <View
         style={[
           styles.card,
@@ -786,10 +857,7 @@ Here is the recipe:`;
                 key={d}
                 style={[
                   styles.chip,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                  },
+                  { backgroundColor: colors.card, borderColor: colors.border },
                   active && {
                     backgroundColor: colors.pillActive,
                     borderColor: colors.pillActive,
@@ -812,7 +880,6 @@ Here is the recipe:`;
         </View>
 
         <Text style={[styles.label, { color: colors.text }]}>
-          {" "}
           {t(lang, "newRecipe", "timeLabel")}
         </Text>
         <Pressable
@@ -827,10 +894,7 @@ Here is the recipe:`;
           ]}
         >
           <Text
-            style={{
-              color: time ? colors.text : colors.muted,
-              fontSize: 14,
-            }}
+            style={{ color: time ? colors.text : colors.muted, fontSize: 14 }}
           >
             {time ||
               (lang === "cs" ? "Vyber čas (HH:MM)" : "Select time (HH:MM)")}
@@ -841,22 +905,20 @@ Here is the recipe:`;
           <DateTimePicker
             mode="time"
             display="spinner"
-            value={convertRecipeTimeToDate(time)}
+            value={timePickerDate}
             onChange={(_, date) => handleRecipeTimeChange(date || undefined)}
           />
         )}
 
         <View style={styles.publicRow}>
           <Text style={[styles.label, { color: colors.text }]}>
-            {" "}
             {t(lang, "newRecipe", "publicLabel")}
           </Text>
           <Switch value={isPublic} onValueChange={setIsPublic} />
         </View>
       </View>
 
-      {/* Thumbnail */}
-      {/* AI mód – Vaříte s AI */}
+      {/* AI MODE */}
       <View
         style={[
           styles.card,
@@ -877,14 +939,12 @@ Here is the recipe:`;
                 ? `1. Otevřete AI (např. ChatGPT) a vložte váš recept.
 2. Použijte níže uvedený JSON formát.
 3. Název, ingredience i kroky mohou být v češtině.
-4. ⚠️ Pole "difficulty" MUSÍ zůstat v angličtině a musí být jedno z:
-   "Beginner", "Intermediate", "Hard".
+4. ⚠️ Pole "difficulty" MUSÍ zůstat v angličtině: "Beginner" | "Intermediate" | "Hard".
 5. AI musí odpovědět pouze čistým JSONem bez vysvětlení.`
                 : `1. Open an AI assistant (e.g. ChatGPT) and paste your recipe.
 2. Tell it to use the JSON format below.
 3. Title, ingredients and steps may be in your language.
-4. ⚠️ The "difficulty" field MUST stay in English and must be one of:
-   "Beginner", "Intermediate", "Hard".
+4. ⚠️ "difficulty" MUST stay in English: "Beginner" | "Intermediate" | "Hard".
 5. AI must output ONLY clean JSON, no explanation.`}
             </Text>
 
@@ -916,6 +976,7 @@ Here is the recipe:`;
 }`}
               </Text>
             </View>
+
             <Pressable
               style={[styles.aiCopyBtn, { borderColor: colors.border }]}
               onPress={handleCopyAiPrompt}
@@ -946,7 +1007,7 @@ Here is the recipe:`;
               multiline
               placeholder={
                 lang === "cs"
-                  ? "Sem vložte JSON text vygenerovaný AI..."
+                  ? "Sem vložte JSON z AI..."
                   : "Paste the JSON text from AI here..."
               }
               placeholderTextColor={colors.muted}
@@ -966,6 +1027,7 @@ Here is the recipe:`;
         )}
       </View>
 
+      {/* THUMBNAIL */}
       <View
         style={[
           styles.card,
@@ -973,7 +1035,6 @@ Here is the recipe:`;
         ]}
       >
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {" "}
           {t(lang, "newRecipe", "thumbTitle")}
         </Text>
         <Pressable
@@ -999,188 +1060,188 @@ Here is the recipe:`;
         </Pressable>
       </View>
 
-      {/* Steps */}
+      {/* STEPS */}
       <View
         style={[
           styles.card,
           { backgroundColor: colors.card, borderColor: colors.border },
         ]}
       >
-        <Text style={styles.sectionTitle}>
-          {" "}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t(lang, "newRecipe", "stepsTitle")}
         </Text>
-        {steps.map((step, index) => (
-          <View
-            key={index}
-            style={[
-              styles.stepCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.stepHeaderRow}>
-              <Text style={[styles.stepTitle, { color: colors.text }]}>
-                {" "}
-                {t(lang, "newRecipe", "stepLabelPrefix")} {index + 1}
-              </Text>
-              {steps.length > 1 && (
-                <Pressable
-                  onPress={() => removeStep(index)}
-                  style={styles.removeBtn}
-                >
-                  <Text style={styles.removeBtnText}>X</Text>
-                </Pressable>
-              )}
-            </View>
 
-            <TextInput
-              style={[
-                styles.input,
-                styles.multilineInput,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  color: colors.text,
-                },
-              ]}
-              placeholderTextColor={colors.muted}
-              placeholder={t(lang, "newRecipe", "stepDescribePlaceholder")}
-              multiline
-              value={step.description}
-              onChangeText={(val) => updateStepDesc(index, val)}
-            />
+        {steps.map((step, index) => {
+          const { h, m, s } = splitTimerHMS(step.timerInput);
 
-            <Pressable
+          return (
+            <View
+              key={index}
               style={[
-                styles.stepMediaBox,
+                styles.stepCard,
                 { backgroundColor: colors.card, borderColor: colors.border },
               ]}
-              onPress={() => handlePickStepMedia(index)}
             >
-              {step.localUri ? (
-                step.mediaType === "image" ? (
-                  <Image
-                    source={{ uri: step.localUri }}
-                    style={styles.stepImage}
-                  />
+              <View style={styles.stepHeaderRow}>
+                <Text style={[styles.stepTitle, { color: colors.text }]}>
+                  {t(lang, "newRecipe", "stepLabelPrefix")} {index + 1}
+                </Text>
+
+                {steps.length > 1 && (
+                  <Pressable
+                    onPress={() => removeStep(index)}
+                    style={styles.removeBtn}
+                  >
+                    <Text style={styles.removeBtnText}>X</Text>
+                  </Pressable>
+                )}
+              </View>
+
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.multilineInput,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  },
+                ]}
+                placeholderTextColor={colors.muted}
+                placeholder={t(lang, "newRecipe", "stepDescribePlaceholder")}
+                multiline
+                value={step.description}
+                onChangeText={(val) => updateStepDesc(index, val)}
+              />
+
+              <Pressable
+                style={[
+                  styles.stepMediaBox,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+                onPress={() => handlePickStepMedia(index)}
+              >
+                {step.localUri ? (
+                  step.mediaType === "image" ? (
+                    <Image
+                      source={{ uri: step.localUri }}
+                      style={styles.stepImage}
+                    />
+                  ) : (
+                    <Text
+                      style={[styles.thumbPlaceholder, { color: colors.muted }]}
+                    >
+                      {t(lang, "newRecipe", "stepVideoSelected")}
+                    </Text>
+                  )
                 ) : (
                   <Text
                     style={[styles.thumbPlaceholder, { color: colors.muted }]}
                   >
-                    {" "}
-                    {t(lang, "newRecipe", "stepVideoSelected")}
+                    {t(lang, "newRecipe", "stepMediaPlaceholder")}
                   </Text>
-                )
-              ) : (
+                )}
+              </Pressable>
+
+              <View style={styles.timerRow}>
                 <Text
-                  style={[styles.thumbPlaceholder, { color: colors.muted }]}
+                  style={[styles.timerLabel, { color: colors.secondaryText }]}
                 >
-                  {t(lang, "newRecipe", "stepMediaPlaceholder")}
+                  {lang === "cs"
+                    ? "Časovač (volitelné, HH:MM:SS)"
+                    : "Timer (optional, HH:MM:SS)"}
                 </Text>
-              )}
-            </Pressable>
 
-            <View style={styles.timerRow}>
-              <Text
-                style={[styles.timerLabel, { color: colors.secondaryText }]}
-              >
-                {lang === "cs"
-                  ? "Časovač (volitelné, HH:MM:SS)"
-                  : "Timer (optional, HH:MM:SS)"}
-              </Text>
-
-              {(() => {
-                const { h, m, s } = splitTimerHMS(step.timerInput);
-                return (
-                  <View style={styles.timerHmsRow}>
-                    <View style={styles.timerField}>
-                      <Text style={styles.timerFieldLabel}>h</Text>
-                      <TextInput
-                        style={[
-                          styles.timerFieldInput,
-                          {
-                            backgroundColor: colors.card,
-                            borderColor: colors.border,
-                            color: colors.text,
-                          },
-                        ]}
-                        keyboardType="number-pad"
-                        value={h}
-                        onChangeText={(val) =>
-                          updateStepTimerPart(index, "h", val)
-                        }
-                        placeholder="00"
-                        placeholderTextColor={colors.muted}
-                      />
-                    </View>
-
-                    <View style={styles.timerField}>
-                      <Text style={styles.timerFieldLabel}>m</Text>
-                      <TextInput
-                        style={[
-                          styles.timerFieldInput,
-                          {
-                            backgroundColor: colors.card,
-                            borderColor: colors.border,
-                            color: colors.text,
-                          },
-                        ]}
-                        keyboardType="number-pad"
-                        value={m}
-                        onChangeText={(val) =>
-                          updateStepTimerPart(index, "m", val)
-                        }
-                        placeholder="00"
-                        placeholderTextColor={colors.muted}
-                      />
-                    </View>
-
-                    <View style={styles.timerField}>
-                      <Text style={styles.timerFieldLabel}>s</Text>
-                      <TextInput
-                        style={[
-                          styles.timerFieldInput,
-                          {
-                            backgroundColor: colors.card,
-                            borderColor: colors.border,
-                            color: colors.text,
-                          },
-                        ]}
-                        keyboardType="number-pad"
-                        value={s}
-                        onChangeText={(val) =>
-                          updateStepTimerPart(index, "s", val)
-                        }
-                        placeholder="00"
-                        placeholderTextColor={colors.muted}
-                      />
-                    </View>
+                <View style={styles.timerHmsRow}>
+                  <View style={styles.timerField}>
+                    <Text style={styles.timerFieldLabel}>h</Text>
+                    <TextInput
+                      style={[
+                        styles.timerFieldInput,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                      keyboardType="number-pad"
+                      value={h}
+                      onChangeText={(val) =>
+                        updateStepTimerPart(index, "h", val)
+                      }
+                      placeholder="00"
+                      placeholderTextColor={colors.muted}
+                    />
                   </View>
-                );
-              })()}
-            </View>
-          </View>
-        ))}
 
-        <Pressable style={styles.addBtn} onPress={addStep}>
+                  <View style={styles.timerField}>
+                    <Text style={styles.timerFieldLabel}>m</Text>
+                    <TextInput
+                      style={[
+                        styles.timerFieldInput,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                      keyboardType="number-pad"
+                      value={m}
+                      onChangeText={(val) =>
+                        updateStepTimerPart(index, "m", val)
+                      }
+                      placeholder="00"
+                      placeholderTextColor={colors.muted}
+                    />
+                  </View>
+
+                  <View style={styles.timerField}>
+                    <Text style={styles.timerFieldLabel}>s</Text>
+                    <TextInput
+                      style={[
+                        styles.timerFieldInput,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                          color: colors.text,
+                        },
+                      ]}
+                      keyboardType="number-pad"
+                      value={s}
+                      onChangeText={(val) =>
+                        updateStepTimerPart(index, "s", val)
+                      }
+                      placeholder="00"
+                      placeholderTextColor={colors.muted}
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
+          );
+        })}
+
+        <Pressable
+          style={[styles.addBtn, { borderColor: colors.border }]}
+          onPress={addStep}
+        >
           <Text style={[styles.addBtnText, { color: colors.text }]}>
-            {" "}
             {t(lang, "newRecipe", "addStepBtn")}
           </Text>
         </Pressable>
       </View>
 
-      {/* Ingredients */}
+      {/* INGREDIENTS */}
       <View
         style={[
           styles.card,
           { backgroundColor: colors.card, borderColor: colors.border },
         ]}
       >
-        <Text style={styles.sectionTitle}>
-          {" "}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {t(lang, "newRecipe", "ingredientsTitle")}
         </Text>
+
         {ingredients.map((ing, index) => (
           <View key={index} style={styles.ingredientRow}>
             <TextInput
@@ -1198,6 +1259,7 @@ Here is the recipe:`;
               value={ing}
               onChangeText={(val) => updateIngredient(index, val)}
             />
+
             {ingredients.length > 1 && (
               <Pressable
                 style={[styles.removeBtn, { backgroundColor: colors.card }]}
@@ -1210,6 +1272,7 @@ Here is the recipe:`;
             )}
           </View>
         ))}
+
         <Pressable
           style={[styles.addBtn, { borderColor: colors.border }]}
           onPress={addIngredient}
@@ -1220,13 +1283,11 @@ Here is the recipe:`;
         </Pressable>
       </View>
 
-      {/* Submit */}
+      {/* SUBMIT */}
       <Pressable
         style={[
           styles.submitBtn,
-          {
-            backgroundColor: colors.pillActive,
-          },
+          { backgroundColor: colors.pillActive },
           saving && styles.submitBtnDisabled,
         ]}
         onPress={saving ? undefined : handleSubmit}
@@ -1243,229 +1304,228 @@ Here is the recipe:`;
   );
 }
 
+/* =========================
+   STYLES
+========================= */
+
 const styles = StyleSheet.create({
   container: {
     padding: 16,
     paddingBottom: 32,
     gap: 16,
-    backgroundColor: "#0f0f0fff",
     paddingTop: 40,
   },
+
   card: {
-    backgroundColor: "#181818",
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#333",
   },
+
   label: {
-    color: "#ccc",
     marginBottom: 4,
     fontSize: 14,
   },
+
   input: {
-    backgroundColor: "#222",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: "#fff",
     borderWidth: 1,
-    borderColor: "#444",
     marginBottom: 12,
     fontSize: 14,
   },
+
   multilineInput: {
     minHeight: 80,
     textAlignVertical: "top",
   },
+
   sectionTitle: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 8,
   },
+
   difficultyRow: {
     flexDirection: "row",
     gap: 8,
     marginBottom: 12,
+    flexWrap: "wrap",
   },
+
   chip: {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#555",
   },
-  chipActive: {
-    backgroundColor: "#680e16ff",
-    borderColor: "#680e16ff",
-  },
+
   chipText: {
-    color: "#ccc",
     fontSize: 13,
+    fontWeight: "600",
   },
+
   chipTextActive: {
     color: "#fff",
   },
+
   publicRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 4,
   },
+
   thumbBox: {
     marginTop: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#444",
-    backgroundColor: "#222",
     padding: 12,
     alignItems: "center",
     justifyContent: "center",
     minHeight: 140,
   },
+
   thumbImage: {
     width: "100%",
     height: 180,
     borderRadius: 12,
   },
+
   thumbPlaceholder: {
-    color: "#777",
     fontSize: 13,
     textAlign: "center",
   },
+
   stepCard: {
-    backgroundColor: "#222",
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#444",
   },
+
   stepHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 6,
   },
+
   stepTitle: {
-    color: "#fff",
-    fontWeight: "500",
+    fontWeight: "600",
   },
+
   stepMediaBox: {
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#444",
-    backgroundColor: "#1b1b1b",
     padding: 10,
     alignItems: "center",
     justifyContent: "center",
     minHeight: 120,
     marginBottom: 10,
   },
+
   stepImage: {
     width: "100%",
     height: 160,
     borderRadius: 8,
   },
-  timerRow: {
-    marginTop: 4,
-  },
+
+  timerRow: { marginTop: 4 },
+
   timerLabel: {
-    color: "#aaa",
     fontSize: 12,
     marginBottom: 4,
   },
-  ingredientRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
-  ingredientInput: {
-    flex: 1,
-    marginBottom: 0,
-  },
-  addBtn: {
-    marginTop: 8,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#555",
-    alignItems: "center",
-  },
-  addBtnText: {
-    color: "#eee",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  submitBtn: {
-    marginTop: 8,
-    paddingVertical: 14,
-    borderRadius: 999,
-    backgroundColor: "#e63946",
-    alignItems: "center",
-  },
-  submitBtnDisabled: {
-    opacity: 0.6,
-  },
-  submitBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  removeBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: "#333",
-  },
-  removeBtnText: {
-    color: "#ff7676",
-    fontWeight: "600",
-    fontSize: 12,
-  },
-  error: {
-    color: "#ff7676",
-    marginBottom: 4,
-  },
-  success: {
-    color: "#7cd992",
-    marginBottom: 4,
-  },
+
   timerHmsRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginTop: 4,
   },
+
   timerField: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
   },
+
   timerFieldLabel: {
-    color: "#aaa",
     fontSize: 12,
   },
+
   timerFieldInput: {
     minWidth: 50,
     textAlign: "center",
-    backgroundColor: "#222",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 6,
-    color: "#fff",
     borderWidth: 1,
-    borderColor: "#444",
     fontSize: 13,
   },
+
+  ingredientRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+
+  ingredientInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+
+  addBtn: {
+    marginTop: 8,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+
+  addBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  submitBtn: {
+    marginTop: 8,
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: "center",
+  },
+
+  submitBtnDisabled: { opacity: 0.6 },
+
+  submitBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  removeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+
+  removeBtnText: {
+    fontWeight: "700",
+    fontSize: 12,
+  },
+
+  error: { marginBottom: 4 },
+  success: { marginBottom: 4 },
+
   aiHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 8,
   },
+
   aiFormatBox: {
     borderWidth: 1,
     borderRadius: 8,
@@ -1473,10 +1533,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 8,
   },
+
   aiTextInput: {
     minHeight: 120,
     textAlignVertical: "top",
   },
+
   aiImportBtn: {
     marginTop: 8,
     paddingVertical: 10,
@@ -1484,10 +1546,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
   },
+
   aiImportBtnText: {
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
   },
+
   aiCopyBtn: {
     alignSelf: "flex-start",
     marginTop: 4,
@@ -1497,8 +1561,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
+
   aiCopyBtnText: {
     fontSize: 12,
-    fontWeight: "500",
+    fontWeight: "600",
   },
 });

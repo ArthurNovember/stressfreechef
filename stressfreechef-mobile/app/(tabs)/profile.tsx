@@ -1,51 +1,293 @@
-import { t, Lang, LANG_KEY } from "../../i18n/strings";
-import Constants from "expo-constants";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  FlatList,
-  Image,
   ActivityIndicator,
   Alert,
-  StyleSheet,
-  ScrollView,
+  FlatList,
+  Image,
   Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
+
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_BASE, fetchJSON } from "../../lib/api";
-import { useTheme } from "../../theme/ThemeContext";
 import { router } from "expo-router";
 import { Video, ResizeMode } from "expo-av";
 import { MaterialIcons } from "@expo/vector-icons";
 
-const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
+import { t, Lang, LANG_KEY } from "../../i18n/strings";
+import { API_BASE, fetchJSON } from "../../lib/api";
+import { useTheme } from "../../theme/ThemeContext";
+
+/* =========================
+   TYPES
+========================= */
+
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
+
+type PagedResponse<T> = {
+  items?: T[];
+  page?: number;
+  pages?: number;
+};
+
+type Cover = { url: string; isVideo: boolean };
+
+type RecipeLike = any; // v budoucnu si to typneme stejně jako v ostatních screens
+
+type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
+/* =========================
+   CONSTS
+========================= */
+
+const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
+const TOKEN_KEY = "token";
+
+const SAVED_LIMIT = 8;
+const MY_LIMIT = 12;
+
+/* =========================
+   HELPERS (pure)
+========================= */
+
+function isVideoUrl(url = "") {
+  return /(\.mp4|\.webm|\.mov|\.m4v)(\?|#|$)/i.test(url);
+}
+
+function getCover(r: any): Cover {
+  const url =
+    r?.image?.url ||
+    r?.imgSrc ||
+    (r?.steps || []).find((s: any) => s?.type === "image" && s?.src)?.src ||
+    (r?.steps || []).find((s: any) => s?.src)?.src ||
+    "https://i.imgur.com/CZaFjz2.png";
+  return { url, isVideo: isVideoUrl(url) };
+}
+
+function translateDifficulty(lang: Lang, diff: string) {
+  if (lang === "cs") {
+    if (diff === "Beginner") return "Začátečník";
+    if (diff === "Intermediate") return "Pokročilý";
+    if (diff === "Hard") return "Expert";
+  }
+  return diff;
+}
+
+function isUnauthorizedError(e: any) {
+  const msg = String(e?.message ?? e ?? "");
+  return (
+    /\b401\b/i.test(msg) ||
+    /unauthor/i.test(msg) ||
+    (/token/i.test(msg) && /invalid|expire|platn/i.test(msg))
+  );
+}
+
+/* =========================
+   STORAGE (token/lang)
+========================= */
+
+async function getToken() {
+  return (await AsyncStorage.getItem(TOKEN_KEY)) || "";
+}
+async function setToken(tkn: string) {
+  await AsyncStorage.setItem(TOKEN_KEY, tkn);
+}
+async function clearToken() {
+  await AsyncStorage.removeItem(TOKEN_KEY);
+}
+async function loadLang(): Promise<Lang> {
+  try {
+    const stored = await AsyncStorage.getItem(LANG_KEY);
+    return stored === "cs" || stored === "en" ? stored : "en";
+  } catch {
+    return "en";
+  }
+}
+
+/* =========================
+   ACTIONS (async)
+========================= */
+
+async function addIngredientToShopping(ingredient: string, lang: Lang) {
+  const trimmed = ingredient.trim();
+  if (!trimmed) return;
+
+  try {
+    const token = await getToken();
+    if (!token) {
+      Alert.alert(
+        t(lang, "home", "loginRequiredTitle"),
+        t(lang, "home", "loginRequiredMsg")
+      );
+      return;
+    }
+
+    const res = await fetch(`${BASE}/api/shopping-list`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ text: trimmed, shop: [] }),
+    });
+
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {}
+
+    if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+    Alert.alert(
+      t(lang, "profile", "addedTitle"),
+      lang === "cs"
+        ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
+        : `"${trimmed}" was added to your shopping list.`
+    );
+  } catch (e: any) {
+    Alert.alert("Failed to add", e?.message || String(e));
+  }
+}
+
+async function fetchMe(token: string): Promise<ActionResult<any>> {
+  try {
+    const me = await fetchJSON(`${BASE}/api/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return { ok: true, data: me || null };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
+async function fetchMyRecipesPage(
+  token: string,
+  page: number
+): Promise<ActionResult<PagedResponse<RecipeLike>>> {
+  try {
+    const res = await fetchJSON<PagedResponse<RecipeLike>>(
+      `${BASE}/api/my-recipes?page=${page}&limit=${MY_LIMIT}`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return {
+      ok: true,
+      data: {
+        items: Array.isArray(res?.items) ? res.items : [],
+        page: Number(res?.page) || page,
+        pages: Number(res?.pages) || 1,
+      },
+    };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
+async function fetchSavedRecipesPage(
+  token: string,
+  page: number
+): Promise<ActionResult<PagedResponse<RecipeLike>>> {
+  try {
+    const res = await fetchJSON<PagedResponse<RecipeLike>>(
+      `${BASE}/api/saved-community-recipes?page=${page}&limit=${SAVED_LIMIT}&sort=newest`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return {
+      ok: true,
+      data: {
+        items: Array.isArray(res?.items) ? res.items : [],
+        page,
+        pages: Number(res?.pages) || 1,
+      },
+    };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
+async function deleteMyRecipe(
+  token: string,
+  id: string
+): Promise<ActionResult<true>> {
+  try {
+    const res = await fetch(`${BASE}/api/my-recipes/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      return { ok: false, error: `HTTP ${res.status}: ${txt.slice(0, 200)}` };
+    }
+
+    return { ok: true, data: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
+async function removeSavedRecipe(
+  token: string,
+  id: string
+): Promise<ActionResult<true>> {
+  try {
+    const res = await fetch(`${BASE}/api/saved-community-recipes/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok && res.status !== 204) {
+      const txt = await res.text();
+      return { ok: false, error: `HTTP ${res.status}: ${txt.slice(0, 200)}` };
+    }
+
+    return { ok: true, data: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
+/* =========================
+   UI: Rating
+========================= */
 
 function StarRatingDisplay({
   value,
   size = 16,
   count,
-  color,
+  textColor,
 }: {
   value: number;
   size?: number;
   count?: number;
-  color?: string;
+  textColor?: string;
 }) {
   const val = Math.max(0, Math.min(5, value || 0));
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+    <View style={styles.ratingRow}>
       <View style={{ flexDirection: "row" }}>
         {Array.from({ length: 5 }, (_, i) => {
           const diff = val - i;
 
           let icon: MaterialIconName = "star-border";
-
           if (diff >= 0.75) icon = "star";
           else if (diff >= 0.25) icon = "star-half";
 
@@ -63,7 +305,11 @@ function StarRatingDisplay({
 
       {typeof count === "number" ? (
         <Text
-          style={{ color: color || "#dcd7d7ff", fontSize: 12, opacity: 0.8 }}
+          style={{
+            color: textColor || "#dcd7d7ff",
+            fontSize: 12,
+            opacity: 0.8,
+          }}
         >
           {val.toFixed(1)} ({count})
         </Text>
@@ -72,101 +318,10 @@ function StarRatingDisplay({
   );
 }
 
-/** ===== Helpers ===== */
-const TOKEN_KEY = "token";
-async function getToken() {
-  return (await AsyncStorage.getItem(TOKEN_KEY)) || "";
-}
-async function setToken(t: string) {
-  await AsyncStorage.setItem(TOKEN_KEY, t);
-}
-async function clearToken() {
-  await AsyncStorage.removeItem(TOKEN_KEY);
-}
+/* =========================
+   AUTH FORM
+========================= */
 
-function isVideo(url = "") {
-  return /(\.mp4|\.webm|\.mov|\.m4v)(\?|#|$)/i.test(url);
-}
-
-function getCover(r: any) {
-  const url =
-    r?.image?.url ||
-    r?.imgSrc ||
-    (r?.steps || []).find((s: any) => s?.type === "image" && s?.src)?.src ||
-    (r?.steps || []).find((s: any) => s?.src)?.src ||
-    "https://i.imgur.com/CZaFjz2.png"; // placeholder
-  return { url, isVideo: isVideo(url) };
-}
-
-function translateDifficulty(lang: Lang, diff: string) {
-  if (lang === "cs") {
-    if (diff === "Beginner") return "Začátečník";
-    if (diff === "Intermediate") return "Pokročilý";
-    if (diff === "Hard") return "Expert";
-  }
-  return diff;
-}
-
-async function addIngredientToShopping(ingredient: string, lang: Lang) {
-  const trimmed = ingredient.trim();
-  if (!trimmed) return;
-
-  try {
-    const token = await getToken();
-    if (!token) {
-      Alert.alert(
-        t(lang, "home", "loginRequiredTitle"),
-        t(lang, "home", "loginRequiredMsg")
-      );
-      return;
-    }
-
-    const res = await fetch(`${API_BASE}/api/shopping-list`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        text: trimmed,
-        shop: [],
-      }),
-    });
-
-    let data: any = null;
-    try {
-      data = await res.json();
-    } catch {
-      // prázdná response = nevadí
-    }
-
-    if (!res.ok) {
-      throw new Error(data?.error || `HTTP ${res.status}`);
-    }
-
-    Alert.alert(
-      t(lang, "profile", "addedTitle"),
-      lang === "cs"
-        ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
-        : `"${trimmed}" was added to your shopping list.`
-    );
-  } catch (e: any) {
-    Alert.alert("Failed to add", e?.message || String(e));
-  }
-}
-
-// Pomůcka na rozpoznání „neautorizován“
-const isUnauthorizedError = (e: any) => {
-  const msg = String(e?.message ?? e ?? "");
-  // naše fetchJSON hází "HTTP 401: ..." – zároveň pokryjeme text tokenu
-  return (
-    /\\b401\\b/i.test(msg) ||
-    /unauthor/i.test(msg) ||
-    (/token/i.test(msg) && /invalid|expire|platn/i.test(msg))
-  );
-};
-
-/** ===== AuthForm (RN) ===== */
 function AuthFormRN({
   onLoggedIn,
   lang,
@@ -174,7 +329,8 @@ function AuthFormRN({
   onLoggedIn: () => void;
   lang: Lang;
 }) {
-  const { colors } = useTheme(); // 💡 TADY
+  const { colors } = useTheme();
+
   const [mode, setMode] = useState<"signup" | "login">("signup");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -187,20 +343,25 @@ function AuthFormRN({
       Alert.alert(t(lang, "profile", "passwordsDontMatch"));
       return;
     }
+
     try {
       setBusy(true);
-      const res = await fetch(`${API_BASE}/api/register`, {
+      const res = await fetch(`${BASE}/api/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password }),
       });
-      const data = await res.json();
+
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok)
         throw new Error(String(data?.error || "Registration error."));
+
       Alert.alert(
         t(lang, "profile", "registrationSuccessfulTitle"),
         t(lang, "profile", "registrationSuccessfulMsg")
       );
+
       setMode("login");
     } catch (e: any) {
       Alert.alert(
@@ -215,14 +376,17 @@ function AuthFormRN({
   async function handleLogin() {
     try {
       setBusy(true);
-      const res = await fetch(`${API_BASE}/api/login`, {
+
+      const res = await fetch(`${BASE}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
+
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.token)
         throw new Error(String(data?.error || "Login error."));
+
       await setToken(String(data.token));
       Alert.alert(t(lang, "profile", "loginSuccessfulTitle"));
 
@@ -250,10 +414,7 @@ function AuthFormRN({
           onPress={() => setMode("signup")}
           style={[
             styles.switchBtn,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-            },
+            { backgroundColor: colors.card, borderColor: colors.border },
             mode === "signup" && {
               backgroundColor: colors.pillActive,
               borderColor: colors.pillActive,
@@ -264,19 +425,17 @@ function AuthFormRN({
             {t(lang, "profile", "authSignUp")}
           </Text>
         </Pressable>
+
         <Pressable
+          onPress={() => setMode("login")}
           style={[
             styles.switchBtn,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-            },
+            { backgroundColor: colors.card, borderColor: colors.border },
             mode === "login" && {
               backgroundColor: colors.pillActive,
               borderColor: colors.pillActive,
             },
           ]}
-          onPress={() => setMode("login")}
         >
           <Text style={[styles.switchText, { color: colors.text }]}>
             {t(lang, "profile", "authLogin")}
@@ -284,7 +443,7 @@ function AuthFormRN({
         </Pressable>
       </View>
 
-      {mode === "signup" && (
+      {mode === "signup" ? (
         <View style={styles.form}>
           <Text style={[styles.label, { color: colors.text }]}>
             {t(lang, "profile", "username")}
@@ -302,6 +461,7 @@ function AuthFormRN({
             onChangeText={setUsername}
             autoCapitalize="none"
           />
+
           <Text style={[styles.label, { color: colors.text }]}>Email</Text>
           <TextInput
             style={[
@@ -317,8 +477,8 @@ function AuthFormRN({
             autoCapitalize="none"
             keyboardType="email-address"
           />
+
           <Text style={[styles.label, { color: colors.text }]}>
-            {" "}
             {t(lang, "profile", "password")}
           </Text>
           <TextInput
@@ -334,6 +494,7 @@ function AuthFormRN({
             onChangeText={setPassword}
             secureTextEntry
           />
+
           <Text style={[styles.label, { color: colors.text }]}>
             {t(lang, "profile", "confirmPassword")}
           </Text>
@@ -350,6 +511,7 @@ function AuthFormRN({
             onChangeText={setConfirm}
             secureTextEntry
           />
+
           <Pressable
             disabled={busy}
             onPress={handleSignup}
@@ -366,9 +528,7 @@ function AuthFormRN({
             </Text>
           </Pressable>
         </View>
-      )}
-
-      {mode === "login" && (
+      ) : (
         <View style={styles.form}>
           <Text style={[styles.label, { color: colors.text }]}>Email</Text>
           <TextInput
@@ -385,8 +545,8 @@ function AuthFormRN({
             autoCapitalize="none"
             keyboardType="email-address"
           />
+
           <Text style={[styles.label, { color: colors.text }]}>
-            {" "}
             {t(lang, "profile", "password")}
           </Text>
           <TextInput
@@ -402,6 +562,7 @@ function AuthFormRN({
             onChangeText={setPassword}
             secureTextEntry
           />
+
           <Pressable
             disabled={busy}
             onPress={handleLogin}
@@ -423,7 +584,10 @@ function AuthFormRN({
   );
 }
 
-/** ===== MyProfile (RN) ===== */
+/* =========================
+   PROFILE (logged in)
+========================= */
+
 function MyProfileRN({
   onLoggedOut,
   lang,
@@ -431,124 +595,74 @@ function MyProfileRN({
   onLoggedOut: () => void;
   lang: Lang;
 }) {
-  const { colors } = useTheme(); // 💡
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
-  const [items, setItems] = useState<any[]>([]);
+  const { colors } = useTheme();
+
+  // user + modal
   const [user, setUser] = useState<any>(null);
   const [selected, setSelected] = useState<any | null>(null);
-  const SAVED_LIMIT = 8;
 
+  // status
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  // saved
   const [savedItems, setSavedItems] = useState<any[]>([]);
   const [savedPage, setSavedPage] = useState(1);
   const [savedPages, setSavedPages] = useState(1);
   const [savedLoadingMore, setSavedLoadingMore] = useState(false);
 
-  const MY_LIMIT = 12;
-
+  // my
+  const [myItems, setMyItems] = useState<any[]>([]);
   const [myPage, setMyPage] = useState(1);
   const [myPages, setMyPages] = useState(1);
   const [myLoadingMore, setMyLoadingMore] = useState(false);
 
-  const loadMyPage = useCallback(async (pageToLoad: number) => {
-    const token = await getToken();
-    if (!token) throw new Error("Missing token");
+  const selectedCover = useMemo(
+    () => (selected ? getCover(selected) : null),
+    [selected]
+  );
 
-    const res = await fetchJSON<{
-      items?: any[];
-      page?: number;
-      pages?: number;
-    }>(`${API_BASE}/api/my-recipes?page=${pageToLoad}&limit=${MY_LIMIT}`, {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const next = Array.isArray(res?.items) ? res.items : [];
-    setMyPages(Number(res?.pages) || 1);
-
-    setItems((prev) => (pageToLoad === 1 ? next : [...prev, ...next]));
-  }, []);
-
-  const loadMoreMy = useCallback(async () => {
-    if (myLoadingMore) return;
-    if (myPage >= myPages) return;
-
-    try {
-      setMyLoadingMore(true);
-      const nextPage = myPage + 1;
-      await loadMyPage(nextPage);
-      setMyPage(nextPage);
-    } catch (e: any) {
-      // klidně jen log/alert
-      console.log("Load more my failed:", e?.message || String(e));
-    } finally {
-      setMyLoadingMore(false);
-    }
-  }, [myLoadingMore, myPage, myPages, loadMyPage]);
-
-  const loadSavedPage = useCallback(async (pageToLoad: number) => {
-    const token = await getToken();
-    if (!token) throw new Error("Missing token");
-
-    const res = await fetchJSON<{
-      items?: any[];
-      pages?: number;
-    }>(
-      `${API_BASE}/api/saved-community-recipes?page=${pageToLoad}&limit=${SAVED_LIMIT}&sort=newest`,
-      {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    const next = Array.isArray(res?.items) ? res.items : [];
-    setSavedPages(Number(res?.pages) || 1);
-
-    setSavedItems((prev) => (pageToLoad === 1 ? next : [...prev, ...next]));
-  }, []);
-
-  const loadMoreSaved = useCallback(async () => {
-    if (savedLoadingMore) return;
-    if (savedPage >= savedPages) return;
-
-    try {
-      setSavedLoadingMore(true);
-      const nextPage = savedPage + 1;
-      await loadSavedPage(nextPage);
-      setSavedPage(nextPage);
-    } finally {
-      setSavedLoadingMore(false);
-    }
-  }, [savedLoadingMore, savedPage, savedPages, loadSavedPage]);
+  const logout = useCallback(async () => {
+    await clearToken();
+    onLoggedOut();
+  }, [onLoggedOut]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     setErr(null);
+
     try {
       const token = await getToken();
       if (!token) throw new Error("Missing token");
 
-      try {
-        const me = await fetchJSON(`${API_BASE}/api/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUser(me || null);
-      } catch {
-        setUser(null);
-      }
+      // me
+      const meRes = await fetchMe(token);
+      if (meRes.ok) setUser(meRes.data);
+      else setUser(null);
 
-      setMyPage(1);
-      setMyPages(1);
-      setItems([]);
-      await loadMyPage(1);
+      // reset paging
       setSavedPage(1);
       setSavedPages(1);
       setSavedItems([]);
-      await loadSavedPage(1);
+
+      setMyPage(1);
+      setMyPages(1);
+      setMyItems([]);
+
+      // load first pages
+      const [savedRes, myRes] = await Promise.all([
+        fetchSavedRecipesPage(token, 1),
+        fetchMyRecipesPage(token, 1),
+      ]);
+
+      if (!savedRes.ok) throw new Error(savedRes.error);
+      if (!myRes.ok) throw new Error(myRes.error);
+
+      setSavedItems(savedRes.data.items || []);
+      setSavedPages(savedRes.data.pages || 1);
+
+      setMyItems(myRes.data.items || []);
+      setMyPages(myRes.data.pages || 1);
     } catch (e: any) {
       if (isUnauthorizedError(e)) {
         await clearToken();
@@ -567,76 +681,122 @@ function MyProfileRN({
     }, [loadAll])
   );
 
-  const handleLogout = useCallback(async () => {
-    await clearToken();
-    onLoggedOut();
-  }, [onLoggedOut]);
+  const loadMoreSaved = useCallback(async () => {
+    if (savedLoadingMore) return;
+    if (savedPage >= savedPages) return;
 
-  const handleDeleteRecipe = useCallback(async (id: string) => {
-    Alert.alert(
-      t(lang, "profile", "deleteRecipeTitle"),
-      t(lang, "profile", "deleteRecipeMsg"),
-      [
+    try {
+      setSavedLoadingMore(true);
+      const token = await getToken();
+      const nextPage = savedPage + 1;
+
+      const res = await fetchSavedRecipesPage(token, nextPage);
+      if (!res.ok) throw new Error(res.error);
+
+      setSavedItems((prev) => [...prev, ...(res.data.items || [])]);
+      setSavedPage(nextPage);
+      setSavedPages(res.data.pages || 1);
+    } catch (e: any) {
+      console.log("Load more saved failed:", e?.message || String(e));
+    } finally {
+      setSavedLoadingMore(false);
+    }
+  }, [savedLoadingMore, savedPage, savedPages]);
+
+  const loadMoreMy = useCallback(async () => {
+    if (myLoadingMore) return;
+    if (myPage >= myPages) return;
+
+    try {
+      setMyLoadingMore(true);
+      const token = await getToken();
+      const nextPage = myPage + 1;
+
+      const res = await fetchMyRecipesPage(token, nextPage);
+      if (!res.ok) throw new Error(res.error);
+
+      setMyItems((prev) => [...prev, ...(res.data.items || [])]);
+      setMyPage(nextPage);
+      setMyPages(res.data.pages || 1);
+    } catch (e: any) {
+      console.log("Load more my failed:", e?.message || String(e));
+    } finally {
+      setMyLoadingMore(false);
+    }
+  }, [myLoadingMore, myPage, myPages]);
+
+  const confirmDeleteMy = useCallback(
+    (id: string) => {
+      Alert.alert(
+        t(lang, "profile", "deleteRecipeTitle"),
+        t(lang, "profile", "deleteRecipeMsg"),
+        [
+          { text: t(lang, "profile", "cancel"), style: "cancel" },
+          {
+            text: t(lang, "profile", "delete"),
+            style: "destructive",
+            onPress: async () => {
+              try {
+                const token = await getToken();
+                const res = await deleteMyRecipe(token, id);
+                if (!res.ok) throw new Error(res.error);
+
+                setMyItems((prev) => prev.filter((r) => String(r?._id) !== id));
+              } catch (e: any) {
+                Alert.alert("Deletion failed", e?.message || String(e));
+              }
+            },
+          },
+        ]
+      );
+    },
+    [lang]
+  );
+
+  const confirmRemoveSaved = useCallback(
+    (id: string) => {
+      Alert.alert(t(lang, "profile", "removeSavedTitle"), "", [
         { text: t(lang, "profile", "cancel"), style: "cancel" },
         {
-          text: t(lang, "profile", "delete"),
+          text: t(lang, "profile", "remove"),
           style: "destructive",
           onPress: async () => {
             try {
               const token = await getToken();
-              const res = await fetch(`${API_BASE}/api/my-recipes/${id}`, {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              if (!res.ok) {
-                const txt = await res.text();
-                throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
-              }
-              setItems((prev) => prev.filter((r) => r?._id !== id));
+              const res = await removeSavedRecipe(token, id);
+              if (!res.ok) throw new Error(res.error);
+
+              setSavedItems((prev) =>
+                prev.filter((r) => String(r?._id || r?.id) !== id)
+              );
             } catch (e: any) {
-              Alert.alert("Deletion failed", e?.message || String(e));
+              Alert.alert(
+                t(lang, "profile", "removeFailedTitle"),
+                e?.message || String(e)
+              );
             }
           },
         },
-      ]
-    );
-  }, []);
+      ]);
+    },
+    [lang]
+  );
 
-  const handleRemoveSaved = useCallback(async (id: string) => {
-    Alert.alert(t(lang, "profile", "removeSavedTitle"), "", [
-      { text: t(lang, "profile", "cancel"), style: "cancel" },
-      {
-        text: t(lang, "profile", "remove"),
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const token = await getToken();
-            const res = await fetch(
-              `${API_BASE}/api/saved-community-recipes/${id}`,
-              {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
-              }
-            );
-            if (!res.ok && res.status !== 204) {
-              const txt = await res.text();
-              throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
-            }
-            setSavedItems((prev) =>
-              prev.filter((r: any) => String(r?._id || r?.id) !== id)
-            );
-          } catch (e: any) {
-            Alert.alert(
-              t(lang, "profile", "removeFailedTitle"),
-              e?.message || String(e)
-            );
-          }
-        },
+  const openDetailFromModal = useCallback(() => {
+    if (!selected) return;
+
+    const rid = String(selected?._id || selected?.id || "");
+    router.push({
+      pathname: "/recipe/[id]",
+      params: {
+        id: rid,
+        recipe: JSON.stringify(selected),
+        source: "profile",
       },
-    ]);
-  }, []);
+    });
 
-  const selectedCover = selected ? getCover(selected) : null;
+    setSelected(null);
+  }, [selected]);
 
   if (loading) {
     return (
@@ -655,6 +815,7 @@ function MyProfileRN({
         <Text style={[styles.err, { color: colors.danger }]}>
           {t(lang, "profile", "errorPrefix")}: {err}
         </Text>
+
         <Pressable
           onPress={loadAll}
           style={[
@@ -672,23 +833,17 @@ function MyProfileRN({
 
   return (
     <View
-      style={{
-        flex: 1,
-        backgroundColor: colors.background,
-        paddingTop: 15,
-      }}
+      style={{ flex: 1, backgroundColor: colors.background, paddingTop: 15 }}
     >
+      {/* HEADER */}
       <View style={styles.profileHeader}>
-        <View style={{ flex: 1 }}></View>
+        <View style={{ flex: 1 }} />
         <View style={{ flexDirection: "row", gap: 8 }}>
           <Pressable
-            onPress={handleLogout}
+            onPress={logout}
             style={[
               styles.secondaryBtn,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
+              { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
             <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
@@ -697,185 +852,193 @@ function MyProfileRN({
           </Pressable>
         </View>
       </View>
-      <View>
-        {/* SAVED RECIPES */}
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t(lang, "profile", "savedRecipesTitle")}
-        </Text>
-        {savedItems.length === 0 ? (
-          <Text
-            style={{
-              opacity: 0.7,
-              paddingHorizontal: 16,
-              color: colors.muted,
-            }}
-          >
-            {t(lang, "profile", "savedEmpty")}
-          </Text>
-        ) : null}
-        <FlatList
-          data={savedItems}
-          onEndReached={loadMoreSaved}
-          onEndReachedThreshold={0.6}
-          ListFooterComponent={
-            savedLoadingMore ? (
-              <ActivityIndicator style={{ marginHorizontal: 12 }} />
-            ) : null
-          }
-          horizontal
-          keyExtractor={(r, idx) => String(r?._id || (r as any)?.id || idx)}
-          contentContainerStyle={{ padding: 12, gap: 12 }}
-          renderItem={({ item }) => {
-            const cover = getCover(item); // sjednocený zdroj
-            const rid = String(item?._id || (item as any)?.id || "");
-            return (
-              <View
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <Pressable
-                  style={{ flex: 1, flexDirection: "row" }}
-                  onPress={() => setSelected(item)}
-                >
-                  {cover.isVideo ? (
-                    <Video
-                      source={{ uri: cover.url }}
-                      style={styles.cardImg}
-                      resizeMode={ResizeMode.COVER}
-                      isMuted
-                      isLooping
-                      shouldPlay
-                    />
-                  ) : (
-                    <Image source={{ uri: cover.url }} style={styles.cardImg} />
-                  )}
 
-                  <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                    <Text
-                      style={[styles.cardTitle, { color: colors.text }]}
-                      numberOfLines={1}
-                    >
-                      {item?.title || "Untitled"}
-                    </Text>
-                    <Text
-                      style={[styles.metaText, { color: colors.secondaryText }]}
-                    >
-                      {t(lang, "home", "difficulty")}:{" "}
-                      {translateDifficulty(lang, item?.difficulty || "—")}
-                    </Text>
-                    <Text
-                      style={[styles.metaText, { color: colors.secondaryText }]}
-                    >
-                      {t(lang, "home", "time")}: {item?.time || "—"} ⏱️
-                    </Text>
-                    <StarRatingDisplay
-                      value={item?.ratingAvg ?? item?.rating ?? 0}
-                      count={item?.ratingCount}
-                      color={colors.secondaryText}
-                    />
-                  </View>
-                </Pressable>
+      {/* SAVED */}
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        {t(lang, "profile", "savedRecipesTitle")}
+      </Text>
 
-                <Pressable
-                  onPress={() => handleRemoveSaved(rid)}
-                  style={styles.deleteBtn}
-                >
-                  <MaterialIcons name="close" size={18} color={colors.text} />
-                </Pressable>
-              </View>
-            );
-          }}
-        />
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t(lang, "profile", "myRecipesTitle")}
+      {savedItems.length === 0 ? (
+        <Text
+          style={{ opacity: 0.7, paddingHorizontal: 16, color: colors.muted }}
+        >
+          {t(lang, "profile", "savedEmpty")}
         </Text>
-        {items.length === 0 ? (
-          <Text style={{ opacity: 0.7, paddingHorizontal: 16, color: "white" }}>
-            {t(lang, "profile", "myEmpty")}
-          </Text>
-        ) : null}
-        <FlatList
-          data={items}
-          keyExtractor={(r) => String(r?._id || r?.id)}
-          contentContainerStyle={{ padding: 12, gap: 12 }}
-          onEndReached={loadMoreMy}
-          onEndReachedThreshold={0.6}
-          ListFooterComponent={
-            myLoadingMore ? (
-              <ActivityIndicator style={{ marginVertical: 12 }} />
-            ) : null
-          }
-          renderItem={({ item }) => {
-            const cover = getCover(item);
-            const rid = String(item?._id || item?.id || "");
-            return (
-              <View
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                  },
-                ]}
+      ) : null}
+
+      <FlatList
+        data={savedItems}
+        horizontal
+        onEndReached={loadMoreSaved}
+        onEndReachedThreshold={0.6}
+        keyExtractor={(r, idx) => String(r?._id || r?.id || idx)}
+        contentContainerStyle={{ padding: 12, gap: 12 }}
+        ListFooterComponent={
+          savedLoadingMore ? (
+            <ActivityIndicator style={{ marginHorizontal: 12 }} />
+          ) : null
+        }
+        renderItem={({ item }) => {
+          const cover = getCover(item);
+          const rid = String(item?._id || item?.id || "");
+
+          return (
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Pressable
+                style={{ flex: 1, flexDirection: "row" }}
+                onPress={() => setSelected(item)}
               >
-                <Pressable
-                  style={{ flex: 1, flexDirection: "row" }}
-                  onPress={() => setSelected(item)}
-                >
-                  {cover.isVideo ? (
-                    <Video
-                      source={{ uri: cover.url }}
-                      style={styles.cardImg}
-                      resizeMode={ResizeMode.COVER}
-                      isMuted
-                      isLooping
-                      shouldPlay
-                    />
-                  ) : (
-                    <Image source={{ uri: cover.url }} style={styles.cardImg} />
-                  )}
-                  <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                    <Text
-                      style={[styles.cardTitle, { color: colors.text }]}
-                      numberOfLines={1}
-                    >
-                      {item?.title || "Untitled"}
-                    </Text>
-                    <Text
-                      style={[styles.metaText, { color: colors.secondaryText }]}
-                    >
-                      {t(lang, "home", "difficulty")}:{" "}
-                      {translateDifficulty(lang, item?.difficulty || "—")}
-                    </Text>
-                    <Text
-                      style={[styles.metaText, { color: colors.secondaryText }]}
-                    >
-                      {t(lang, "home", "time")}: {item?.time || "—"} ⏱️
-                    </Text>
-                    <StarRatingDisplay
-                      value={item?.ratingAvg ?? item?.rating ?? 0}
-                      count={item?.ratingCount}
-                      color={colors.secondaryText}
-                    />
-                  </View>
-                </Pressable>
-                <Pressable
-                  onPress={() => handleDeleteRecipe(String(item?._id))}
-                  style={styles.deleteBtn}
-                >
-                  <MaterialIcons name="close" size={18} color={colors.text} />
-                </Pressable>
-              </View>
-            );
-          }}
-        />
-      </View>
-      {/* Modal s náhledem receptu */}
+                {cover.isVideo ? (
+                  <Video
+                    source={{ uri: cover.url }}
+                    style={styles.cardImg}
+                    resizeMode={ResizeMode.COVER}
+                    isMuted
+                    isLooping
+                    shouldPlay
+                  />
+                ) : (
+                  <Image source={{ uri: cover.url }} style={styles.cardImg} />
+                )}
+
+                <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                  <Text
+                    style={[styles.cardTitle, { color: colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {item?.title || "Untitled"}
+                  </Text>
+
+                  <Text
+                    style={[styles.metaText, { color: colors.secondaryText }]}
+                  >
+                    {t(lang, "home", "difficulty")}:{" "}
+                    {translateDifficulty(lang, item?.difficulty || "—")}
+                  </Text>
+
+                  <Text
+                    style={[styles.metaText, { color: colors.secondaryText }]}
+                  >
+                    {t(lang, "home", "time")}: {item?.time || "—"} ⏱️
+                  </Text>
+
+                  <StarRatingDisplay
+                    value={item?.ratingAvg ?? item?.rating ?? 0}
+                    count={item?.ratingCount}
+                    textColor={colors.secondaryText}
+                  />
+                </View>
+              </Pressable>
+
+              <Pressable
+                onPress={() => confirmRemoveSaved(rid)}
+                style={styles.iconBtn}
+              >
+                <MaterialIcons name="close" size={18} color={colors.text} />
+              </Pressable>
+            </View>
+          );
+        }}
+      />
+
+      {/* MY RECIPES */}
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        {t(lang, "profile", "myRecipesTitle")}
+      </Text>
+
+      {myItems.length === 0 ? (
+        <Text
+          style={{ opacity: 0.7, paddingHorizontal: 16, color: colors.muted }}
+        >
+          {t(lang, "profile", "myEmpty")}
+        </Text>
+      ) : null}
+
+      <FlatList
+        data={myItems}
+        onEndReached={loadMoreMy}
+        onEndReachedThreshold={0.6}
+        keyExtractor={(r) => String(r?._id || r?.id)}
+        contentContainerStyle={{ padding: 12, gap: 12 }}
+        ListFooterComponent={
+          myLoadingMore ? (
+            <ActivityIndicator style={{ marginVertical: 12 }} />
+          ) : null
+        }
+        renderItem={({ item }) => {
+          const cover = getCover(item);
+          const rid = String(item?._id || item?.id || "");
+
+          return (
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Pressable
+                style={{ flex: 1, flexDirection: "row" }}
+                onPress={() => setSelected(item)}
+              >
+                {cover.isVideo ? (
+                  <Video
+                    source={{ uri: cover.url }}
+                    style={styles.cardImg}
+                    resizeMode={ResizeMode.COVER}
+                    isMuted
+                    isLooping
+                    shouldPlay
+                  />
+                ) : (
+                  <Image source={{ uri: cover.url }} style={styles.cardImg} />
+                )}
+
+                <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                  <Text
+                    style={[styles.cardTitle, { color: colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {item?.title || "Untitled"}
+                  </Text>
+
+                  <Text
+                    style={[styles.metaText, { color: colors.secondaryText }]}
+                  >
+                    {t(lang, "home", "difficulty")}:{" "}
+                    {translateDifficulty(lang, item?.difficulty || "—")}
+                  </Text>
+
+                  <Text
+                    style={[styles.metaText, { color: colors.secondaryText }]}
+                  >
+                    {t(lang, "home", "time")}: {item?.time || "—"} ⏱️
+                  </Text>
+
+                  <StarRatingDisplay
+                    value={item?.ratingAvg ?? item?.rating ?? 0}
+                    count={item?.ratingCount}
+                    textColor={colors.secondaryText}
+                  />
+                </View>
+              </Pressable>
+
+              <Pressable
+                onPress={() => confirmDeleteMy(rid)}
+                style={styles.iconBtn}
+              >
+                <MaterialIcons name="close" size={18} color={colors.text} />
+              </Pressable>
+            </View>
+          );
+        }}
+      />
+
+      {/* MODAL */}
       <Modal
         visible={!!selected}
         animationType="slide"
@@ -885,7 +1048,7 @@ function MyProfileRN({
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
             <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-              {selectedCover && selectedCover.isVideo ? (
+              {selectedCover?.isVideo ? (
                 <Video
                   source={{ uri: selectedCover.url }}
                   style={styles.modalImg}
@@ -903,12 +1066,14 @@ function MyProfileRN({
               <Text style={[styles.modalTitle, { color: colors.text }]}>
                 {selected?.title}
               </Text>
-              {typeof selected?.ratingAvg === "number" && (
+
+              {(typeof selected?.ratingAvg === "number" ||
+                typeof selected?.rating === "number") && (
                 <StarRatingDisplay
-                  value={selected.ratingAvg}
-                  count={selected.ratingCount}
+                  value={selected?.ratingAvg ?? selected?.rating ?? 0}
+                  count={selected?.ratingCount}
                   size={20}
-                  color={colors.secondaryText}
+                  textColor={colors.secondaryText}
                 />
               )}
 
@@ -917,7 +1082,8 @@ function MyProfileRN({
                   <Text style={[styles.section, { color: colors.pillActive }]}>
                     {t(lang, "profile", "ingredients")}
                   </Text>
-                  {selected!.ingredients!.map((ing: string, i: number) => (
+
+                  {selected.ingredients.map((ing: string, i: number) => (
                     <View
                       key={i}
                       style={[
@@ -952,26 +1118,13 @@ function MyProfileRN({
                   styles.primaryBtn,
                   { backgroundColor: colors.pillActive },
                 ]}
-                onPress={() => {
-                  // přejít na detail se „steps“
-                  const rid = String(selected?._id || selected?.id || "");
-                  router.push({
-                    pathname: "/recipe/[id]",
-                    params: {
-                      id: rid,
-                      // POZN: dočasně předáme i celý recipe (kvůli rychlosti),
-                      // později uděláme fetch na detail podle id:
-                      recipe: JSON.stringify(selected),
-                      source: "profile",
-                    },
-                  });
-                  setSelected(null);
-                }}
+                onPress={openDetailFromModal}
               >
                 <Text style={[styles.primaryBtnText, { color: "white" }]}>
                   {t(lang, "profile", "getStarted")}
                 </Text>
               </Pressable>
+
               <Pressable
                 style={[
                   styles.secondaryBtn,
@@ -994,14 +1147,19 @@ function MyProfileRN({
   );
 }
 
-/** ===== Profile root ===== */
+/* =========================
+   ROOT
+========================= */
+
 export default function ProfileScreen() {
   const { colors } = useTheme();
+
   const [hasToken, setHasToken] = useState<boolean | null>(null);
   const [lang, setLang] = useState<Lang>("en");
+
   const refreshAuth = useCallback(async () => {
-    const t = await getToken();
-    setHasToken(Boolean(t));
+    const tkn = await getToken();
+    setHasToken(Boolean(tkn));
   }, []);
 
   useEffect(() => {
@@ -1009,10 +1167,7 @@ export default function ProfileScreen() {
   }, [refreshAuth]);
 
   useEffect(() => {
-    (async () => {
-      const stored = await AsyncStorage.getItem(LANG_KEY);
-      if (stored === "cs" || stored === "en") setLang(stored);
-    })();
+    (async () => setLang(await loadLang()))();
   }, []);
 
   if (hasToken === null) {
@@ -1030,7 +1185,10 @@ export default function ProfileScreen() {
   );
 }
 
-/** ===== Styles ===== */
+/* =========================
+   STYLES
+========================= */
+
 const styles = StyleSheet.create({
   center: {
     flex: 1,
@@ -1038,42 +1196,37 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#0f0f0fff",
   },
-  err: { color: "#c00", fontWeight: "700", textAlign: "center" },
+  err: { fontWeight: "700", textAlign: "center" },
+
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: 4 },
 
   // Auth
-  authWrap: { gap: 16, backgroundColor: "#0f0f0fff", flex: 1 },
+  authWrap: { gap: 16, flexGrow: 1, paddingBottom: 24 },
   authSwitchRow: { flexDirection: "row", paddingTop: 35 },
   switchBtn: {
     flex: 1,
     alignItems: "center",
     paddingVertical: 12,
-    backgroundColor: "#2e2d2d",
     borderWidth: 1,
-    borderColor: "#000",
   },
-  switchBtnActive: { backgroundColor: "#8b0e0d" },
-  switchText: { color: "#fff", fontWeight: "700" },
+  switchText: { fontWeight: "700" },
   form: { gap: 8, marginTop: 12, paddingHorizontal: 12 },
-  label: { color: "#d0d0d0" },
+  label: { opacity: 0.9 },
   input: {
-    backgroundColor: "#1a1919",
     borderWidth: 1,
-    borderColor: "#000",
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
-    color: "#fff",
   },
 
-  // Buttons (shared)
+  // Buttons
   primaryBtn: {
-    backgroundColor: "#570303",
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
     marginBottom: 8,
   },
-  primaryBtnText: { color: "#fff", fontWeight: "700" },
+  primaryBtnText: { fontWeight: "700" },
   secondaryBtn: {
     borderRadius: 10,
     paddingVertical: 8,
@@ -1081,9 +1234,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: StyleSheet.hairlineWidth,
     marginRight: 10,
-    backgroundColor: "#660c0cff",
   },
-  secondaryBtnText: { color: "#e0e0e0", fontWeight: "700" },
+  secondaryBtnText: { fontWeight: "700" },
 
   // Profile
   profileHeader: {
@@ -1092,10 +1244,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingTop: 20,
   },
-  welcome: { color: "#fff", fontSize: 18, fontWeight: "800" },
-  metaText: { color: "#d6d6d6", fontSize: 12, marginTop: 2 },
+  metaText: { fontSize: 12, marginTop: 2 },
   sectionTitle: {
-    color: "#fff",
     fontWeight: "800",
     fontSize: 16,
     paddingHorizontal: 16,
@@ -1106,16 +1256,23 @@ const styles = StyleSheet.create({
   // Cards
   card: {
     flexDirection: "row",
-    backgroundColor: "#191919",
-    borderColor: "#151515",
     borderWidth: 2,
-    borderRadius: 5,
+    borderRadius: 6,
     overflow: "hidden",
     height: 100,
+    alignItems: "center",
   },
   cardImg: { width: 96, height: 96, backgroundColor: "#333" },
-  cardTitle: { color: "#dcd7d7", fontWeight: "800", fontSize: 14 },
-  deleteBtn: {},
+  cardTitle: { fontWeight: "800", fontSize: 14 },
+
+  iconBtn: {
+    width: 40,
+    height: 100,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Modal
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
@@ -1123,7 +1280,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.7)",
   },
   modalCard: {
-    backgroundColor: "#212121ff",
     borderRadius: 16,
     padding: 12,
     elevation: 4,
@@ -1134,40 +1290,29 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#333",
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    marginTop: 10,
-    color: "#dcd7d7ff",
-  },
-  section: {
-    marginTop: 12,
-    marginBottom: 4,
-    fontWeight: "700",
-    color: "#9b2929ff",
-  },
-  ingredient: {
-    fontSize: 14,
-    opacity: 0.9,
-    marginVertical: 2,
-    color: "#dcd7d7ff",
-    flex: 1, // ← důležité: vezme si zbytek šířky
-    flexWrap: "wrap", // ← text se může zalomit
-    marginRight: 8, // trochu místa před tlačítkem
-  },
+  modalTitle: { fontSize: 20, fontWeight: "800", marginTop: 10 },
+
+  section: { marginTop: 12, marginBottom: 4, fontWeight: "700" },
+
   ingredientRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderColor: "#363636ff",
+  },
+  ingredient: {
+    fontSize: 14,
+    opacity: 0.9,
+    marginVertical: 2,
+    flex: 1,
+    flexWrap: "wrap",
+    marginRight: 8,
   },
   ingredientAddBtn: {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "#171111ff",
-    alignSelf: "flex-start", // ← ať se drží horního okraje textu
+    alignSelf: "flex-start",
   },
 });

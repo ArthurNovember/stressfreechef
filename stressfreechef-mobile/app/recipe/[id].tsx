@@ -1,10 +1,10 @@
-import { t, Lang, LANG_KEY } from "../../i18n/strings";
-import { useTheme } from "../../theme/ThemeContext";
-import { Audio } from "expo-av";
-
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState, useEffect, useCallback, useRef } from "react";
-
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   View,
   Text,
@@ -13,15 +13,25 @@ import {
   Pressable,
   Vibration,
   Platform,
+  ActivityIndicator,
 } from "react-native";
-import { Video, ResizeMode } from "expo-av";
-import { useKeepAwake } from "expo-keep-awake";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_BASE } from "../../lib/api";
-import { MaterialIcons } from "@expo/vector-icons";
-type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
-let blowRecordingInUse = false;
+import { useKeepAwake } from "expo-keep-awake";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Video, ResizeMode } from "expo-av";
+import { Audio } from "expo-av";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MaterialIcons } from "@expo/vector-icons";
+
+import { t, Lang, LANG_KEY } from "../../i18n/strings";
+import { useTheme } from "../../theme/ThemeContext";
+import { API_BASE } from "../../lib/api";
+
+/* =========================
+   TYPES
+========================= */
+
+type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
 type Step = {
   type: "image" | "video" | "text";
@@ -30,6 +40,7 @@ type Step = {
   descriptionCs?: string;
   timerSeconds?: number;
 };
+
 type Recipe = {
   _id?: string;
   id?: string;
@@ -40,132 +51,301 @@ type Recipe = {
   time: string;
   steps?: Step[];
   image?: { url?: string };
+
+  // community-ish (volitelně, někdy už je to community recept)
+  ratingAvg?: number;
+  ratingCount?: number;
+  sourceRecipeId?: string;
+  owner?: any;
+  ratings?: any;
 };
+
+/* =========================
+   CONSTS
+========================= */
 
 const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
 const TOKEN_KEY = "token";
-const BLOW_NEXT_KEY = "settings:blowNextEnabled"; // 👈 stejný key jako v Settings
+const BLOW_NEXT_KEY = "settings:blowNextEnabled"; // stejný key jako v Settings
+
+// lock, aby se metering nespustil paralelně
+let blowRecordingInUse = false;
+
+/* =========================
+   STORAGE
+========================= */
+
 async function getToken() {
   return (await AsyncStorage.getItem(TOKEN_KEY)) || "";
 }
 
+async function loadLang(): Promise<Lang> {
+  try {
+    const stored = await AsyncStorage.getItem(LANG_KEY);
+    return stored === "cs" || stored === "en" ? stored : "en";
+  } catch {
+    return "en";
+  }
+}
+
+async function loadBlowNextEnabled(): Promise<boolean> {
+  try {
+    const stored = await AsyncStorage.getItem(BLOW_NEXT_KEY);
+    return stored === "1";
+  } catch {
+    return false;
+  }
+}
+
+/* =========================
+   HELPERS (pure)
+========================= */
+
+function getRecipeTitle(r: Recipe, lang: Lang) {
+  if (lang === "cs" && (r as any).titleCs) return (r as any).titleCs as string;
+  return r.title;
+}
+
+function getStepDescription(step: Step | undefined, lang: Lang): string {
+  if (!step) return "";
+  if (lang === "cs" && (step as any).descriptionCs)
+    return (step as any).descriptionCs as string;
+  return step.description || "";
+}
+
+function parseTimerSeconds(step: Step | undefined) {
+  const raw =
+    typeof step?.timerSeconds === "number"
+      ? step.timerSeconds
+      : Number((step as any)?.timerSeconds ?? 0);
+
+  if (!raw || !Number.isFinite(raw) || raw <= 0) return null;
+  return Math.floor(raw);
+}
+
+function formatTime(totalSeconds: number) {
+  const safe = Math.max(0, Math.floor(totalSeconds || 0));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+function vibrateTimerDone() {
+  if (Platform.OS === "android")
+    Vibration.vibrate([0, 300, 150, 300, 150, 300]);
+  else Vibration.vibrate();
+}
+
+function inferCommunityIdFromRecipe(
+  recipe: Recipe | null,
+  paramsCommunityId?: string | null
+) {
+  if (paramsCommunityId) return String(paramsCommunityId);
+
+  if (!recipe) return null;
+
+  const anyRecipe = recipe as any;
+  const hasCommunityFields =
+    typeof anyRecipe.ratingAvg === "number" ||
+    typeof anyRecipe.ratingCount === "number";
+
+  if (hasCommunityFields) return String(anyRecipe._id || anyRecipe.id || "");
+
+  if (anyRecipe.sourceRecipeId || anyRecipe.owner || anyRecipe.ratings) {
+    return String(anyRecipe._id || anyRecipe.id || "");
+  }
+
+  return null;
+}
+
+/* =========================
+   API ACTIONS
+========================= */
+
+async function ensureCommunityFromRecipe(recipeId: string) {
+  const res = await fetch(
+    `${BASE}/api/community-recipes/ensure-from-recipe/${recipeId}`,
+    {
+      method: "POST",
+    }
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "ensure failed");
+  return data as { _id: string; ratingAvg: number; ratingCount: number };
+}
+
+async function fetchCommunityStats(communityId: string) {
+  const res = await fetch(`${BASE}/api/community-recipes/${communityId}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Failed to load community stats");
+  return data as { ratingAvg: number; ratingCount: number };
+}
+
+async function submitRatingApi(
+  communityId: string,
+  token: string,
+  value: number
+) {
+  const res = await fetch(`${BASE}/api/community-recipes/${communityId}/rate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ value }), // 1..5
+  });
+
+  const raw = await res.text();
+  if (!res.ok) throw new Error(raw || "Failed to rate.");
+  return JSON.parse(raw) as { ratingAvg: number; ratingCount: number };
+}
+
+/* =========================
+   UI: Stars
+========================= */
+
+function Stars({
+  avg,
+  myRating,
+  disabled,
+  onRate,
+}: {
+  avg: number;
+  myRating: number;
+  disabled: boolean;
+  onRate: (value: number) => void;
+}) {
+  const effective = myRating || avg;
+
+  return (
+    <View style={s.starsRow}>
+      {[1, 2, 3, 4, 5].map((star) => {
+        const diff = effective - (star - 1);
+        let icon: MaterialIconName = "star-border";
+        if (diff >= 0.75) icon = "star";
+        else if (diff >= 0.25) icon = "star-half";
+
+        return (
+          <Pressable
+            key={star}
+            disabled={disabled}
+            onPress={() => onRate(star)}
+            style={s.starPressable}
+          >
+            <MaterialIcons
+              name={icon}
+              size={32}
+              color={icon === "star-border" ? "#555" : "#ffd700"}
+              style={disabled ? { opacity: 0.4 } : undefined}
+            />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/* =========================
+   SCREEN
+========================= */
+
 export default function RecipeStepsScreen() {
   useKeepAwake();
-  const { colors } = useTheme(); // 🎨 tady máš theme barvy
+  const { colors } = useTheme();
   const router = useRouter();
-  function handleBack() {
-    if (source === "explore") {
-      router.replace("/(tabs)/explore");
-    } else if (source === "profile") {
-      router.replace("/(tabs)/profile");
-    } else {
-      // default – když něco chybí, vrať se na home
-      router.replace("/(tabs)/home");
-    }
-  }
+
   const params = useLocalSearchParams<{
     id: string;
-    recipe?: string; // JSON předaný z Home (dočasně)
-    communityRecipeId?: string; // volitelně, když se bude posílat z Explore
+    recipe?: string;
+    communityRecipeId?: string;
     source?: string;
   }>();
 
   const source =
     (params.source as "home" | "explore" | "profile" | undefined) ?? "home";
 
-  // ⚠️ Dočasný zdroj dat ze stringu (rychlá integrace)
-  let recipe: Recipe | null = null;
-  try {
-    recipe = params?.recipe ? JSON.parse(String(params.recipe)) : null;
-  } catch {
-    recipe = null;
-  }
+  const recipe: Recipe | null = useMemo(() => {
+    try {
+      return params?.recipe
+        ? (JSON.parse(String(params.recipe)) as Recipe)
+        : null;
+    } catch {
+      return null;
+    }
+  }, [params?.recipe]);
 
+  const steps = recipe?.steps || [];
+
+  // language + blow setting
+  const [lang, setLang] = useState<Lang>("en");
+  const [blowNextEnabled, setBlowNextEnabled] = useState(false);
+
+  // step navigation
   const [current, setCurrent] = useState(0);
+
+  // timer state
   const [remaining, setRemaining] = useState<number | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [accumulated, setAccumulated] = useState(0);
   const [justFinished, setJustFinished] = useState(false);
-  const steps = recipe?.steps || [];
 
-  const [lang, setLang] = useState<Lang>("en");
-  const [blowNextEnabled, setBlowNextEnabled] = useState(false); // 👈 nový state
-
-  useEffect(() => {
-    (async () => {
-      const stored = await AsyncStorage.getItem(LANG_KEY);
-      if (stored === "cs" || stored === "en") setLang(stored);
-    })();
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      const stored = await AsyncStorage.getItem(BLOW_NEXT_KEY);
-      setBlowNextEnabled(stored === "1");
-    })();
-  }, []);
-
-  function getRecipeTitle(r: Recipe, lang: Lang) {
-    if (lang === "cs" && (r as any).titleCs) {
-      return (r as any).titleCs as string;
-    }
-    return r.title;
-  }
-
-  function getStepDescription(step: any, lang: Lang): string {
-    if (!step) return "";
-    if (lang === "cs" && step.descriptionCs) {
-      return step.descriptionCs as string;
-    }
-    return step.description || "";
-  }
-
+  // rating/community
   const paramsCommunityId =
     (params as any)?.communityRecipeId || (params as any)?.communityId;
-
-  const [communityId, setCommunityId] = useState<string | null>(() => {
-    if (paramsCommunityId) return String(paramsCommunityId);
-
-    const anyRecipe = recipe as any;
-    if (!anyRecipe) return null;
-
-    const hasCommunityFields =
-      typeof anyRecipe.ratingAvg === "number" ||
-      typeof anyRecipe.ratingCount === "number";
-
-    // ✅ Recept už má ratingAvg / ratingCount → je to community recipe
-    // → jeho _id je to, co posíláme do /api/community-recipes/:id/rate
-    if (hasCommunityFields) {
-      return String(anyRecipe._id || anyRecipe.id || "");
-    }
-
-    // ✅ Další pojistka: community recepty často mají sourceRecipeId / owner / ratings
-    if (anyRecipe.sourceRecipeId || anyRecipe.owner || anyRecipe.ratings) {
-      return String(anyRecipe._id || anyRecipe.id || "");
-    }
-
-    // ❌ Ofiko recept → community kopii později zajistí useEffect (ensure-from-recipe)
-    return null;
-  });
-
+  const [communityId, setCommunityId] = useState<string | null>(() =>
+    inferCommunityIdFromRecipe(
+      recipe,
+      paramsCommunityId ? String(paramsCommunityId) : null
+    )
+  );
   const [ensuring, setEnsuring] = useState(false);
+
+  const [community, setCommunity] = useState({
+    avg: Number((recipe as any)?.ratingAvg ?? 0) || 0,
+    count: Number((recipe as any)?.ratingCount ?? 0) || 0,
+  });
   const [myRating, setMyRating] = useState(0);
   const [rateMsg, setRateMsg] = useState<{
     type: "ok" | "error";
     text: string;
   } | null>(null);
-  const [community, setCommunity] = useState({
-    avg: Number((recipe as any)?.ratingAvg ?? 0) || 0,
-    count: Number((recipe as any)?.ratingCount ?? 0) || 0,
-  });
   const [ratingBusy, setRatingBusy] = useState(false);
+
+  const step = steps[current];
+  const stepTimer = parseTimerSeconds(step);
+  const hasTimer = stepTimer != null;
+
   const canRateCommunity = Boolean(communityId) && !ensuring;
 
+  const handleBack = useCallback(() => {
+    if (source === "explore") router.replace("/(tabs)/explore");
+    else if (source === "profile") router.replace("/(tabs)/profile");
+    else router.replace("/(tabs)/home");
+  }, [router, source]);
+
+  /* =========================
+     INIT (lang + blow)
+  ========================= */
+
   useEffect(() => {
-    const currentStep = steps[current];
+    (async () => setLang(await loadLang()))();
+  }, []);
 
-    if (!currentStep) {
+  useEffect(() => {
+    (async () => setBlowNextEnabled(await loadBlowNextEnabled()))();
+  }, []);
+
+  /* =========================
+     TIMER: reset on step change
+  ========================= */
+
+  useEffect(() => {
+    // reset timer UI on step change
+    if (!step) {
       setRemaining(null);
       setIsRunning(false);
       setStartedAt(null);
@@ -174,14 +354,7 @@ export default function RecipeStepsScreen() {
       return;
     }
 
-    // přepočítáme timer na číslo (podporuje number i string)
-    const raw =
-      typeof currentStep.timerSeconds === "number"
-        ? currentStep.timerSeconds
-        : Number(currentStep.timerSeconds ?? 0);
-
-    if (!raw || !Number.isFinite(raw) || raw <= 0) {
-      // žádný validní timer
+    if (!hasTimer) {
       setRemaining(null);
       setIsRunning(false);
       setStartedAt(null);
@@ -190,34 +363,21 @@ export default function RecipeStepsScreen() {
       return;
     }
 
-    // nový krok → nastavíme výchozí hodnotu
-    setRemaining(raw);
+    setRemaining(stepTimer!);
     setIsRunning(false);
     setStartedAt(null);
     setAccumulated(0);
     setJustFinished(false);
-  }, [current]);
+  }, [current, hasTimer, stepTimer, step]);
+
+  /* =========================
+     TIMER: tick while running
+  ========================= */
 
   useEffect(() => {
-    const currentStep = steps[current];
+    if (!isRunning || startedAt == null || !hasTimer) return;
 
-    if (!isRunning || startedAt == null || !currentStep) {
-      return;
-    }
-
-    const raw =
-      typeof currentStep.timerSeconds === "number"
-        ? currentStep.timerSeconds
-        : Number(currentStep.timerSeconds ?? 0);
-
-    const duration = Number.isFinite(raw) && raw > 0 ? raw : null;
-
-    if (!duration) {
-      // něco je špatně -> radši timer zastavíme
-      setIsRunning(false);
-      return;
-    }
-
+    const duration = stepTimer!;
     const id = setInterval(() => {
       const elapsedSinceStart = (Date.now() - startedAt) / 1000;
       const totalElapsed = accumulated + elapsedSinceStart;
@@ -226,104 +386,18 @@ export default function RecipeStepsScreen() {
       setRemaining(nextRemaining);
 
       if (nextRemaining <= 0) {
-        // ⏱ timer doběhl → zastavíme ho a upozorníme
         setIsRunning(false);
         setStartedAt(null);
         setAccumulated(duration);
         setJustFinished(true);
-
         vibrateTimerDone();
       }
     }, 1000);
 
     return () => clearInterval(id);
-  }, [isRunning, startedAt, accumulated, current]);
+  }, [isRunning, startedAt, accumulated, hasTimer, stepTimer]);
 
-  useEffect(() => {
-    if (!recipe || !recipe._id) return;
-    // pokud už communityId máme (community recipe nebo z params), hotovo
-    if (communityId) return;
-    const anyRecipe = recipe as any;
-    const hasCommunityFields =
-      typeof anyRecipe.ratingAvg === "number" ||
-      typeof anyRecipe.ratingCount === "number";
-    // pokud už v receptu jsou ratingAvg / ratingCount, taky to necháme být
-    if (hasCommunityFields) return;
-    let aborted = false;
-    (async () => {
-      try {
-        setEnsuring(true);
-        const res = await fetch(
-          `${BASE}/api/community-recipes/ensure-from-recipe/${recipe!._id}`,
-          { method: "POST" }
-        );
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || "ensure failed");
-        if (!aborted) {
-          setCommunityId(String(data._id));
-          setCommunity({
-            avg: Number(data.ratingAvg || 0),
-            count: Number(data.ratingCount || 0),
-          });
-        }
-      } catch (e) {
-        console.warn("ensure community failed:", e);
-      } finally {
-        if (!aborted) setEnsuring(false);
-      }
-    })();
-    return () => {
-      aborted = true;
-    };
-  }, [recipe?._id, communityId]);
-
-  useEffect(() => {
-    if (!communityId) return;
-    let aborted = false;
-    (async () => {
-      try {
-        const res = await fetch(`${BASE}/api/community-recipes/${communityId}`);
-        const data = await res.json();
-        if (!res.ok)
-          throw new Error(data?.error || "Failed to load community stats");
-        if (!aborted) {
-          setCommunity({
-            avg: Number(data.ratingAvg || 0),
-            count: Number(data.ratingCount || 0),
-          });
-        }
-      } catch (e: any) {
-        console.warn(
-          "Failed to fetch community recipe:",
-          e?.message || String(e)
-        );
-      }
-    })();
-    return () => {
-      aborted = true;
-    };
-  }, [communityId]);
-
-  const formatTime = (totalSeconds: number) => {
-    const safe = Math.max(0, Math.floor(totalSeconds || 0));
-    const minutes = Math.floor(safe / 60);
-    const seconds = safe % 60;
-    const mm = String(minutes).padStart(2, "0");
-    const ss = String(seconds).padStart(2, "0");
-    return `${mm}:${ss}`;
-  };
-
-  const step = steps[current];
-
-  const rawTimer =
-    typeof step?.timerSeconds === "number"
-      ? step.timerSeconds
-      : Number(step?.timerSeconds ?? 0);
-
-  const hasTimer = rawTimer > 0;
-
-  // ⬇️ sem vlož handleStartPause
-  const handleStartPause = () => {
+  const handleStartPause = useCallback(() => {
     if (!hasTimer) return;
 
     if (!isRunning) {
@@ -331,7 +405,7 @@ export default function RecipeStepsScreen() {
 
       if (remaining == null || remaining <= 0) {
         setAccumulated(0);
-        if (rawTimer > 0) setRemaining(rawTimer);
+        setRemaining(stepTimer!);
       }
 
       setStartedAt(Date.now());
@@ -343,17 +417,30 @@ export default function RecipeStepsScreen() {
       const elapsedSinceStart = (Date.now() - startedAt) / 1000;
       setAccumulated((acc) => acc + elapsedSinceStart);
     }
+
     setStartedAt(null);
     setIsRunning(false);
-  };
+  }, [hasTimer, isRunning, remaining, startedAt, stepTimer]);
+
+  const handleResetTimer = useCallback(() => {
+    setIsRunning(false);
+    setStartedAt(null);
+    setAccumulated(0);
+    setJustFinished(false);
+
+    if (hasTimer) setRemaining(stepTimer!);
+    else setRemaining(null);
+  }, [hasTimer, stepTimer]);
+
+  /* =========================
+     BLOW -> next step / start timer
+  ========================= */
 
   const handleBlow = useCallback(() => {
     // timer běží → ignorovat fouknutí
-    if (hasTimer && isRunning) {
-      return;
-    }
+    if (hasTimer && isRunning) return;
 
-    // krok má timer, ještě neběžel → fouknutím ho spustíme
+    // krok má timer, ještě nedoběhl → fouknutím ho spustíme
     if (hasTimer && !isRunning && !justFinished) {
       handleStartPause();
       return;
@@ -363,10 +450,113 @@ export default function RecipeStepsScreen() {
     setCurrent((p) => Math.min(steps.length - 1, p + 1));
   }, [hasTimer, isRunning, justFinished, handleStartPause, steps.length]);
 
-  // foukání zapnuto pokud:
-  const blowListeningEnabled = blowNextEnabled;
+  useBlowToNextStep(blowNextEnabled, handleBlow, current);
 
-  useBlowToNextStep(blowListeningEnabled, handleBlow, current);
+  /* =========================
+     COMMUNITY: ensure from recipe for official recipes
+  ========================= */
+
+  useEffect(() => {
+    if (!recipe?._id) return;
+    if (communityId) return;
+
+    const anyRecipe = recipe as any;
+    const hasCommunityFields =
+      typeof anyRecipe.ratingAvg === "number" ||
+      typeof anyRecipe.ratingCount === "number";
+    if (hasCommunityFields) return;
+
+    let aborted = false;
+
+    (async () => {
+      try {
+        setEnsuring(true);
+        const data = await ensureCommunityFromRecipe(String(recipe!._id));
+        if (aborted) return;
+
+        setCommunityId(String(data._id));
+        setCommunity({
+          avg: Number(data.ratingAvg || 0),
+          count: Number(data.ratingCount || 0),
+        });
+      } catch (e) {
+        console.warn("ensure community failed:", e);
+      } finally {
+        if (!aborted) setEnsuring(false);
+      }
+    })();
+
+    return () => {
+      aborted = true;
+    };
+  }, [recipe?._id, communityId]);
+
+  useEffect(() => {
+    if (!communityId) return;
+
+    let aborted = false;
+
+    (async () => {
+      try {
+        const data = await fetchCommunityStats(communityId);
+        if (aborted) return;
+
+        setCommunity({
+          avg: Number(data.ratingAvg || 0),
+          count: Number(data.ratingCount || 0),
+        });
+      } catch (e: any) {
+        console.warn(
+          "Failed to fetch community recipe:",
+          e?.message || String(e)
+        );
+      }
+    })();
+
+    return () => {
+      aborted = true;
+    };
+  }, [communityId]);
+
+  async function submitRating(value: number) {
+    try {
+      setRateMsg(null);
+
+      if (!canRateCommunity || !communityId) {
+        setRateMsg({
+          type: "error",
+          text: t(lang, "recipe", "ratingNotAvailable"),
+        });
+        return;
+      }
+
+      const token = await getToken();
+      if (!token) {
+        setRateMsg({ type: "error", text: t(lang, "recipe", "loginRequired") });
+        return;
+      }
+
+      setRatingBusy(true);
+      const data = await submitRatingApi(communityId, token, value);
+
+      setMyRating(value);
+      setCommunity({ avg: data.ratingAvg, count: data.ratingCount });
+      setRateMsg({
+        type: "ok",
+        text: `${t(lang, "recipe", "ratingThanks")} ★${data.ratingAvg.toFixed(
+          2
+        )} (${data.ratingCount})`,
+      });
+    } catch {
+      setRateMsg({ type: "error", text: t(lang, "recipe", "ratingFailed") });
+    } finally {
+      setRatingBusy(false);
+    }
+  }
+
+  /* =========================
+     EMPTY STATE
+  ========================= */
 
   if (!recipe || steps.length === 0) {
     return (
@@ -392,129 +582,15 @@ export default function RecipeStepsScreen() {
     );
   }
 
-  // Timer bereme jen pokud je > 0 (0 = vlastně žádný timer)
-
   const displaySeconds =
-    remaining != null ? remaining : hasTimer ? rawTimer : 0;
+    remaining != null ? remaining : hasTimer ? stepTimer! : 0;
 
-  const vibrateTimerDone = () => {
-    if (Platform.OS === "android") {
-      // 3 krátké pulzy: bzz – pauza – bzz – pauza – bzz
-      Vibration.vibrate([0, 300, 150, 300, 150, 300]);
-    } else {
-      // iOS stejně dělá jen default vibraci
-      Vibration.vibrate();
-    }
-  };
-
-  async function submitRating(intValue: number) {
-    try {
-      setRateMsg(null);
-      if (!canRateCommunity || !communityId) {
-        setRateMsg({
-          type: "error",
-          text: t(lang, "recipe", "ratingNotAvailable"),
-        });
-        return;
-      }
-      const token = await getToken();
-      if (!token) {
-        setRateMsg({
-          type: "error",
-          text: t(lang, "recipe", "loginRequired"),
-        });
-        return;
-      }
-      setRatingBusy(true);
-      const res = await fetch(
-        `${BASE}/api/community-recipes/${communityId}/rate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ value: intValue }), // 1..5
-        }
-      );
-      const raw = await res.text();
-      if (!res.ok) throw new Error(raw || "Failed to rate.");
-      const data = JSON.parse(raw);
-      setMyRating(intValue);
-      setCommunity({
-        avg: data.ratingAvg,
-        count: data.ratingCount,
-      });
-      setRateMsg({
-        type: "ok",
-        text: `${t(lang, "recipe", "ratingThanks")} ★${data.ratingAvg.toFixed(
-          2
-        )} (${data.ratingCount})`,
-      });
-    } catch (e: any) {
-      setRateMsg({
-        type: "error",
-        text: t(lang, "recipe", "ratingFailed"),
-      });
-    } finally {
-      setRatingBusy(false);
-    }
-  }
-
-  function RenderStarsForRecipe({
-    avg,
-    myRating,
-    onRate,
-    disabled,
-  }: {
-    avg: number;
-    myRating: number;
-    onRate: (value: number) => void;
-    disabled: boolean;
-  }) {
-    const effective = myRating || avg; // když user hodnotil → plné hvězdy
-
-    return (
-      <View style={s.starsRow}>
-        {[1, 2, 3, 4, 5].map((star) => {
-          const diff = effective - (star - 1);
-          // diff = kolik hvězdy zaplníme (0–1)
-
-          let icon: MaterialIconName = "star-border";
-
-          if (diff >= 1) {
-            icon = "star"; // 100% plná
-          } else if (diff >= 0.75) {
-            icon = "star"; // stále plná
-          } else if (diff >= 0.25) {
-            icon = "star-half"; // půl hvězda
-          } else {
-            icon = "star-border"; // prázdná
-          }
-
-          return (
-            <Pressable
-              key={star}
-              disabled={disabled}
-              onPress={() => onRate(star)}
-              style={s.starPressable}
-            >
-              <MaterialIcons
-                name={icon}
-                size={32}
-                color={icon === "star-border" ? "#555" : "#ffd700"}
-                style={disabled && { opacity: 0.4 }}
-              />
-            </Pressable>
-          );
-        })}
-      </View>
-    );
-  }
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
     <View style={[s.wrapper, { backgroundColor: colors.background }]}>
-      {/* Obsah */}
       <View
         style={[
           s.card,
@@ -528,17 +604,11 @@ export default function RecipeStepsScreen() {
           <Text style={[s.meta, { color: colors.secondaryText }]}>
             {t(lang, "recipe", "step")} {current + 1} / {steps.length}
           </Text>
+
           {step.type === "image" && (
             <Image source={{ uri: step.src }} style={s.stepImg} />
           )}
-          {step.type === "text" && (
-            <View
-              style={[
-                s.textStep,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            ></View>
-          )}
+
           {step.type === "video" && (
             <Video
               source={{ uri: step.src! }}
@@ -548,11 +618,21 @@ export default function RecipeStepsScreen() {
               isLooping
             />
           )}
+
+          {step.type === "text" && (
+            <View
+              style={[
+                s.textStep,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            />
+          )}
+
           <Text style={[s.description, { color: colors.text }]}>
             {getStepDescription(step, lang)}
           </Text>
 
-          {/* ⏱ Timer – zobrazí se jen když krok má timerSeconds */}
+          {/* ⏱ Timer */}
           {hasTimer && (
             <View style={[s.timerBox, { borderColor: colors.border }]}>
               <View style={[s.timerCircle, { borderColor: colors.text }]}>
@@ -560,20 +640,18 @@ export default function RecipeStepsScreen() {
                   {formatTime(displaySeconds)}
                 </Text>
               </View>
+
               {justFinished && (
                 <Text style={[s.timerFinishedLabel, { color: colors.danger }]}>
-                  {" "}
                   {t(lang, "recipe", "timerDone")}
                 </Text>
               )}
+
               <View style={s.timerRow}>
                 <Pressable
                   style={[
                     s.timerBtn,
-                    {
-                      borderColor: colors.text,
-                      backgroundColor: colors.card,
-                    },
+                    { borderColor: colors.text, backgroundColor: colors.card },
                     isRunning && s.timerBtnActive,
                   ]}
                   onPress={handleStartPause}
@@ -588,25 +666,13 @@ export default function RecipeStepsScreen() {
                     {isRunning ? "❚❚" : "▶"}
                   </Text>
                 </Pressable>
+
                 <Pressable
                   style={[
                     s.timerBtn,
-                    {
-                      borderColor: colors.text,
-                      backgroundColor: colors.card,
-                    },
+                    { borderColor: colors.text, backgroundColor: colors.card },
                   ]}
-                  onPress={() => {
-                    setIsRunning(false);
-                    setStartedAt(null);
-                    setAccumulated(0);
-                    setJustFinished(false);
-                    if (hasTimer) {
-                      setRemaining(rawTimer);
-                    } else {
-                      setRemaining(null);
-                    }
-                  }}
+                  onPress={handleResetTimer}
                 >
                   <Text style={[s.timerBtnText, { color: colors.pillActive }]}>
                     ■
@@ -616,7 +682,8 @@ export default function RecipeStepsScreen() {
             </View>
           )}
         </View>
-        {/* ⭐ Rating jen na posledním kroku, nad tlačítky */}
+
+        {/* ⭐ Rating only on last step */}
         {current === steps.length - 1 && (
           <View style={s.ratingBox}>
             <Text style={[s.completedLabel, { color: colors.text }]}>
@@ -625,11 +692,12 @@ export default function RecipeStepsScreen() {
             <Text style={[s.ratingLabel, { color: colors.secondaryText }]}>
               {t(lang, "recipe", "rateThis")}
             </Text>
-            <RenderStarsForRecipe
+
+            <Stars
               avg={community.avg}
               myRating={myRating}
-              onRate={(value) => submitRating(value)}
               disabled={!canRateCommunity || ratingBusy}
+              onRate={submitRating}
             />
 
             {community.count > 0 && (
@@ -637,6 +705,7 @@ export default function RecipeStepsScreen() {
                 {community.avg.toFixed(1)} ({community.count})
               </Text>
             )}
+
             {rateMsg && (
               <Text
                 style={[
@@ -647,6 +716,7 @@ export default function RecipeStepsScreen() {
                 {rateMsg.text}
               </Text>
             )}
+
             {!canRateCommunity && (
               <Text style={[s.ratingDisabled, { color: colors.muted }]}>
                 {ensuring
@@ -656,17 +726,15 @@ export default function RecipeStepsScreen() {
             )}
           </View>
         )}
-        {/* 🔽 Tlačítka dole – layout jako dřív */}
+
+        {/* Buttons */}
         <View style={s.row}>
           <Pressable
             disabled={current === 0}
             onPress={() => setCurrent((p) => Math.max(0, p - 1))}
             style={[
               s.btn,
-              {
-                borderColor: colors.border,
-                backgroundColor: colors.border,
-              },
+              { borderColor: colors.border, backgroundColor: colors.border },
               current === 0 && s.btnDisabled,
             ]}
           >
@@ -674,6 +742,7 @@ export default function RecipeStepsScreen() {
               {t(lang, "recipe", "previous")}
             </Text>
           </Pressable>
+
           {current < steps.length - 1 ? (
             <Pressable
               onPress={() =>
@@ -714,175 +783,10 @@ export default function RecipeStepsScreen() {
     </View>
   );
 }
-const s = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: "#000" },
 
-  card: {
-    flex: 1,
-    backgroundColor: "#211d1dff",
-    padding: 16,
-    paddingTop: 45,
-  },
-  title: { fontSize: 20, fontWeight: "800", color: "#dcd7d7ff" },
-  meta: { opacity: 0.7, marginTop: 4, marginBottom: 8, color: "#dcd7d7ff" },
-  stepImg: {
-    width: "100%",
-    aspectRatio: 16 / 9,
-    borderRadius: 12,
-    backgroundColor: "#eee",
-  },
-  textStep: { padding: 12, borderRadius: 12, backgroundColor: "#fafafa" },
-  description: {
-    marginTop: 8,
-    fontSize: 16,
-    lineHeight: 22,
-    color: "#dcd7d7ff",
-  },
-  row: { flexDirection: "row", gap: 12, paddingBottom: 30 },
-  btn: {
-    flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#ccc",
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  btnDisabled: { opacity: 0.4 },
-  btnPrimary: {
-    backgroundColor: "#111",
-    borderColor: "#111",
-  },
-  btnText: { fontWeight: "800", color: "#ffffffff" },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-  },
-  err: { color: "#c00", fontWeight: "700", marginBottom: 12 },
-  primary: {
-    backgroundColor: "#111",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  primaryText: { color: "#fff", fontWeight: "800" },
-  timerBox: {
-    marginTop: 16,
-    padding: 12,
-  },
-  timerLabel: {
-    fontSize: 12,
-    textTransform: "uppercase",
-    opacity: 0.7,
-    color: "#dcd7d7ff",
-  },
-  timerValue: {
-    marginTop: 4,
-    fontSize: 24,
-    fontWeight: "800",
-    letterSpacing: 2,
-    color: "#ffffff",
-  },
-  timerRow: {
-    flexDirection: "row",
-    gap: 30,
-    marginTop: 12,
-    justifyContent: "center",
-  },
-  timerBtn: {
-    borderRadius: 70,
-    borderWidth: 0.5,
-    borderColor: "#555",
-    alignItems: "center",
-    width: 50,
-    height: 50,
-  },
-  timerBtnActive: {
-    backgroundColor: "#111",
-    borderColor: "#111",
-  },
-  timerBtnActiveText: {
-    fontSize: 20,
-    position: "relative",
-    top: 10,
-  },
-  timerBtnText: {
-    color: "#982929ff",
-    fontSize: 33,
-    position: "relative",
-    bottom: 1,
-  },
-  timerCircle: {
-    marginTop: 8,
-    alignSelf: "center", // nebo "center", jestli ho chceš doprostřed
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: "#ffffff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  timerFinishedLabel: {
-    marginTop: 8,
-    textAlign: "center",
-    color: "#ff5555",
-    fontWeight: "800",
-  },
-  ratingBox: {
-    paddingHorizontal: 4,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  completedLabel: {
-    color: "#dcd7d7ff",
-    fontWeight: "800",
-    marginBottom: 4,
-  },
-  ratingLabel: {
-    color: "#dcd7d7ff",
-    marginBottom: 6,
-  },
-  starsRow: {
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "center",
-    marginBottom: 6,
-  },
-  starPressable: {
-    padding: 2,
-  },
-  star: {
-    fontSize: 28,
-    color: "#555",
-  },
-  starFilled: {
-    color: "#ffd700",
-  },
-  ratingMeta: {
-    color: "#dcd7d7ff",
-    fontSize: 12,
-    marginTop: 2,
-  },
-  ratingMsg: {
-    marginTop: 4,
-    fontSize: 12,
-    textAlign: "center",
-  },
-  ratingMsgOk: {
-    color: "limegreen",
-  },
-  ratingMsgErr: {
-    color: "tomato",
-  },
-  ratingDisabled: {
-    marginTop: 4,
-    fontSize: 12,
-    color: "#aaaaaa",
-    textAlign: "center",
-  },
-});
+/* =========================
+   HOOK: blow-to-next-step
+========================= */
 
 function useBlowToNextStep(
   enabled: boolean,
@@ -891,7 +795,6 @@ function useBlowToNextStep(
 ) {
   const blowRef = useRef(onBlow);
 
-  // vždy držíme aktuální callback
   useEffect(() => {
     blowRef.current = onBlow;
   }, [onBlow]);
@@ -903,7 +806,7 @@ function useBlowToNextStep(
     let recording: Audio.Recording | null = null;
     let lastTrigger = 0;
 
-    // 🔥 BASELINE RESTART při každém zapnutí nebo změně kroku
+    // baseline + burst detection
     let baseline: number | null = null;
     let samples = 0;
     let hotCount = 0;
@@ -914,7 +817,7 @@ function useBlowToNextStep(
 
     (async () => {
       try {
-        // ⛔ počkej, dokud předchozí nahrávání nedokončí cleanup
+        // počkej dokud předchozí nahrávání nedokončí cleanup
         while (blowRecordingInUse && !cancelled) {
           await new Promise((r) => setTimeout(r, 50));
         }
@@ -939,13 +842,11 @@ function useBlowToNextStep(
 
         recording = new Audio.Recording();
 
-        // 🔒 od teď blokujeme další starty
         blowRecordingInUse = true;
         try {
           await recording.prepareToRecordAsync(recordingOptions);
           await recording.startAsync();
         } catch (err) {
-          // když se start nepovede, lock zase pustíme
           blowRecordingInUse = false;
           recording = null;
           if (__DEV__) console.log("[BLOW] start failed:", err);
@@ -972,13 +873,9 @@ function useBlowToNextStep(
 
           samples++;
 
-          // ⚪ Warmup (prvních 10 vzorků)
+          // warmup
           if (samples < 10) {
-            if (baseline == null) {
-              baseline = amp;
-            } else {
-              baseline = baseline * 0.8 + amp * 0.2;
-            }
+            baseline = baseline == null ? amp : baseline * 0.8 + amp * 0.2;
             return;
           }
 
@@ -1044,21 +941,137 @@ function useBlowToNextStep(
               await recording.stopAndUnloadAsync().catch(() => {});
             }
           } finally {
-            // ✅ cleanup dokončen → uvolníme lock + audio mód
             blowRecordingInUse = false;
             recording = null;
-            Audio.setAudioModeAsync({
-              allowsRecordingIOS: false,
-            }).catch(() => {});
+            Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(
+              () => {}
+            );
           }
         })();
       } else {
-        // nic neběželo, jen pro jistotu uvolníme lock + mód
         blowRecordingInUse = false;
-        Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-        }).catch(() => {});
+        Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
       }
     };
   }, [enabled, currentStep]);
 }
+
+/* =========================
+   STYLES
+========================= */
+
+const s = StyleSheet.create({
+  wrapper: { flex: 1, backgroundColor: "#000" },
+
+  card: {
+    flex: 1,
+    padding: 16,
+    paddingTop: 45,
+  },
+
+  title: { fontSize: 20, fontWeight: "800" },
+  meta: { opacity: 0.7, marginTop: 4, marginBottom: 8 },
+
+  stepImg: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    borderRadius: 12,
+    backgroundColor: "#333",
+  },
+
+  textStep: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+
+  description: {
+    marginTop: 8,
+    fontSize: 16,
+    lineHeight: 22,
+  },
+
+  row: { flexDirection: "row", gap: 12, paddingBottom: 30 },
+
+  btn: {
+    flex: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  btnDisabled: { opacity: 0.4 },
+  btnPrimary: {},
+
+  btnText: { fontWeight: "800" },
+
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+  },
+  err: { fontWeight: "700", marginBottom: 12 },
+
+  primary: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderWidth: 1,
+  },
+  primaryText: { fontWeight: "800" },
+
+  timerBox: { marginTop: 16, padding: 12, borderWidth: 0 },
+  timerValue: { fontSize: 24, fontWeight: "800", letterSpacing: 2 },
+
+  timerRow: {
+    flexDirection: "row",
+    gap: 30,
+    marginTop: 12,
+    justifyContent: "center",
+  },
+
+  timerBtn: {
+    borderRadius: 70,
+    borderWidth: 0.5,
+    alignItems: "center",
+    width: 50,
+    height: 50,
+  },
+
+  timerBtnActive: { backgroundColor: "#111", borderColor: "#111" },
+  timerBtnActiveText: { fontSize: 20, position: "relative", top: 10 },
+
+  timerBtnText: { fontSize: 33, position: "relative", bottom: 1 },
+
+  timerCircle: {
+    marginTop: 8,
+    alignSelf: "center",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  timerFinishedLabel: { marginTop: 8, textAlign: "center", fontWeight: "800" },
+
+  ratingBox: { paddingHorizontal: 4, paddingVertical: 8, alignItems: "center" },
+  completedLabel: { fontWeight: "800", marginBottom: 4 },
+  ratingLabel: { marginBottom: 6 },
+
+  starsRow: {
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  starPressable: { padding: 2 },
+
+  ratingMeta: { fontSize: 12, marginTop: 2 },
+  ratingMsg: { marginTop: 4, fontSize: 12, textAlign: "center" },
+  ratingMsgOk: { color: "limegreen" },
+  ratingMsgErr: { color: "tomato" },
+  ratingDisabled: { marginTop: 4, fontSize: 12, textAlign: "center" },
+});

@@ -1,4 +1,3 @@
-// app/(tabs)/explore.tsx
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useScrollToTop, useFocusEffect } from "@react-navigation/native";
 import { Video, ResizeMode } from "expo-av";
@@ -69,7 +68,7 @@ const GUEST_SHOPPING_KEY = "shopping_guest_items";
 const difficultyOrder = ["Beginner", "Intermediate", "Hard"] as const;
 
 /* =========================
-   HELPERS (pure)
+   HELPERS 
 ========================= */
 
 function getId(r: CommunityRecipe | null | undefined) {
@@ -135,8 +134,7 @@ function getRatingValue(r: CommunityRecipe) {
 }
 
 /* =========================
-   API / ACTIONS
-   (async, returns ActionResult)
+   API 
 ========================= */
 
 async function getToken(): Promise<string> {
@@ -200,7 +198,6 @@ async function toggleSaveFavorite(
 
   try {
     if (currentlySaved) {
-      // UNSAVE (204)
       const res = await fetch(
         `${API_BASE}/api/saved-community-recipes/${recipeId}`,
         { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
@@ -213,7 +210,6 @@ async function toggleSaveFavorite(
       return { ok: true, data: { nextSaved: false } };
     }
 
-    // SAVE
     await fetchJSON(`${API_BASE}/api/saved-community-recipes`, {
       method: "POST",
       headers: {
@@ -237,7 +233,6 @@ async function addIngredientToShopping(ingredient: string, lang: Lang) {
   try {
     const token = await getToken();
 
-    // ⭐ Guest mód → AsyncStorage
     if (!token) {
       const stored = await AsyncStorage.getItem(GUEST_SHOPPING_KEY);
       let list: any[] = [];
@@ -272,7 +267,6 @@ async function addIngredientToShopping(ingredient: string, lang: Lang) {
       return;
     }
 
-    // ⭐ Logged-in → backend POST
     const res = await fetch(`${API_BASE}/api/shopping-list`, {
       method: "POST",
       headers: {
@@ -301,7 +295,7 @@ async function addIngredientToShopping(ingredient: string, lang: Lang) {
 }
 
 /* =========================
-   UI PARTS (small components)
+   UI PARTS 
 ========================= */
 
 function StarRatingDisplay({
@@ -351,32 +345,25 @@ function StarRatingDisplay({
 export default function ExploreScreen() {
   const { colors } = useTheme();
 
-  // data
   const [items, setItems] = useState<CommunityRecipe[]>([]);
   const [displayList, setDisplayList] = useState<CommunityRecipe[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [swipeDeck, setSwipeDeck] = useState<CommunityRecipe[]>([]);
 
-  // ui
   const [lang, setLang] = useState<Lang>("en");
   const [viewMode, setViewMode] = useState<ViewMode>("GRID");
   const [active, setActive] = useState<ActiveTab>("NEWEST");
 
-  // search / paging
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [page, setPage] = useState(1);
   const limit = 12;
   const [hasMore, setHasMore] = useState(true);
 
-  // status
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // modal
   const [selected, setSelected] = useState<CommunityRecipe | null>(null);
-
-  // misc
   const [randomSeed, setRandomSeed] = useState(0);
   const justFocusedRef = useRef(false);
 
@@ -385,7 +372,10 @@ export default function ExploreScreen() {
 
   const swiperRef = useRef<Swiper<CommunityRecipe> | null>(null);
 
-  // ---- init lang
+  /* =========================
+   Effects
+========================= */
+
   useEffect(() => {
     (async () => {
       const l = await loadLang();
@@ -393,13 +383,11 @@ export default function ExploreScreen() {
     })();
   }, []);
 
-  // ---- debounce search
   useEffect(() => {
     const tmr = setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => clearTimeout(tmr);
   }, [q]);
 
-  // ---- load favorites on focus
   useFocusEffect(
     useCallback(() => {
       let alive = true;
@@ -418,7 +406,6 @@ export default function ExploreScreen() {
     }, [])
   );
 
-  // ---- reset list when filters change
   useEffect(() => {
     setItems([]);
     setPage(1);
@@ -426,7 +413,6 @@ export default function ExploreScreen() {
     setErr(null);
   }, [active, debouncedQ]);
 
-  // ---- fetch community recipes
   useEffect(() => {
     if (!API_BASE) return;
 
@@ -442,8 +428,6 @@ export default function ExploreScreen() {
         params.set("limit", String(limit));
         if (debouncedQ) params.set("q", debouncedQ);
 
-        // RANDOM: backend může vracet random, ale vy stejně chcete “mix”
-        // → necháme sort jen když není RANDOM
         if (active !== "RANDOM") params.set("sort", activeToSort(active));
 
         const url = `${API_BASE}/api/community-recipes?${params.toString()}`;
@@ -477,13 +461,11 @@ export default function ExploreScreen() {
     };
   }, [debouncedQ, page, active]);
 
-  // ---- GRID: display list (RANDOM local shuffle)
   useEffect(() => {
     if (active === "RANDOM") setDisplayList(shuffle(items));
     else setDisplayList(items);
   }, [items, active, randomSeed]);
 
-  // ---- SWIPE: hide recipes already saved
   useEffect(() => {
     const idsSet = new Set(favoriteIds);
     const candidates = items.filter((r) => {
@@ -545,7 +527,7 @@ export default function ExploreScreen() {
   }
 
   /* =========================
-     RENDERERS
+     RENDER
   ========================= */
 
   const renderGridItem = ({ item }: { item: CommunityRecipe }) => {
@@ -682,7 +664,7 @@ export default function ExploreScreen() {
   };
 
   /* =========================
-     DERIVED (for modal/swipe states)
+     Modal/swipe
   ========================= */
 
   const swipeEmpty = swipeDeck.length === 0 && !loading && !hasMore;
@@ -698,7 +680,6 @@ export default function ExploreScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      {/* HEADER (always visible) */}
       <View style={[styles.headerWrap, { backgroundColor: colors.background }]}>
         <View style={styles.viewModeRow}>
           <Pressable
@@ -755,7 +736,6 @@ export default function ExploreScreen() {
           </Text>
         </View>
 
-        {/* GRID-only header */}
         {viewMode === "GRID" && (
           <>
             <View style={styles.searchRow}>
@@ -889,7 +869,6 @@ export default function ExploreScreen() {
         )}
       </View>
 
-      {/* BODY */}
       {viewMode === "GRID" ? (
         loading && items.length === 0 ? (
           <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -955,7 +934,6 @@ export default function ExploreScreen() {
         </View>
       )}
 
-      {/* MODAL (GRID) */}
       <Modal
         visible={!!selected}
         animationType="slide"

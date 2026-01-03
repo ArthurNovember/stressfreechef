@@ -92,7 +92,7 @@
 }
 
 .deleteAccount {
-  margin-left: auto; /* odtlačí doprava */
+  margin-left: auto;
   width: 250px;
   border-top-right-radius: 0px;
   background: transparent;
@@ -101,7 +101,7 @@
 }
 
 .deleteAccount:hover {
-  margin-left: auto; /* odtlačí doprava */
+  margin-left: auto;
   width: 250px;
   border-top-right-radius: 0px;
   background: transparent;

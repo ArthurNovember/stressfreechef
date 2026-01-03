@@ -110,8 +110,8 @@
   background-color: #322222;
   height: 15px;
   display: flex;
-  justify-content: center; /* horizontálně */
-  align-items: center; /* vertikálně */
+  justify-content: center;
+  align-items: center;
 }
 
 .variantsExplore a.activeSection {

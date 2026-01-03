@@ -1,18 +1,15 @@
-/* Obrázek / video v Recipe – držíme v rozumném boxu */
 .Recipe img {
   max-width: 100%;
   max-height: 60vh;
   object-fit: contain;
 }
 
-/* Celá stránka Recipe – trochu menší padding a prostor pod */
 .Recipe {
   padding-top: 150px;
   height: 100%;
   background: radial-gradient(circle at top, #301e21 0, #090505 55%);
 }
 
-/* Box na obrázek: responsivní, střed, max 500px */
 .imgContainer {
   background-color: #212121;
   width: min(500px, 100%);
@@ -24,7 +21,6 @@
   overflow: hidden;
 }
 
-/* Text “Step X” */
 .step {
   background-color: rgb(28, 28, 28);
   width: 100%;
@@ -34,7 +30,6 @@
   height: 5vh;
 }
 
-/* Popis kroku – žádná pevná výška, jen min-height pro stabilitu */
 .instruction {
   background-color: rgb(48, 48, 48);
   margin: 0;
@@ -44,7 +39,6 @@
   width: 100%;
 }
 
-/* Spodní tlačítka – jednotný styl pro všechny kroky */
 .buttonContainer {
   background-color: rgb(28, 28, 28);
   width: 100%;
@@ -66,12 +60,10 @@
   gap: 12px;
 }
 
-/* Speciální layout pro poslední krok (StarRating) */
 .buttonContainer2.lastStep {
   justify-content: center;
 }
 
-/* Hlavní layout: obrázek vlevo, text vpravo – ale responsivní */
 .imgAndTextRecipe {
   display: flex;
   justify-content: center;
@@ -80,7 +72,6 @@
   margin: 0 auto;
 }
 
-/* Pravý sloupec s textem a tlačítky */
 .buttonAndStep {
   width: 60%;
   display: flex;
@@ -88,7 +79,6 @@
   gap: 0;
 }
 
-/* Mobil / užší šířky: pod sebe */
 @media (max-width: 900px) {
   .imgAndTextRecipe {
     flex-direction: column;

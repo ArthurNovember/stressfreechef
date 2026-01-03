@@ -55,12 +55,8 @@ function genLocalId() {
    Component
 ----------------------------- */
 function App() {
-  /* -----------------------------
-     Auth / User
-  ----------------------------- */
   const [userInfo, setUserInfo] = useState(null);
 
-  // token as "derived value" (will update when App rerenders)
   const token = useMemo(() => getToken(), [userInfo]);
 
   async function verifyTokenAndSetUserInfo() {
@@ -168,7 +164,6 @@ function App() {
   async function fetchShoppingList() {
     const token = getToken();
 
-    // offline mode (not logged in)
     if (!token) {
       setNewItem(loadLocalList());
       return;
@@ -198,7 +193,6 @@ function App() {
   async function addItem(item) {
     const token = getToken();
 
-    // offline mode
     if (!token) {
       const current = loadLocalList();
       const newObj = {
@@ -214,7 +208,6 @@ function App() {
       return;
     }
 
-    // online mode
     const res = await fetch(`${API_BASE}/api/shopping-list`, {
       method: "POST",
       headers: {
@@ -232,7 +225,6 @@ function App() {
   async function updateShoppingItem(itemId, updates) {
     const token = getToken();
 
-    // offline mode
     if (!token) {
       const current = loadLocalList();
       const updated = current.map((i) =>
@@ -249,7 +241,6 @@ function App() {
       return;
     }
 
-    // online mode
     const res = await fetch(`${API_BASE}/api/shopping-list/${itemId}`, {
       method: "PATCH",
       headers: {
@@ -267,7 +258,6 @@ function App() {
   async function deleteShoppingItem(itemId) {
     const token = getToken();
 
-    // offline mode
     if (!token) {
       const current = loadLocalList();
       const updated = current.filter((i) => i._id !== itemId);
@@ -277,7 +267,6 @@ function App() {
       return;
     }
 
-    // online mode
     const res = await fetch(`${API_BASE}/api/shopping-list/${itemId}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
@@ -320,7 +309,6 @@ function App() {
   async function addFavoriteItem(item) {
     const token = getToken();
 
-    // item.shop může být: pole objektů { _id, name } nebo pole stringů s _id
     const shopIds = Array.isArray(item?.shop)
       ? item.shop
           .map((s) => (typeof s === "string" ? s : s?._id))
@@ -383,7 +371,6 @@ function App() {
 
     try {
       if (!token) {
-        // offline fallback: aspoň z lokálně zobrazených položek
         const offline = [
           ...new Set(newItem.map((i) => (i.text || "").trim()).filter(Boolean)),
         ];
@@ -403,7 +390,7 @@ function App() {
   }
 
   /* -----------------------------
-     Effects (initial load)
+     Effects 
   ----------------------------- */
   useEffect(() => {
     verifyTokenAndSetUserInfo();

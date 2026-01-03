@@ -34,21 +34,18 @@ const FavoriteItems = ({
   const rowDropdownRefs = useRef({});
 
   /* =============================
-     State – dropdowns & UI
+     States 
   ============================= */
   const [isDropdownOpenTop, setIsDropdownOpenTop] = useState(false);
   const [rowDropdownOpen, setRowDropdownOpen] = useState({});
   const [addingShop, setAddingShop] = useState(false);
   const [newShopName, setNewShopName] = useState("");
 
-  /* =============================
-     State – filter & sort
-  ============================= */
   const [filterShopsFavorite, setFilterShopsFavorite] = useState([]);
   const [sortModeFavorite, setSortModeFavorite] = useState("added");
 
   /* =============================
-     Effect – close dropdowns on outside click
+     Effects
   ============================= */
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -69,7 +66,7 @@ const FavoriteItems = ({
   }, []);
 
   /* =============================
-     Handlers – submit favorite
+     Handlers 
   ============================= */
   function handleSubmit(e) {
     e.preventDefault();
@@ -82,9 +79,6 @@ const FavoriteItems = ({
     setFavoriteShop([]);
   }
 
-  /* =============================
-     Handlers – dropdown toggle
-  ============================= */
   function toggleRowDropdown(index) {
     setRowDropdownOpen((prev) => ({
       ...prev,
@@ -92,9 +86,6 @@ const FavoriteItems = ({
     }));
   }
 
-  /* =============================
-     Handlers – shop CRUD
-  ============================= */
   async function handleDeleteShop(shopId) {
     try {
       await fetch(`${API_BASE}/api/shopping-list/shop-options/${shopId}`, {
@@ -166,7 +157,7 @@ const FavoriteItems = ({
   }
 
   /* =============================
-     Derived – filtering
+    Filtering
   ============================= */
   const filteredItems = FavoriteNewItem.filter((item) => {
     if (filterShopsFavorite.length === 0) return true;
@@ -182,7 +173,7 @@ const FavoriteItems = ({
   });
 
   /* =============================
-     Derived – sorting
+     Sorting
   ============================= */
   const sortedItems = [...filteredItems];
 
@@ -217,7 +208,6 @@ const FavoriteItems = ({
       <div className="itemContainer">
         <h2>MY FAVORITES</h2>
 
-        {/* FILTER */}
         <div className="favoriteSelectAndSort">
           <div className="filterShopsFavorite">
             <p>Shop:</p>
@@ -256,10 +246,8 @@ const FavoriteItems = ({
           </div>
         </div>
 
-        {/* LIST */}
         <div className="ItemButton">
           <ul>
-            {/* ADD FORM */}
             <li>
               <form onSubmit={handleSubmit}>
                 <div className="AddTopFavorite">
@@ -333,7 +321,6 @@ const FavoriteItems = ({
               </form>
             </li>
 
-            {/* ITEMS */}
             {sortedItems.map((item, index) => {
               const isOpen = rowDropdownOpen[index] || false;
 

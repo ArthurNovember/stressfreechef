@@ -38,7 +38,7 @@ type PagedResponse<T> = {
 
 type Cover = { url: string; isVideo: boolean };
 
-type RecipeLike = any; // v budoucnu si to typneme stejně jako v ostatních screens
+type RecipeLike = any;
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -53,7 +53,7 @@ const SAVED_LIMIT = 8;
 const MY_LIMIT = 12;
 
 /* =========================
-   HELPERS (pure)
+   HELPERS 
 ========================= */
 
 function isVideoUrl(url = "") {
@@ -89,7 +89,7 @@ function isUnauthorizedError(e: any) {
 }
 
 /* =========================
-   STORAGE (token/lang)
+  API
 ========================= */
 
 async function getToken() {
@@ -109,10 +109,6 @@ async function loadLang(): Promise<Lang> {
     return "en";
   }
 }
-
-/* =========================
-   ACTIONS (async)
-========================= */
 
 async function addIngredientToShopping(ingredient: string, lang: Lang) {
   const trimmed = ingredient.trim();
@@ -585,7 +581,7 @@ function AuthFormRN({
 }
 
 /* =========================
-   PROFILE (logged in)
+   PROFILE 
 ========================= */
 
 function MyProfileRN({
@@ -597,21 +593,17 @@ function MyProfileRN({
 }) {
   const { colors } = useTheme();
 
-  // user + modal
   const [user, setUser] = useState<any>(null);
   const [selected, setSelected] = useState<any | null>(null);
 
-  // status
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // saved
   const [savedItems, setSavedItems] = useState<any[]>([]);
   const [savedPage, setSavedPage] = useState(1);
   const [savedPages, setSavedPages] = useState(1);
   const [savedLoadingMore, setSavedLoadingMore] = useState(false);
 
-  // my
   const [myItems, setMyItems] = useState<any[]>([]);
   const [myPage, setMyPage] = useState(1);
   const [myPages, setMyPages] = useState(1);
@@ -635,12 +627,10 @@ function MyProfileRN({
       const token = await getToken();
       if (!token) throw new Error("Missing token");
 
-      // me
       const meRes = await fetchMe(token);
       if (meRes.ok) setUser(meRes.data);
       else setUser(null);
 
-      // reset paging
       setSavedPage(1);
       setSavedPages(1);
       setSavedItems([]);
@@ -649,7 +639,6 @@ function MyProfileRN({
       setMyPages(1);
       setMyItems([]);
 
-      // load first pages
       const [savedRes, myRes] = await Promise.all([
         fetchSavedRecipesPage(token, 1),
         fetchMyRecipesPage(token, 1),
@@ -835,7 +824,6 @@ function MyProfileRN({
     <View
       style={{ flex: 1, backgroundColor: colors.background, paddingTop: 15 }}
     >
-      {/* HEADER */}
       <View style={styles.profileHeader}>
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: "row", gap: 8 }}>
@@ -853,7 +841,6 @@ function MyProfileRN({
         </View>
       </View>
 
-      {/* SAVED */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         {t(lang, "profile", "savedRecipesTitle")}
       </Text>
@@ -946,7 +933,6 @@ function MyProfileRN({
         }}
       />
 
-      {/* MY RECIPES */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         {t(lang, "profile", "myRecipesTitle")}
       </Text>
@@ -1038,7 +1024,6 @@ function MyProfileRN({
         }}
       />
 
-      {/* MODAL */}
       <Modal
         visible={!!selected}
         animationType="slide"
@@ -1200,7 +1185,6 @@ const styles = StyleSheet.create({
 
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 4 },
 
-  // Auth
   authWrap: { gap: 16, flexGrow: 1, paddingBottom: 24 },
   authSwitchRow: { flexDirection: "row", paddingTop: 35 },
   switchBtn: {
@@ -1219,7 +1203,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
 
-  // Buttons
   primaryBtn: {
     borderRadius: 12,
     paddingVertical: 12,
@@ -1237,7 +1220,6 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: { fontWeight: "700" },
 
-  // Profile
   profileHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1253,7 +1235,6 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
 
-  // Cards
   card: {
     flexDirection: "row",
     borderWidth: 2,
@@ -1272,7 +1253,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // Modal
   modalOverlay: {
     flex: 1,
     justifyContent: "center",

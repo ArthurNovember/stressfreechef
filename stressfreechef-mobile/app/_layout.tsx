@@ -3,7 +3,6 @@ import { Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider, useTheme } from "../theme/ThemeContext";
 
-// 📌 import useFonts + Metropolis
 import * as Font from "expo-font";
 
 function RootWithStatusBar() {

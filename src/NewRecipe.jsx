@@ -8,50 +8,32 @@ import {
   uploadStepMedia,
 } from "./api";
 
-/* -----------------------------
-   Constants
------------------------------ */
 const DIFFICULTIES = ["Beginner", "Intermediate", "Hard"];
 
-/* -----------------------------
-   Component
------------------------------ */
 const NewRecipe = () => {
   /* -----------------------------
-     Main recipe info
+     States
   ----------------------------- */
   const [title, setTitle] = useState("");
   const [difficulty, setDifficulty] = useState("Beginner");
   const [time, setTime] = useState("00:00");
   const [isPublic, setIsPublic] = useState(false);
 
-  /* -----------------------------
-     Thumbnail (file + preview)
-  ----------------------------- */
   const [thumbFile, setThumbFile] = useState(null);
   const [thumbPreview, setThumbPreview] = useState(null);
   const [thumbIsVideo, setThumbIsVideo] = useState(false);
 
-  /* -----------------------------
-     Ingredients
-  ----------------------------- */
   const [ingredients, setIngredients] = useState([""]);
 
-  /* -----------------------------
-     Steps (description + optional media)
-  ----------------------------- */
   const [steps, setSteps] = useState([
     { description: "", file: null, preview: null, type: "text" },
   ]);
 
-  /* -----------------------------
-     UI state
-  ----------------------------- */
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
 
   /* =============================
-     Handlers – Thumbnail
+     Handlers
   ============================= */
   function handleThumbnailChange(e) {
     const file = e.target.files?.[0] || null;
@@ -68,9 +50,6 @@ const NewRecipe = () => {
     setThumbIsVideo(file.type.startsWith("video/"));
   }
 
-  /* =============================
-     Handlers – Ingredients
-  ============================= */
   function updateIngredient(index, value) {
     setIngredients((arr) => arr.map((v, i) => (i === index ? value : v)));
   }
@@ -83,9 +62,6 @@ const NewRecipe = () => {
     setIngredients((arr) => arr.filter((_, i) => i !== index));
   }
 
-  /* =============================
-     Handlers – Steps
-  ============================= */
   function updateStepDescription(index, value) {
     setSteps((arr) =>
       arr.map((s, i) => (i === index ? { ...s, description: value } : s))
@@ -144,7 +120,7 @@ const NewRecipe = () => {
   }
 
   /* =============================
-     Submit flow
+     Submit
   ============================= */
   async function handleSubmit() {
     const error = validate();
@@ -157,7 +133,6 @@ const NewRecipe = () => {
       setSaving(true);
       setMsg(null);
 
-      /* 1️⃣ Create recipe as PRIVATE */
       const payload = {
         title: title.trim(),
         difficulty,
@@ -175,19 +150,16 @@ const NewRecipe = () => {
       const created = await createMyRecipe(payload);
       const recipeId = created._id;
 
-      /* 2️⃣ Upload thumbnail */
       if (thumbFile) {
         await uploadRecipeMedia(recipeId, thumbFile);
       }
 
-      /* 3️⃣ Upload step media */
       await Promise.all(
         steps.map((s, idx) =>
           s.file ? uploadStepMedia(recipeId, idx, s.file) : null
         )
       );
 
-      /* 4️⃣ Publish (optional) */
       if (isPublic) {
         await publishMyRecipe(recipeId);
       }
@@ -197,7 +169,6 @@ const NewRecipe = () => {
         text: `Recipe created${isPublic ? " and shared publicly" : ""}.`,
       });
 
-      /* 5️⃣ Reset form */
       resetForm();
     } catch (e) {
       setMsg({ type: "error", text: e.message || "Save failed." });
@@ -226,7 +197,6 @@ const NewRecipe = () => {
       {msg && <p className={msg.type}>{msg.text}</p>}
 
       <div className="creation">
-        {/* MAIN INFO */}
         <div className="mainInfo">
           <div className="nameDifTime">
             <div className="inputAdd">
@@ -262,7 +232,6 @@ const NewRecipe = () => {
             </div>
           </div>
 
-          {/* THUMBNAIL */}
           <div className="uploadContainer">
             <label htmlFor="uploadThumb">
               <div className="imagePreview">
@@ -287,7 +256,6 @@ const NewRecipe = () => {
             />
           </div>
 
-          {/* CREATE BUTTON */}
           <img
             className="addRecipe"
             src="https://i.imgur.com/wPktOjd.png"
@@ -296,7 +264,6 @@ const NewRecipe = () => {
             onClick={() => (!saving ? handleSubmit() : null)}
           />
 
-          {/* VISIBILITY */}
           <div className="public">
             <select
               value={isPublic ? "Public" : "Private"}
@@ -308,9 +275,7 @@ const NewRecipe = () => {
           </div>
         </div>
 
-        {/* INGREDIENTS + STEPS */}
         <div className="stepsAndIngrents">
-          {/* INGREDIENTS */}
           <div className="Ingredients">
             <h3>INGREDIENTS</h3>
             <ol>
@@ -334,7 +299,6 @@ const NewRecipe = () => {
             </ol>
           </div>
 
-          {/* STEPS */}
           <div className="Steps">
             <h3>STEPS</h3>
             <ol>

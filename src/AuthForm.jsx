@@ -16,21 +16,16 @@ const AuthForm = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
 
   /* =============================
-     State – mode
+     States
   ============================= */
-  // "signup" | "login"
   const [mode, setMode] = useState("signup");
-
-  /* =============================
-     State – form fields
-  ============================= */
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   /* =============================
-     Helpers – validation
+     Helpers 
   ============================= */
   function validateSignup() {
     if (!username.trim() || !email.trim() || !password.trim()) {
@@ -53,7 +48,7 @@ const AuthForm = ({ onLoginSuccess }) => {
   }
 
   /* =============================
-     Actions – signup
+     Login/Signup
   ============================= */
   async function handleSignup() {
     if (!validateSignup()) return;
@@ -79,9 +74,6 @@ const AuthForm = ({ onLoginSuccess }) => {
     }
   }
 
-  /* =============================
-     Actions – login
-  ============================= */
   async function handleLogin() {
     if (!validateLogin()) return;
 
@@ -113,7 +105,6 @@ const AuthForm = ({ onLoginSuccess }) => {
   return (
     <div className="authfull">
       <div className="FormContainer">
-        {/* MODE SWITCH */}
         <button
           className="formStyleA"
           style={{
@@ -136,7 +127,6 @@ const AuthForm = ({ onLoginSuccess }) => {
           LOG IN
         </button>
 
-        {/* SIGN UP */}
         {mode === "signup" && (
           <div className="signOption">
             <div className="labelWithInputs">
@@ -186,7 +176,6 @@ const AuthForm = ({ onLoginSuccess }) => {
           </div>
         )}
 
-        {/* LOG IN */}
         {mode === "login" && (
           <div className="signOption">
             <div className="labelWithInputs">

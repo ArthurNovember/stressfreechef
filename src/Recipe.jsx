@@ -75,7 +75,7 @@ const Recipe = () => {
   const step = recipe.steps[currentStep];
 
   /* =============================
-     Effect – ensure community recipe
+     Effects
   ============================= */
   useEffect(() => {
     const isOfficial =
@@ -119,9 +119,6 @@ const Recipe = () => {
     };
   }, [recipe?._id, initialCommunityId]);
 
-  /* =============================
-     Effect – fetch community stats
-  ============================= */
   useEffect(() => {
     if (!communityId) return;
 
@@ -154,7 +151,7 @@ const Recipe = () => {
   }, [communityId]);
 
   /* =============================
-     Actions – rating
+     Rating
   ============================= */
   async function submitRating(value) {
     try {

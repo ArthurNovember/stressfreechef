@@ -22,7 +22,7 @@ function getToken() {
 }
 
 /* -----------------------------
-   Media helpers
+   Helpers
 ----------------------------- */
 const isVideoFormat = (fmt = "", url = "") => {
   const f = String(fmt || "")
@@ -46,7 +46,6 @@ const findAnyStepSrc = (steps = []) => {
   return s?.src || "";
 };
 
-/** Cover pořadí: image.url -> imgSrc -> první image step -> jakýkoli step -> placeholder */
 const getCover = (r) => {
   const url =
     r?.image?.url ||
@@ -60,9 +59,6 @@ const getCover = (r) => {
   return { url: url || PLACEHOLDER_IMG, isVideo };
 };
 
-/* -----------------------------
-   Deterministic random helper
------------------------------ */
 const hash = (str) => {
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) {
@@ -84,7 +80,7 @@ const randomSort = (list, seed) =>
 ----------------------------- */
 const ExploreRecipes = ({ addItem }) => {
   /* -----------------------------
-     State
+     States
   ----------------------------- */
   const [items, setItems] = useState([]);
   const [displayRecipes, setDisplayRecipes] = useState([]);
@@ -115,7 +111,7 @@ const ExploreRecipes = ({ addItem }) => {
   const fetchingMoreRef = useRef(false);
 
   /* -----------------------------
-     Derived
+     Extra
   ----------------------------- */
   const selectedIsSaved = selectedRecipe
     ? savedCommunityIds.includes(selectedRecipe?._id)
@@ -126,9 +122,6 @@ const ExploreRecipes = ({ addItem }) => {
     return getCover(selectedRecipe);
   }, [selectedRecipe]);
 
-  /* -----------------------------
-     Actions
-  ----------------------------- */
   function openModal(recipe) {
     setSelectedRecipe(recipe);
   }
@@ -144,7 +137,6 @@ const ExploreRecipes = ({ addItem }) => {
       return;
     }
 
-    // UNSAVE
     if (savedCommunityIds.includes(rid)) {
       await fetch(`${API_BASE}/api/saved-community-recipes/${rid}`, {
         method: "DELETE",
@@ -155,7 +147,6 @@ const ExploreRecipes = ({ addItem }) => {
       return;
     }
 
-    // SAVE
     await fetch(`${API_BASE}/api/saved-community-recipes`, {
       method: "POST",
       headers: {
@@ -172,7 +163,6 @@ const ExploreRecipes = ({ addItem }) => {
      Effects
   ----------------------------- */
 
-  // 1) Body scroll lock for modal
   useEffect(() => {
     document.body.style.overflow = selectedRecipe ? "hidden" : "auto";
     return () => {
@@ -180,13 +170,11 @@ const ExploreRecipes = ({ addItem }) => {
     };
   }, [selectedRecipe]);
 
-  // 2) Debounce search input
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
 
-  // 3) Load saved community ids (for SAVE button state)
   useEffect(() => {
     (async () => {
       try {
@@ -212,13 +200,11 @@ const ExploreRecipes = ({ addItem }) => {
     })();
   }, []);
 
-  // 4) Reset list when query/sort changes
   useEffect(() => {
     setPage(1);
     setItems([]);
   }, [debouncedQ, sortBy]);
 
-  // 5) Fetch paged community recipes
   useEffect(() => {
     let aborted = false;
 
@@ -278,7 +264,6 @@ const ExploreRecipes = ({ addItem }) => {
     };
   }, [page, limit, debouncedQ, sortBy]);
 
-  // 6) Infinite scroll observer
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el) return;
@@ -302,7 +287,6 @@ const ExploreRecipes = ({ addItem }) => {
     return () => obs.disconnect();
   }, [loading, page, pages]);
 
-  // 7) Build display list (server sort + random local)
   useEffect(() => {
     if (sortBy === "random") {
       setDisplayRecipes(randomSort(items, randomSeed));
@@ -465,10 +449,8 @@ const ExploreRecipes = ({ addItem }) => {
         })}
       </div>
 
-      {/* sentinel pro infinite scroll */}
       <div ref={loadMoreRef} style={{ height: 1 }} />
 
-      {/* Modal */}
       {selectedRecipe && (
         <div className="modalOverlay" onClick={() => setSelectedRecipe(null)}>
           <div

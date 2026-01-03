@@ -1,8 +1,3 @@
-// app/favorites.tsx
-
-/* =========================
-   IMPORTS
-========================= */
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { t, Lang, LANG_KEY } from "../i18n/strings";
 import { useTheme } from "../theme/ThemeContext";
@@ -49,7 +44,7 @@ async function getToken() {
 }
 
 /* =========================
-   HELPERS (pure)
+   HELPERS
 ========================= */
 const isUnauthorizedError = (e: any) => {
   const msg = String(e?.message ?? e ?? "");
@@ -67,33 +62,31 @@ export default function FavoritesScreen() {
   const router = useRouter();
   const { colors } = useTheme();
 
-  /* ---------- base state ---------- */
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [shopOptions, setShopOptions] = useState<ShopOption[]>([]);
 
-  // nový favorite
   const [newText, setNewText] = useState("");
   const [newFavoriteShopIds, setNewFavoriteShopIds] = useState<string[]>([]);
   const [savingFavorite, setSavingFavorite] = useState(false);
 
-  // modal pro shopy konkrétního favorite
   const [editingFavoriteId, setEditingFavoriteId] = useState<string | null>(
     null
   );
 
-  // globální manage shops
   const [manageShopsVisible, setManageShopsVisible] = useState(false);
   const [addingShopName, setAddingShopName] = useState("");
   const [addingShopBusy, setAddingShopBusy] = useState(false);
 
-  // filtrování jako v shopping.tsx
   const [filterShopIds, setFilterShopIds] = useState<string[]>([]);
 
-  // lang
   const [lang, setLang] = useState<Lang>("en");
+
+  /* =========================
+   Effects
+========================= */
 
   useEffect(() => {
     (async () => {
@@ -102,9 +95,6 @@ export default function FavoritesScreen() {
     })();
   }, []);
 
-  /* =========================
-     HW back → zpět na shopping tab
-  ========================= */
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -120,10 +110,6 @@ export default function FavoritesScreen() {
     }, [router])
   );
 
-  /* =========================
-     LOAD favorites + shops
-     (fix: závisí na lang, aby error text byl správně)
-  ========================= */
   const loadAll = useCallback(async () => {
     setLoading(true);
     setErr(null);
@@ -157,7 +143,7 @@ export default function FavoritesScreen() {
   );
 
   /* =========================
-     DERIVED
+     HELPERS
   ========================= */
   const processedFavorites = useMemo(() => {
     let res = [...favorites];
@@ -172,7 +158,6 @@ export default function FavoritesScreen() {
       });
     }
 
-    // nejnovější nahoře (pokud backend vrací podle vytvoření)
     return res.reverse();
   }, [favorites, filterShopIds]);
 
@@ -182,10 +167,6 @@ export default function FavoritesScreen() {
   }, [editingFavoriteId, favorites]);
 
   const noShopActive = filterShopIds.includes("No Shop");
-
-  /* =========================
-     ACTIONS: Favorites
-  ========================= */
 
   const updateFavorite = useCallback(
     async (id: string, updates: { shop?: string[] }) => {
@@ -346,9 +327,6 @@ export default function FavoritesScreen() {
     [updateFavorite]
   );
 
-  /* =========================
-     ACTIONS: Shop options
-  ========================= */
   const handleAddShopOption = useCallback(async () => {
     const trimmed = addingShopName.trim();
     if (!trimmed) return;
@@ -488,7 +466,6 @@ export default function FavoritesScreen() {
         </Pressable>
       </View>
 
-      {/* INPUT NA NOVÝ FAVORITE */}
       <View style={{ paddingHorizontal: 12, paddingBottom: 4 }}>
         <View
           style={[
@@ -604,7 +581,6 @@ export default function FavoritesScreen() {
           </Pressable>
         </View>
 
-        {/* FILTR */}
         <Text style={{ color: colors.text, fontSize: 20, paddingTop: 10 }}>
           {t(lang, "shopping", "filterByShop")}
         </Text>
@@ -705,7 +681,6 @@ export default function FavoritesScreen() {
         )}
       </View>
 
-      {/* LIST */}
       {processedFavorites.length === 0 ? (
         <View style={[styles.center, { backgroundColor: colors.background }]} />
       ) : (
@@ -792,7 +767,6 @@ export default function FavoritesScreen() {
         </ScrollView>
       )}
 
-      {/* Modal – shopy pro konkrétní favorite */}
       <Modal
         visible={!!editingFavorite}
         transparent
@@ -917,7 +891,6 @@ export default function FavoritesScreen() {
         </View>
       </Modal>
 
-      {/* Modal – globální správa shopů */}
       <Modal
         visible={manageShopsVisible}
         transparent

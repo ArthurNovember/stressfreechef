@@ -1,4 +1,3 @@
-// src/api.js
 export const BASE = "https://stressfreecheff-backend.onrender.com";
 
 function authHeaders() {
@@ -6,18 +5,18 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// CREATE (vždy jako private; public řešíme až po uploadu médií)
+// CREATE
 export async function createMyRecipe(payload) {
   const res = await fetch(`${BASE}/api/my-recipes`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ ...payload, isPublic: false }), // 🔒 vždy private
+    body: JSON.stringify({ ...payload, isPublic: false }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-// PUBLISH (přepnout private -> public => vznikne Community kopie s image)
+// PUBLISH
 export async function publishMyRecipe(recipeId) {
   const res = await fetch(`${BASE}/api/my-recipes/${recipeId}`, {
     method: "PATCH",
@@ -28,7 +27,7 @@ export async function publishMyRecipe(recipeId) {
   return res.json();
 }
 
-// THUMBNAIL upload (uloží do UserRecipe.image)
+// THUMBNAIL
 export async function uploadRecipeMedia(recipeId, file) {
   const fd = new FormData();
   fd.append("file", file);
@@ -52,7 +51,7 @@ export async function deleteRecipeMedia(recipeId) {
   return res.json();
 }
 
-// Upload média ke kroku (uloží do UserRecipe.steps[stepIndex])
+// Upload média ke kroku
 export async function uploadStepMedia(recipeId, stepIndex, file) {
   const fd = new FormData();
   fd.append("file", file);
@@ -86,5 +85,5 @@ export async function deleteMyRecipe(recipeId) {
     headers: { ...authHeaders() },
   });
   if (!res.ok) throw new Error(await res.text());
-  return res.json(); // { message: "Recept smazán." }
+  return res.json();
 }

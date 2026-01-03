@@ -30,7 +30,7 @@ type LocalMediaType = "image" | "video";
 
 type LocalStep = {
   description: string;
-  timerInput: string; // "hh:mm:ss" / "mm:ss" / "90"
+  timerInput: string;
   localUri?: string | null;
   mediaType?: LocalMediaType | null;
 };
@@ -61,7 +61,7 @@ const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
 const TOKEN_KEY = "token";
 
 /* =========================
-   HELPERS (pure)
+   HELPERS 
 ========================= */
 
 function translateDifficulty(lang: Lang, diff: string) {
@@ -73,7 +73,6 @@ function translateDifficulty(lang: Lang, diff: string) {
   return diff;
 }
 
-// seconds → "HH:MM:SS" (input string)
 function secondsToHmsInput(total: number | undefined | null): string {
   if (!Number.isFinite(Number(total)) || !total || total <= 0) return "";
   const t = Number(total);
@@ -133,14 +132,12 @@ function parseTimerInput(raw: string): number | null {
 
   const parts = value.split(":");
 
-  // just number => seconds
   if (parts.length === 1) {
     const sec = Number(parts[0]);
     if (!Number.isFinite(sec) || sec <= 0) return null;
     return Math.floor(sec);
   }
 
-  // mm:ss
   if (parts.length === 2) {
     const [mStr, sStr] = parts;
     const min = Number(mStr);
@@ -158,7 +155,6 @@ function parseTimerInput(raw: string): number | null {
     return total > 0 ? total : null;
   }
 
-  // hh:mm:ss
   if (parts.length === 3) {
     const [hStr, mStr, sStr] = parts;
     const h = Number(hStr);
@@ -199,7 +195,7 @@ function convertRecipeTimeToDate(time: string): Date {
 }
 
 /* =========================
-   ACTIONS (async)
+  API
 ========================= */
 
 async function getToken(): Promise<string> {
@@ -328,7 +324,7 @@ async function publishRecipeMobile(
 }
 
 /* =========================
-   AI IMPORT (pure-ish)
+   AI 
 ========================= */
 
 function validateAiRecipeInput(
@@ -390,42 +386,32 @@ export default function NewRecipeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
 
-  // base fields
   const [title, setTitle] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty>("Beginner");
   const [time, setTime] = useState(""); // "HH:MM"
   const [isPublic, setIsPublic] = useState(false);
 
-  // thumbnail
   const [thumbUri, setThumbUri] = useState<string | null>(null);
   const [thumbMediaType, setThumbMediaType] = useState<LocalMediaType>("image");
 
-  // steps + ingredients
   const [steps, setSteps] = useState<LocalStep[]>([
     { description: "", timerInput: "", localUri: null, mediaType: null },
   ]);
   const [ingredients, setIngredients] = useState<string[]>([""]);
 
-  // UI
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [lang, setLang] = useState<Lang>("en");
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  // AI mode
   const [aiMode, setAiMode] = useState(false);
   const [aiText, setAiText] = useState("");
   const [aiImportErr, setAiImportErr] = useState<string | null>(null);
 
-  // init lang
   useEffect(() => {
     (async () => setLang(await loadLang()))();
   }, []);
-
-  /* =========================
-     DERIVED
-  ========================= */
 
   const timePickerDate = useMemo(() => convertRecipeTimeToDate(time), [time]);
 
@@ -611,7 +597,6 @@ Here is the recipe:`;
 
       const data = validated.data;
 
-      // ✅ apply into the form
       setTitle(data.title.trim());
 
       if (data.difficulty && DIFFICULTIES.includes(data.difficulty))
@@ -652,7 +637,6 @@ Here is the recipe:`;
       setErr(null);
       setSuccessMsg(null);
 
-      // ---- basic validation
       if (!title.trim() || !difficulty || !time.trim()) {
         setErr(t(lang, "newRecipe", "errorFillMainFields"));
         return;
@@ -666,7 +650,6 @@ Here is the recipe:`;
         return;
       }
 
-      // ---- timer validation
       for (let i = 0; i < steps.length; i++) {
         const raw = steps[i].timerInput.trim();
         if (!raw) continue;
@@ -696,7 +679,6 @@ Here is the recipe:`;
         return;
       }
 
-      // ---- payload steps (web parity + timerSeconds)
       const payloadSteps = steps
         .map((s) => {
           const description = (s.description || "").trim();
@@ -719,10 +701,9 @@ Here is the recipe:`;
           .map((ing) => (ing || "").trim())
           .filter(Boolean),
         steps: payloadSteps,
-        isPublic: false, // stejně jako web – public až po uploadech
+        isPublic: false,
       };
 
-      // 1) create my-recipe
       const created = await fetchJSON<any>(`${BASE}/api/my-recipes`, {
         method: "POST",
         headers: {
@@ -735,13 +716,11 @@ Here is the recipe:`;
       const recipeId = String(created?._id || "");
       if (!recipeId) throw new Error("Recipe creation failed (missing _id).");
 
-      // 2) thumbnail upload
       if (thumbUri) {
         const up = await uploadRecipeMediaMobile(token, recipeId, thumbUri);
         if (!up.ok) throw new Error(up.error);
       }
 
-      // 3) steps media upload (keep original indices)
       const uploads = await Promise.all(
         steps.map(async (s, index) => {
           if (s.localUri && s.mediaType) {
@@ -762,7 +741,6 @@ Here is the recipe:`;
         | undefined;
       if (failed && !failed.ok) throw new Error(failed.error);
 
-      // 4) publish if chosen
       if (isPublic) {
         const pub = await publishRecipeMobile(token, recipeId);
         if (!pub.ok) throw new Error(pub.error);
@@ -781,7 +759,6 @@ Here is the recipe:`;
           : "The recipe was successfully created."
       );
 
-      // reset form
       setTitle("");
       setDifficulty("Beginner");
       setTime("");
@@ -1027,7 +1004,6 @@ Here is the recipe:`;
         )}
       </View>
 
-      {/* THUMBNAIL */}
       <View
         style={[
           styles.card,
@@ -1060,7 +1036,6 @@ Here is the recipe:`;
         </Pressable>
       </View>
 
-      {/* STEPS */}
       <View
         style={[
           styles.card,
@@ -1231,7 +1206,6 @@ Here is the recipe:`;
         </Pressable>
       </View>
 
-      {/* INGREDIENTS */}
       <View
         style={[
           styles.card,
@@ -1283,7 +1257,6 @@ Here is the recipe:`;
         </Pressable>
       </View>
 
-      {/* SUBMIT */}
       <Pressable
         style={[
           styles.submitBtn,

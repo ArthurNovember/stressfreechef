@@ -1,8 +1,3 @@
-// app/settings.tsx
-
-/* =========================
-   IMPORTS
-========================= */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
@@ -39,9 +34,7 @@ async function getToken() {
 async function clearToken() {
   try {
     await AsyncStorage.removeItem(TOKEN_KEY);
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 async function loadStoredLang(): Promise<"en" | "cs" | null> {
@@ -73,11 +66,9 @@ async function loadBlowNext(): Promise<boolean> {
 }
 
 /* =========================
-   HELPERS (pure)
+   HELPERS 
 ========================= */
 function pickCancelText(lang: Lang) {
-  // fallback, pokud nemáš i18n klíče pro cancel/delete
-  // (nechci ti je vnutit bez jistoty)
   return lang === "cs" ? "Zrušit" : "Cancel";
 }
 
@@ -98,7 +89,7 @@ export default function SettingsScreen() {
   const [blowNext, setBlowNext] = useState(false);
 
   /* =========================
-     INIT
+     EFFECTS
   ========================= */
   useEffect(() => {
     let cancelled = false;
@@ -110,7 +101,6 @@ export default function SettingsScreen() {
 
         const nextLang: "en" | "cs" = storedLang ?? systemLang;
 
-        // pokud nebylo uložené, uložíme systémové
         if (!storedLang) {
           await AsyncStorage.setItem(LANG_KEY, systemLang);
         }
@@ -134,7 +124,7 @@ export default function SettingsScreen() {
   }, []);
 
   /* =========================
-     ACTIONS
+     HELPERS
   ========================= */
   const handleThemeChange = useCallback(
     async (next: "light" | "dark") => {
@@ -232,7 +222,6 @@ export default function SettingsScreen() {
   ========================= */
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* HEADER */}
       <View style={styles.headerRow}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <MaterialIcons name="arrow-back" size={24} color={colors.text} />
@@ -243,7 +232,6 @@ export default function SettingsScreen() {
         </Text>
       </View>
 
-      {/* THEME */}
       <View style={styles.section}>
         <Text
           style={[
@@ -301,7 +289,6 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* LANGUAGE */}
       <View style={styles.section}>
         <Text
           style={[
@@ -359,7 +346,6 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* HANDS-FREE COOKING */}
       <View style={styles.section}>
         <Text
           style={[
@@ -399,7 +385,6 @@ export default function SettingsScreen() {
         </Text>
       </View>
 
-      {/* DELETE PROFILE */}
       {hasToken && (
         <View style={styles.section}>
           <Text

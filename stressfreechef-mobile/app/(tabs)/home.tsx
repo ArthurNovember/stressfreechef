@@ -1,4 +1,3 @@
-// app/(tabs)/home.tsx
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useScrollToTop, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -34,7 +33,6 @@ type Step = {
   type: "image" | "video" | "text";
   src?: string;
   description: string;
-  // optional cs variant is present in your data sometimes
   descriptionCs?: string;
 };
 
@@ -42,7 +40,6 @@ type Recipe = {
   _id?: string;
   id?: string;
   title: string;
-  // optional cs variants (you used "as any" before)
   titleCs?: string;
 
   imgSrc: string;
@@ -80,7 +77,7 @@ const GUEST_SHOPPING_KEY = "shopping_guest_items";
 const difficultyOrder = ["Beginner", "Intermediate", "Hard"] as const;
 
 /* =========================
-   HELPERS (pure)
+   HELPERS 
 ========================= */
 
 function getBaseId(r: Recipe | null | undefined) {
@@ -178,7 +175,7 @@ function shuffle<T>(src: T[]) {
 }
 
 /* =========================
-   ACTIONS (async) – unified result
+   API
 ========================= */
 
 async function getToken(): Promise<string> {
@@ -210,7 +207,6 @@ async function fetchOfficialRecipes(): Promise<ActionResult<Recipe[]>> {
   }
 }
 
-// Ensure community copy exists for each official recipe + pull rating stats
 async function ensureCommunityStatsForOfficialRecipes(
   baseIds: string[]
 ): Promise<ActionResult<CommunityStatsMap>> {
@@ -316,7 +312,6 @@ async function toggleSaveOfficialRecipe(
   }
 
   try {
-    // 1) Ensure community copy exists for base recipe
     const ensure = await fetchJSON<any>(
       `${API_BASE}/api/community-recipes/ensure-from-recipe/${baseRecipeId}`,
       {
@@ -332,7 +327,6 @@ async function toggleSaveOfficialRecipe(
     if (!communityId)
       return { ok: false, error: "Failed to ensure community recipe." };
 
-    // 2) Toggle
     if (savedCommunityIds.includes(communityId)) {
       const res = await fetch(
         `${API_BASE}/api/saved-community-recipes/${communityId}`,
@@ -371,7 +365,6 @@ async function addIngredientToShopping(ingredient: string, lang: Lang) {
   try {
     const token = await getToken();
 
-    // Guest mode: local AsyncStorage
     if (!token) {
       const stored = await AsyncStorage.getItem(GUEST_SHOPPING_KEY);
       let list: any[] = [];
@@ -406,7 +399,6 @@ async function addIngredientToShopping(ingredient: string, lang: Lang) {
       return;
     }
 
-    // Logged-in: backend
     const res = await fetch(`${API_BASE}/api/shopping-list`, {
       method: "POST",
       headers: {
@@ -486,35 +478,32 @@ function StarRatingDisplay({
 export default function HomeScreen() {
   const { colors } = useTheme();
 
-  // core
   const [lang, setLang] = useState<Lang>("en");
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [list, setList] = useState<Recipe[]>([]);
   const [activeTab, setActiveTab] = useState<ActiveTab>("NEWEST");
 
-  // saved + stats
   const [savedCommunityIds, setSavedCommunityIds] = useState<string[]>([]);
   const [savedBaseIds, setSavedBaseIds] = useState<string[]>([]);
   const [communityStats, setCommunityStats] = useState<CommunityStatsMap>({});
 
-  // modal
   const [selected, setSelected] = useState<Recipe | null>(null);
 
-  // status
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // list ref
   const listRef = useRef<FlatList<Recipe>>(null);
   useScrollToTop(listRef);
 
-  // ---- init lang
+  /* =========================
+   EFFECTS
+========================= */
+
   useEffect(() => {
     (async () => setLang(await loadLang()))();
   }, []);
 
-  // ---- initial recipes fetch
   useEffect(() => {
     let aborted = false;
 
@@ -541,7 +530,6 @@ export default function HomeScreen() {
     };
   }, []);
 
-  // ---- ensure stats for all official recipes (web parity)
   useEffect(() => {
     const baseIds = Array.from(new Set(recipes.map(getBaseId).filter(Boolean)));
 
@@ -560,7 +548,6 @@ export default function HomeScreen() {
     };
   }, [recipes]);
 
-  // ---- load saved on focus
   useFocusEffect(
     useCallback(() => {
       let alive = true;
@@ -585,7 +572,10 @@ export default function HomeScreen() {
     }, [])
   );
 
-  // ---- derived for modal
+  /* =========================
+     EXTRA
+  ========================= */
+
   const selectedBaseId = selected ? getBaseId(selected) : "";
   const selectedStats = selectedBaseId
     ? communityStats[selectedBaseId]
@@ -635,7 +625,6 @@ export default function HomeScreen() {
 
     const res = await toggleSaveOfficialRecipe(lang, baseId, savedCommunityIds);
     if (!res.ok) {
-      // if it failed due to login, the action already alerted; else show generic
       if (res.error !== "Login required") {
         Alert.alert(t(lang, "home", "addFailedTitle"), res.error);
       }
@@ -678,7 +667,7 @@ export default function HomeScreen() {
   }
 
   /* =========================
-     RENDERERS
+     RENDER
   ========================= */
 
   const renderRecipeCard = ({ item }: { item: Recipe }) => {
@@ -767,9 +756,7 @@ export default function HomeScreen() {
           <View>
             <View style={{ height: 33, backgroundColor: colors.background }} />
 
-            {/* TOP BAR */}
             <View style={{ alignItems: "center", flexDirection: "row" }}>
-              {/* MENU / SETTINGS */}
               <Pressable
                 onPress={() => router.push("/settings")}
                 style={{
@@ -787,7 +774,6 @@ export default function HomeScreen() {
                 <MaterialIcons name="menu" size={28} color="#edededff" />
               </Pressable>
 
-              {/* TITLE */}
               <Text
                 style={{
                   flex: 1,
@@ -810,7 +796,6 @@ export default function HomeScreen() {
               </Text>
             </View>
 
-            {/* TABS */}
             <View
               style={{
                 flexDirection: "row",
@@ -912,7 +897,6 @@ export default function HomeScreen() {
         renderItem={renderRecipeCard}
       />
 
-      {/* MODAL */}
       <Modal
         visible={!!selected}
         animationType="slide"

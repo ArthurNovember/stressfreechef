@@ -48,7 +48,7 @@ type ShoppingItem = {
 
 type ShoppingItemUpdate = {
   checked?: boolean;
-  shop?: string[]; // backend čeká jen ID
+  shop?: string[];
 };
 
 type FavoriteItem = {
@@ -101,7 +101,7 @@ function isSameFavorite(fav: FavoriteItem, item: ShoppingItem) {
 }
 
 /* =========================
-   STORAGE
+   API
 ========================= */
 
 async function getToken() {
@@ -135,10 +135,6 @@ async function saveGuestItems(items: ShoppingItem[]) {
     console.warn("Failed to save guest shopping list", e);
   }
 }
-
-/* =========================
-   ACTIONS (API)
-========================= */
 
 async function apiLoadAll(token: string) {
   const [list, shops, favorites] = await Promise.all([
@@ -267,36 +263,27 @@ export default function ShoppingScreen() {
   const listRef = useRef<SwipeListView<ShoppingItem> | null>(null);
   useScrollToTop(listRef as any);
 
-  // status
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-
-  // auth/lang
   const [lang, setLang] = useState<Lang>("en");
   const [hasToken, setHasToken] = useState(false);
-
-  // data
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [shopOptions, setShopOptions] = useState<ShopOption[]>([]);
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
 
-  // new item
   const [newText, setNewText] = useState("");
   const [newItemShopIds, setNewItemShopIds] = useState<string[]>([]);
 
-  // filter
   const [filterShopIds, setFilterShopIds] = useState<string[]>([]);
 
-  // modals
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [manageShopsVisible, setManageShopsVisible] = useState(false);
 
-  // shop manage
   const [addingShopName, setAddingShopName] = useState("");
   const [addingShopBusy, setAddingShopBusy] = useState(false);
 
   /* =========================
-     INIT
+     Effects
   ========================= */
 
   useEffect(() => {
@@ -339,7 +326,7 @@ export default function ShoppingScreen() {
   );
 
   /* =========================
-     DERIVED
+     EXTRA
   ========================= */
 
   const processedItems = useMemo(() => {
@@ -354,7 +341,6 @@ export default function ShoppingScreen() {
       });
     }
 
-    // newest first (držím vaši logiku)
     return res.reverse();
   }, [items, filterShopIds]);
 
@@ -364,7 +350,7 @@ export default function ShoppingScreen() {
   }, [editingItemId, items]);
 
   /* =========================
-     CRUD (guest + api)
+     GUEST/LOGGED
   ========================= */
 
   const requireLogin = useCallback((title: string, msg: string) => {
@@ -378,7 +364,6 @@ export default function ShoppingScreen() {
     try {
       const token = await getToken();
 
-      // guest
       if (!token) {
         const newItem: ShoppingItem = {
           _id: `guest-${Date.now()}`,
@@ -399,7 +384,6 @@ export default function ShoppingScreen() {
         return;
       }
 
-      // logged in
       const updatedList = await apiAddItem(token, trimmed, newItemShopIds);
       setItems(updatedList);
       setNewText("");
@@ -417,13 +401,11 @@ export default function ShoppingScreen() {
       try {
         const token = await getToken();
 
-        // guest
         if (!token) {
           setItems((prev) => {
             const updated = prev.map((it) => {
               if (it._id !== id) return it;
 
-              // guest: updates.shop je string[] => uděláme placeholder objekty
               let fixedShops = it.shop;
               if (updates.shop) {
                 fixedShops = updates.shop.map((sid) => ({
@@ -441,7 +423,6 @@ export default function ShoppingScreen() {
           return;
         }
 
-        // logged in
         const updatedList = await apiUpdateItem(token, id, updates);
         setItems(updatedList);
       } catch (e: any) {
@@ -455,7 +436,6 @@ export default function ShoppingScreen() {
   );
 
   const deleteItemInstant = useCallback(async (id: string) => {
-    // 1) guest – jen lokálně
     const token = await getToken();
     if (!token) {
       setItems((prev) => {
@@ -466,15 +446,12 @@ export default function ShoppingScreen() {
       return;
     }
 
-    // 2) UI: hned smaž (animace)
     setItems((prev) => prev.filter((it) => it._id !== id));
 
-    // 3) API delete “na pozadí”
     try {
       await apiDeleteItem(token, id);
     } catch (e: any) {
       console.error("Failed to delete item", e?.message || e);
-      // rollback teď neřešíme (stejně jako váš původní přístup)
     }
   }, []);
 
@@ -614,12 +591,10 @@ export default function ShoppingScreen() {
 
                 await apiDeleteShopOption(token, shopToDeleteId);
 
-                // options
                 setShopOptions((prev) =>
                   prev.filter((s) => s._id !== shopToDeleteId)
                 );
 
-                // odeber shop z itemů (lokálně)
                 setItems((prev) =>
                   prev.map((item) => ({
                     ...item,
@@ -783,7 +758,7 @@ export default function ShoppingScreen() {
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
         renderHiddenItem={() => <View />}
-        rightOpenValue={-SCREEN_WIDTH} // swipe přes celou šířku
+        rightOpenValue={-SCREEN_WIDTH}
         disableRightSwipe
         swipeToOpenPercent={50}
         onRowDidOpen={(rowKey: string) => {
@@ -793,7 +768,6 @@ export default function ShoppingScreen() {
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <>
-            {/* ADD NEW ITEM */}
             <View
               style={[
                 styles.newItemCard,
@@ -856,7 +830,6 @@ export default function ShoppingScreen() {
                 ]}
               />
 
-              {/* select shops for new item */}
               {hasToken && shopOptions.length > 0 && (
                 <View style={{ marginTop: 8 }}>
                   <Text style={[styles.label, { color: "white" }]}>
@@ -904,7 +877,6 @@ export default function ShoppingScreen() {
                 </View>
               )}
 
-              {/* manage shops */}
               {hasToken && (
                 <Pressable
                   style={[
@@ -936,7 +908,6 @@ export default function ShoppingScreen() {
               </Pressable>
             </View>
 
-            {/* FILTER */}
             <View style={{ padding: 12 }}>
               {hasToken && (
                 <Text
@@ -1037,7 +1008,6 @@ export default function ShoppingScreen() {
         }
       />
 
-      {/* MODAL: item shops */}
       <Modal
         visible={!!editingItem}
         transparent
@@ -1158,7 +1128,6 @@ export default function ShoppingScreen() {
         </View>
       </Modal>
 
-      {/* MODAL: manage shops */}
       <Modal
         visible={manageShopsVisible}
         transparent

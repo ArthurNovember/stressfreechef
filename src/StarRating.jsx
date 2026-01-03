@@ -1,8 +1,8 @@
 import { useState } from "react";
 
 export default function StarRating({
-  value = 0, // může být 4.7 → částečné vyplnění
-  onRate, // pokud dáš, je interaktivní (klik = celé 1..5)
+  value = 0,
+  onRate,
   readOnly = false,
   size = 22,
   showValue = false,
@@ -13,7 +13,7 @@ export default function StarRating({
 
   const handleClick = (i) => {
     if (readOnly || !onRate) return;
-    onRate(i + 1); // celé hvězdy
+    onRate(i + 1);
   };
 
   return (
@@ -42,13 +42,12 @@ export default function StarRating({
               aria-label={`${i + 1} star`}
               title={readOnly ? undefined : `${i + 1} stars`}
             >
-              {/* prázdná */}
               <span
                 style={{ position: "absolute", inset: 0, color: "#bcbcbc" }}
               >
                 ★
               </span>
-              {/* vyplněná část */}
+
               <span
                 style={{
                   position: "absolute",

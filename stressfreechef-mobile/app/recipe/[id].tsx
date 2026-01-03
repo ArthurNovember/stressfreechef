@@ -51,8 +51,6 @@ type Recipe = {
   time: string;
   steps?: Step[];
   image?: { url?: string };
-
-  // community-ish (volitelně, někdy už je to community recept)
   ratingAvg?: number;
   ratingCount?: number;
   sourceRecipeId?: string;
@@ -66,9 +64,8 @@ type Recipe = {
 
 const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
 const TOKEN_KEY = "token";
-const BLOW_NEXT_KEY = "settings:blowNextEnabled"; // stejný key jako v Settings
+const BLOW_NEXT_KEY = "settings:blowNextEnabled";
 
-// lock, aby se metering nespustil paralelně
 let blowRecordingInUse = false;
 
 /* =========================
@@ -98,7 +95,7 @@ async function loadBlowNextEnabled(): Promise<boolean> {
 }
 
 /* =========================
-   HELPERS (pure)
+   HELPERS 
 ========================= */
 
 function getRecipeTitle(r: Recipe, lang: Lang) {
@@ -162,7 +159,7 @@ function inferCommunityIdFromRecipe(
 }
 
 /* =========================
-   API ACTIONS
+   API 
 ========================= */
 
 async function ensureCommunityFromRecipe(recipeId: string) {
@@ -195,7 +192,7 @@ async function submitRatingApi(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ value }), // 1..5
+    body: JSON.stringify({ value }),
   });
 
   const raw = await res.text();
@@ -279,21 +276,17 @@ export default function RecipeStepsScreen() {
 
   const steps = recipe?.steps || [];
 
-  // language + blow setting
   const [lang, setLang] = useState<Lang>("en");
   const [blowNextEnabled, setBlowNextEnabled] = useState(false);
 
-  // step navigation
   const [current, setCurrent] = useState(0);
 
-  // timer state
   const [remaining, setRemaining] = useState<number | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [accumulated, setAccumulated] = useState(0);
   const [justFinished, setJustFinished] = useState(false);
 
-  // rating/community
   const paramsCommunityId =
     (params as any)?.communityRecipeId || (params as any)?.communityId;
   const [communityId, setCommunityId] = useState<string | null>(() =>
@@ -328,7 +321,7 @@ export default function RecipeStepsScreen() {
   }, [router, source]);
 
   /* =========================
-     INIT (lang + blow)
+    Effects
   ========================= */
 
   useEffect(() => {
@@ -339,12 +332,7 @@ export default function RecipeStepsScreen() {
     (async () => setBlowNextEnabled(await loadBlowNextEnabled()))();
   }, []);
 
-  /* =========================
-     TIMER: reset on step change
-  ========================= */
-
   useEffect(() => {
-    // reset timer UI on step change
     if (!step) {
       setRemaining(null);
       setIsRunning(false);
@@ -370,10 +358,6 @@ export default function RecipeStepsScreen() {
     setJustFinished(false);
   }, [current, hasTimer, stepTimer, step]);
 
-  /* =========================
-     TIMER: tick while running
-  ========================= */
-
   useEffect(() => {
     if (!isRunning || startedAt == null || !hasTimer) return;
 
@@ -396,65 +380,6 @@ export default function RecipeStepsScreen() {
 
     return () => clearInterval(id);
   }, [isRunning, startedAt, accumulated, hasTimer, stepTimer]);
-
-  const handleStartPause = useCallback(() => {
-    if (!hasTimer) return;
-
-    if (!isRunning) {
-      setJustFinished(false);
-
-      if (remaining == null || remaining <= 0) {
-        setAccumulated(0);
-        setRemaining(stepTimer!);
-      }
-
-      setStartedAt(Date.now());
-      setIsRunning(true);
-      return;
-    }
-
-    if (startedAt != null) {
-      const elapsedSinceStart = (Date.now() - startedAt) / 1000;
-      setAccumulated((acc) => acc + elapsedSinceStart);
-    }
-
-    setStartedAt(null);
-    setIsRunning(false);
-  }, [hasTimer, isRunning, remaining, startedAt, stepTimer]);
-
-  const handleResetTimer = useCallback(() => {
-    setIsRunning(false);
-    setStartedAt(null);
-    setAccumulated(0);
-    setJustFinished(false);
-
-    if (hasTimer) setRemaining(stepTimer!);
-    else setRemaining(null);
-  }, [hasTimer, stepTimer]);
-
-  /* =========================
-     BLOW -> next step / start timer
-  ========================= */
-
-  const handleBlow = useCallback(() => {
-    // timer běží → ignorovat fouknutí
-    if (hasTimer && isRunning) return;
-
-    // krok má timer, ještě nedoběhl → fouknutím ho spustíme
-    if (hasTimer && !isRunning && !justFinished) {
-      handleStartPause();
-      return;
-    }
-
-    // jinak → další krok
-    setCurrent((p) => Math.min(steps.length - 1, p + 1));
-  }, [hasTimer, isRunning, justFinished, handleStartPause, steps.length]);
-
-  useBlowToNextStep(blowNextEnabled, handleBlow, current);
-
-  /* =========================
-     COMMUNITY: ensure from recipe for official recipes
-  ========================= */
 
   useEffect(() => {
     if (!recipe?._id) return;
@@ -553,6 +478,62 @@ export default function RecipeStepsScreen() {
       setRatingBusy(false);
     }
   }
+
+  /* =========================
+    Handlers
+  ========================= */
+
+  const handleStartPause = useCallback(() => {
+    if (!hasTimer) return;
+
+    if (!isRunning) {
+      setJustFinished(false);
+
+      if (remaining == null || remaining <= 0) {
+        setAccumulated(0);
+        setRemaining(stepTimer!);
+      }
+
+      setStartedAt(Date.now());
+      setIsRunning(true);
+      return;
+    }
+
+    if (startedAt != null) {
+      const elapsedSinceStart = (Date.now() - startedAt) / 1000;
+      setAccumulated((acc) => acc + elapsedSinceStart);
+    }
+
+    setStartedAt(null);
+    setIsRunning(false);
+  }, [hasTimer, isRunning, remaining, startedAt, stepTimer]);
+
+  const handleResetTimer = useCallback(() => {
+    setIsRunning(false);
+    setStartedAt(null);
+    setAccumulated(0);
+    setJustFinished(false);
+
+    if (hasTimer) setRemaining(stepTimer!);
+    else setRemaining(null);
+  }, [hasTimer, stepTimer]);
+
+  /* =========================
+     BLOW -> next step / start timer
+  ========================= */
+
+  const handleBlow = useCallback(() => {
+    if (hasTimer && isRunning) return;
+
+    if (hasTimer && !isRunning && !justFinished) {
+      handleStartPause();
+      return;
+    }
+
+    setCurrent((p) => Math.min(steps.length - 1, p + 1));
+  }, [hasTimer, isRunning, justFinished, handleStartPause, steps.length]);
+
+  useBlowToNextStep(blowNextEnabled, handleBlow, current);
 
   /* =========================
      EMPTY STATE
@@ -683,7 +664,6 @@ export default function RecipeStepsScreen() {
           )}
         </View>
 
-        {/* ⭐ Rating only on last step */}
         {current === steps.length - 1 && (
           <View style={s.ratingBox}>
             <Text style={[s.completedLabel, { color: colors.text }]}>
@@ -727,7 +707,6 @@ export default function RecipeStepsScreen() {
           </View>
         )}
 
-        {/* Buttons */}
         <View style={s.row}>
           <Pressable
             disabled={current === 0}
@@ -806,7 +785,6 @@ function useBlowToNextStep(
     let recording: Audio.Recording | null = null;
     let lastTrigger = 0;
 
-    // baseline + burst detection
     let baseline: number | null = null;
     let samples = 0;
     let hotCount = 0;
@@ -817,7 +795,6 @@ function useBlowToNextStep(
 
     (async () => {
       try {
-        // počkej dokud předchozí nahrávání nedokončí cleanup
         while (blowRecordingInUse && !cancelled) {
           await new Promise((r) => setTimeout(r, 50));
         }
@@ -873,7 +850,6 @@ function useBlowToNextStep(
 
           samples++;
 
-          // warmup
           if (samples < 10) {
             baseline = baseline == null ? amp : baseline * 0.8 + amp * 0.2;
             return;

@@ -5,6 +5,7 @@
 
 body {
   background: radial-gradient(circle at top, #301e21 0, #090505 55%);
+  margin: 0;
 }
 
 #root {
@@ -12,12 +13,11 @@ body {
   margin: 0 auto;
   text-align: center;
 }
+
 header {
   position: fixed;
   top: 0;
-
   right: 0;
-
   height: 80px;
   padding: 0 40px;
 
@@ -28,216 +28,65 @@ header {
   z-index: 1000;
 }
 
-.chef {
-  color: #730606;
-}
-
-/* nav už nebude fixed */
-nav {
+header nav {
   position: static;
   height: auto;
 }
 
-/* můžeš klidně zmenšit logo, ať to nevypadá přerostle */
-.logo {
-  width: 150px; /* místo 400px */
-  position: relative;
-  top: 20px;
-}
-.logoText p {
-  font-size: 88px;
-
-  color: rgb(238, 235, 235);
-
-  font-weight: 700;
-  z-index: 2;
-  pointer-events: none; /* text nebude blokovat hover obrázku */
-}
-
-.logoText {
-  width: 700px;
-  margin: auto;
-
-  margin-bottom: 40px;
-}
-
-.logo.animate {
-  animation: swing 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  transform-origin: top center;
-}
-
-@keyframes swing {
-  0% {
-    transform: rotate(0deg);
-  }
-  20% {
-    transform: rotate(3deg);
-  }
-  40% {
-    transform: rotate(-3deg);
-  }
-  60% {
-    transform: rotate(2deg);
-  }
-  80% {
-    transform: rotate(-2deg);
-  }
-  100% {
-    transform: rotate(0deg);
-  }
-}
-
-ul {
+header nav ul {
   display: flex;
-
   list-style-type: none;
+  gap: 0;
+  padding: 0;
+  margin: 0;
 }
 
-nav a {
+header nav a {
   color: white;
-
   padding: 20px 10px;
   display: flex;
   justify-content: center;
   width: 100%;
+  text-decoration: none;
 }
 
-nav a:hover {
-  color: rgb(97, 1, 1);
-  font-weight: bold;
+header nav a:hover {
+  color: #730606;
 }
 
-section a {
-  background-color: #322222;
-  color: white;
-  padding: 10px;
-  width: 100px;
-  display: flex;
-  justify-content: center;
-  border-radius: 20px;
-  margin-right: 20px;
-  margin-bottom: 10px;
-  box-shadow: 0 0.1px 20px rgba(62, 59, 59, 0.35);
-}
-
-section a:hover {
+.activeSection {
   background: rgb(114, 3, 3);
   box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
-}
-
-main input {
-  width: 900px;
-  height: 40px;
-  border-radius: 10px;
-  border: 0px;
-  border-top-right-radius: 0px;
-  border-bottom-right-radius: 0px;
-}
-
-button {
-  padding-top: 11px;
-
-  border-radius: 0;
-}
-
-button:hover {
-  background-color: rgb(83, 12, 12);
-  border: rgb(83, 12, 12);
-}
-
-.recipeContainer {
-  background-color: rgb(19, 19, 19);
-  display: flex;
-  justify-content: center;
-
-  margin-left: auto;
-  margin-right: auto;
-  flex-wrap: wrap;
-}
-
-.recipeCard {
-  width: 17%;
-  margin: 10px;
-  background: radial-gradient(circle at top, #212020 0, #161616 55%);
-  border-radius: 8px;
-  padding: 10px;
-  text-align: center;
-}
-
-.recipeCard img {
-  width: 100%;
-  border-radius: 8px;
-}
-
-.variants {
-  max-width: 1700px;
+  border-radius: 6px;
 }
 
 .Beginner {
   color: green;
   font-weight: bold;
 }
-
 .Intermediate {
   color: orange;
   font-weight: bold;
 }
-
 .Hard {
   color: rgb(145, 41, 41);
   font-weight: bold;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
 
-.sendToList {
-  margin-top: 5px;
-}
+  background-color: rgba(0, 0, 0, 0.6);
 
-.displayIngredience li {
-  list-style-position: inside;
-}
+  display: flex;
+  justify-content: center;
+  align-items: center;
 
-.displayIngredience li button {
-  background-color: transparent;
-  border-radius: 5px;
-  border: 0px;
-}
-
-.displayIngredience li button:hover {
-  background-color: transparent;
-  border: 0px;
-}
-
-.ingredient {
-  border-bottom: solid rgb(65, 63, 63) 1px;
-}
-
-.getStarted {
-  background: rgb(114, 3, 3);
-
-  border-radius: 10px;
-  font-size: 30px;
-  padding-bottom: 15px;
-  padding-left: 10px;
-  padding-right: 10px;
-  margin-top: 10px;
-}
-
-.getStarted:hover {
-  box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
-  background: rgb(114, 3, 3);
-}
-
-#startparent {
-  background-color: #2f2f2f;
-  height: 90px;
-  margin: 0 auto;
-  border: solid 8px #1d1c1c;
-  border-bottom-left-radius: 30px;
-  border-bottom-right-radius: 30px;
+  z-index: 1000;
 }
 
 .selectedRecipeContainer {
@@ -246,9 +95,9 @@ html {
   background-color: #1a1a1a;
   border-radius: 20px;
   overflow-y: auto;
+  position: relative;
 }
 
-/* Nadpis receptu – přes celou šířku nameAndPicture boxu */
 .selectedRecipeContainer h2 {
   border: 1px solid rgb(96, 94, 94);
   text-align: center;
@@ -258,20 +107,18 @@ html {
   border-top-right-radius: 10px;
 }
 
-/* Obrázek v modalu – responsivní, omezená výška */
-.selectedRecipeContainer img {
+.selectedRecipeContainer img,
+.selectedRecipeContainer video {
   width: 100%;
   max-width: 420px;
   height: auto;
   max-height: 55vh;
   object-fit: cover;
-  border-top-left-radius: 0px;
-  border-top-right-radius: 0px;
+
   border-bottom-left-radius: 10px;
   border-bottom-right-radius: 10px;
 }
 
-/* Container se základními informacemi o receptu */
 #forNow {
   background-color: #2d2d2d;
   margin-left: auto;
@@ -286,7 +133,6 @@ html {
   border-top-right-radius: 30px;
 }
 
-/* Levý a pravý sloupec v modalu */
 .nameAndPicture {
   text-align: left;
   margin: 20px;
@@ -301,117 +147,69 @@ html {
   min-width: 260px;
 }
 
-.modalOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  padding: 10px;
-}
-
-/* Mobil – modal přes celou šířku, obsah pod sebou */
-@media (max-width: 900px) {
-  .selectedRecipeContainer {
-    width: 100%;
-    max-height: 100vh;
-    border-radius: 0;
-  }
-
-  .nameAndPicture,
-  .displayIngredience {
-    margin: 16px;
-  }
-}
-
-#forNow {
-  background-color: #131212;
-  margin-left: auto;
-  margin-right: auto;
-  border: solid 8px #1d1c1c;
-  border-bottom: 0px;
-  margin-top: 20px;
-  display: flex;
-  border-top-left-radius: 30px;
-  border-top-right-radius: 30px;
-  border-radius: 0;
-}
-
-.nameAndPicture {
-  text-align: left;
-  margin-left: 60px;
-  margin-bottom: 20px;
-  flex: 1;
-}
-
-.displayIngredience {
-  text-align: left;
-  margin-top: 10px;
-  flex: 1.5;
+.displayIngredience ol {
+  margin: 0;
+  padding-left: 18px;
 }
 
 .displayIngredience li {
   display: flex;
   align-items: center;
+  gap: 10px;
+  list-style-position: inside;
+  margin-top: 10px;
 }
 
-.displayIngredience li input {
-  width: 20px;
-  margin-right: 10px;
+.ingredient {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
 }
 
-.displayIngredience li button {
+.sendToList {
   margin-left: auto;
-  margin-right: 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 6px;
+}
+.sendToList:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.modalOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
+#startparent {
+  background-color: #2f2f2f;
+  height: 90px;
+  margin: 0 auto;
+  border: solid 8px #1d1c1c;
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
 }
 
-.main {
-  background: radial-gradient(circle at top, #301e21 0, #090505 55%);
-  padding-top: 100px;
-  min-height: 100vh;
-  min-width: fit-content;
-}
-
-.StressFree {
-  font-family: "Metropolis", sans-serif;
-  color: white;
-}
-
-.activeSection {
+.getStarted {
+  margin-top: 18px;
+  font-weight: 800;
   background: rgb(114, 3, 3);
-  box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
+  color: white;
+  border: 0;
+  padding: 14px 22px;
+  border-radius: 999px;
+  cursor: pointer;
 }
-
-.selectedRecipeContainer {
-  position: relative;
+.getStarted:hover {
+  filter: brightness(1.08);
 }
 
 .saveFloatingBtn {
   position: absolute;
   top: 16px;
   right: 16px;
+
   background: #222;
   border: 1px solid #000;
   padding: 6px 14px;
   border-radius: 999px;
+
   color: white;
   font-weight: 700;
   cursor: pointer;

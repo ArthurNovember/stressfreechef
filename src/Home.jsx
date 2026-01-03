@@ -41,7 +41,7 @@ const Home = ({
   addItem,
 }) => {
   /* -----------------------------
-     State
+     States
   ----------------------------- */
   const [sortBy, setSortBy] = useState("newest");
   const [selectedRecipe, setSelectedRecipe] = useState(null);
@@ -57,7 +57,7 @@ const Home = ({
     : false;
 
   /* -----------------------------
-     Actions
+     Extra
   ----------------------------- */
   function openModal(recipe) {
     setSelectedRecipe(recipe);
@@ -73,7 +73,6 @@ const Home = ({
       return;
     }
 
-    // 1) ensure community copy
     const ensureRes = await fetch(
       `${API_BASE}/api/community-recipes/ensure-from-recipe/${baseId}`,
       {
@@ -86,7 +85,6 @@ const Home = ({
     const communityId = ensure?._id;
     if (!communityId) return;
 
-    // 2) if already saved -> UNSAVE
     if (savedBaseIds.includes(baseId)) {
       await fetch(`${API_BASE}/api/saved-community-recipes/${communityId}`, {
         method: "DELETE",
@@ -97,7 +95,6 @@ const Home = ({
       return;
     }
 
-    // 3) else SAVE
     await fetch(`${API_BASE}/api/saved-community-recipes`, {
       method: "POST",
       headers: {
@@ -115,18 +112,15 @@ const Home = ({
   function onPickSort(nextSort) {
     setSortBy(nextSort);
 
-    // only these sorts depend on App's functions
     if (nextSort === "newest") bestSortRecipes();
     if (nextSort === "easiest") recommendedRecipes();
     if (nextSort === "random") shuffleRecipes();
-    // favorite is handled locally in recipesToRender memo
   }
 
   /* -----------------------------
      Effects
   ----------------------------- */
 
-  // 1) Lock body scroll when modal is open
   useEffect(() => {
     document.body.style.overflow = selectedRecipe ? "hidden" : "auto";
     return () => {
@@ -134,7 +128,6 @@ const Home = ({
     };
   }, [selectedRecipe]);
 
-  // 2) Load saved recipes (base/source ids)
   useEffect(() => {
     (async () => {
       try {
@@ -167,7 +160,6 @@ const Home = ({
     })();
   }, []);
 
-  // 3) Load community stats for recipes currently displayed
   useEffect(() => {
     const ids = Array.from(
       new Set(
@@ -251,7 +243,6 @@ const Home = ({
           </p>
         </div>
 
-        {/* Sort tabs */}
         <section className="variants">
           <ul className="HomeUl">
             <li>
@@ -308,7 +299,6 @@ const Home = ({
           </ul>
         </section>
 
-        {/* Cards grid */}
         <div className="recipeContainer">
           {recipesToRender.map((recipe) => {
             const rid = recipe?._id || recipe?.id;
@@ -338,7 +328,6 @@ const Home = ({
           })}
         </div>
 
-        {/* Modal */}
         {selectedRecipe && (
           <div className="modalOverlay" onClick={() => setSelectedRecipe(null)}>
             <div

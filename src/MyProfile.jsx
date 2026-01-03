@@ -19,7 +19,7 @@ const MY_API_URL = `${API_BASE}/api/my-recipes`;
 const SAVED_API_URL = `${API_BASE}/api/saved-community-recipes`;
 
 /* -----------------------------
-   Media helpers (cover)
+   Media helpers 
 ----------------------------- */
 const PLACEHOLDER_IMG = "https://i.imgur.com/CZaFjz2.png";
 
@@ -45,7 +45,6 @@ const findAnyStepSrc = (steps = []) => {
   return s?.src || "";
 };
 
-/** Cover pořadí: image.url -> imgSrc -> první image step -> jakýkoli step -> placeholder */
 const getCover = (r) => {
   const url =
     r?.image?.url ||
@@ -69,7 +68,7 @@ function getToken() {
 ----------------------------- */
 const MyProfile = ({ userInfo, addItem }) => {
   /* =============================
-     State – My recipes
+     States
   ============================= */
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
@@ -82,18 +81,12 @@ const MyProfile = ({ userInfo, addItem }) => {
   const [err, setErr] = useState("");
   const [communityRatings, setCommunityRatings] = useState({});
 
-  /* =============================
-     State – Saved recipes
-  ============================= */
   const [savedItems, setSavedItems] = useState([]);
   const [savedPage, setSavedPage] = useState(1);
   const [savedPages, setSavedPages] = useState(1);
   const [savedTotal, setSavedTotal] = useState(0);
   const [savedLoading, setSavedLoading] = useState(false);
 
-  /* =============================
-     State – Modal
-  ============================= */
   const [selectedRecipe, setSelectedRecipe] = useState(null);
 
   const selectedMedia = useMemo(() => {
@@ -111,7 +104,7 @@ const MyProfile = ({ userInfo, addItem }) => {
   const savedFetchingMoreRef = useRef(false);
 
   /* =============================
-     Actions – auth/account
+     Handlers
   ============================= */
   function handleLogout() {
     localStorage.removeItem("token");
@@ -143,9 +136,6 @@ const MyProfile = ({ userInfo, addItem }) => {
     }
   }
 
-  /* =============================
-     Actions – CRUD recipes
-  ============================= */
   async function handleDeleteMyRecipe(recipeId) {
     if (!window.confirm("Do you really want to delete this recipe?")) return;
 
@@ -183,9 +173,6 @@ const MyProfile = ({ userInfo, addItem }) => {
     }
   }
 
-  /* =============================
-     Actions – modal
-  ============================= */
   function openModal(recipe) {
     setSelectedRecipe(recipe);
   }
@@ -195,7 +182,7 @@ const MyProfile = ({ userInfo, addItem }) => {
   }
 
   /* =============================
-     Effects – modal scroll lock
+     Effects 
   ============================= */
   useEffect(() => {
     document.body.style.overflow = selectedRecipe ? "hidden" : "auto";
@@ -204,26 +191,17 @@ const MyProfile = ({ userInfo, addItem }) => {
     };
   }, [selectedRecipe]);
 
-  /* =============================
-     Effects – debounce search
-  ============================= */
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
 
-  /* =============================
-     Effects – reset my list on search change
-  ============================= */
   useEffect(() => {
     setItems([]);
     setPage(1);
     myFetchingMoreRef.current = false;
   }, [debouncedQ]);
 
-  /* =============================
-     Effects – fetch saved recipes (paged)
-  ============================= */
   useEffect(() => {
     let aborted = false;
 
@@ -286,9 +264,6 @@ const MyProfile = ({ userInfo, addItem }) => {
     };
   }, [savedPage, limit]);
 
-  /* =============================
-     Effects – fetch my recipes (paged)
-  ============================= */
   useEffect(() => {
     let aborted = false;
 
@@ -343,9 +318,6 @@ const MyProfile = ({ userInfo, addItem }) => {
     };
   }, [page, limit, debouncedQ]);
 
-  /* =============================
-     Effects – infinite scroll: my recipes
-  ============================= */
   useEffect(() => {
     const el = myLoadMoreRef.current;
     if (!el) return;
@@ -369,9 +341,6 @@ const MyProfile = ({ userInfo, addItem }) => {
     return () => obs.disconnect();
   }, [loading, page, pages]);
 
-  /* =============================
-     Effects – infinite scroll: saved recipes
-  ============================= */
   useEffect(() => {
     const el = savedLoadMoreRef.current;
     if (!el) return;
@@ -395,9 +364,6 @@ const MyProfile = ({ userInfo, addItem }) => {
     return () => obs.disconnect();
   }, [savedLoading, savedPage, savedPages]);
 
-  /* =============================
-     Effects – fetch ratings for published recipes
-  ============================= */
   useEffect(() => {
     const ids = Array.from(
       new Set((items || []).map((r) => r?.publicRecipeId).filter(Boolean))
@@ -443,7 +409,7 @@ const MyProfile = ({ userInfo, addItem }) => {
   }, [items]);
 
   /* =============================
-     Render guards
+     Loading
   ============================= */
   if (!userInfo) return <div>Loading...</div>;
 
@@ -458,14 +424,12 @@ const MyProfile = ({ userInfo, addItem }) => {
         </button>
       </div>
 
-      {/* FIX: className typos */}
       <div className="loginButtons">
         <div className="loginInfo"></div>
         <div className="endButtons"></div>
       </div>
 
       <div className="My">
-        {/* ---------------- SAVED RECIPES ---------------- */}
         <div className="savedRecipes">
           <div className="MyRecipeNewRecipe">
             <h2 className="MyCategory">SAVED RECIPES</h2>
@@ -560,11 +524,9 @@ const MyProfile = ({ userInfo, addItem }) => {
             </p>
           )}
 
-          {/* FIX: správný sentinel pro saved */}
           <div ref={savedLoadMoreRef} style={{ height: 1 }} />
         </div>
 
-        {/* ---------------- MY RECIPES ---------------- */}
         <div className="myRecipes">
           <div className="MyRecipeNewRecipe" style={{ gap: 12 }}>
             <h2 className="MyCategory">MY RECIPES</h2>
@@ -669,7 +631,6 @@ const MyProfile = ({ userInfo, addItem }) => {
         </div>
       </div>
 
-      {/* ---------------- MODAL ---------------- */}
       {selectedRecipe && (
         <div className="modalOverlay" onClick={closeModal}>
           <div

@@ -4,13 +4,11 @@
   flex-direction: column;
   text-align: left;
   flex: 1;
-  max-height: 100%; /* nebo kolik potřebuješ */
+  max-height: 100%;
   background-color: rgb(17, 17, 17);
   padding-right: 20px;
   border-radius: 10px;
-  min-height: 0; /* klíčové pro fungování scrollování s flexboxem */
-  /*margin-left: 50px;
-  margin-right: 50px;*/
+  min-height: 0;
 }
 
 .shoppingList li {
@@ -36,7 +34,7 @@
 }
 
 .celek {
-  gap: 40px; /* mezera mezi sloupci */
+  gap: 40px;
 
   padding-top: 50px;
   padding-bottom: 50px;
@@ -81,7 +79,7 @@
 
 .shoppingList ol {
   list-style-position: inside;
-  padding-left: 0; /* žádné vnější odsazení */
+  padding-left: 0;
 }
 .itemText {
   flex: 1;
@@ -102,8 +100,8 @@
 }
 
 .deleteItem {
-  align-self: stretch; /* ↕️ tlačítko vyroste na výšku rodiče */
-  flex-shrink: 0; /* ⛔️ nezmenšuj se horizontálně */
+  align-self: stretch;
+  flex-shrink: 0;
   width: 40px;
   display: flex;
   align-items: center;
@@ -112,8 +110,8 @@
 }
 
 .deleteItem:hover {
-  align-self: stretch; /* ↕️ tlačítko vyroste na výšku rodiče */
-  flex-shrink: 0; /* ⛔️ nezmenšuj se horizontálně */
+  align-self: stretch;
+  flex-shrink: 0;
   width: 40px;
   display: flex;
   align-items: center;
@@ -190,7 +188,7 @@
 }
 
 .buttonAndShopsInput {
-  position: relative; /* velmi důležité! */
+  position: relative;
   display: inline-block;
 }
 
@@ -258,15 +256,13 @@
 .shoppingList li label {
   display: flex;
   align-items: center;
-  flex: 1; /* ať se roztáhne v rámci li */
+  flex: 1;
 }
 
 .numbering {
   font-weight: bold;
   color: rgb(151, 49, 75);
 }
-
-/*new*/
 
 .addForm {
   display: flex;
@@ -340,5 +336,5 @@
 }
 
 input[type="checkbox"] {
-  accent-color: #b30d0d; /* tvoje červená */
+  accent-color: #b30d0d;
 }

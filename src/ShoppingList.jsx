@@ -22,7 +22,6 @@ const ShoppingList = ({
   newItem,
   setNewItem,
   addItem,
-  // id, // ❌ nepoužívá se → pryč
   addFavoriteItem,
   FavoriteNewItem,
   deleteFavoriteItem,
@@ -41,7 +40,7 @@ const ShoppingList = ({
   const inputDropdownRef = useRef(null);
 
   /* =============================
-     State – UI
+     State 
   ============================= */
   const [obrazek, setObrazek] = useState("https://i.imgur.com/DmXZvGl.png");
 
@@ -51,9 +50,6 @@ const ShoppingList = ({
   const [addingShop, setAddingShop] = useState(false);
   const [newShopName, setNewShopName] = useState("");
 
-  /* =============================
-     State – filter/sort
-  ============================= */
   const [filterShops, setFilterShops] = useState([]);
   const [sortMode, setSortMode] = useState("added");
 
@@ -80,7 +76,7 @@ const ShoppingList = ({
   }, []);
 
   /* =============================
-     Handlers – input
+     Handlers
   ============================= */
   const handleTextChange = (event) => {
     setText(event.target.value);
@@ -94,22 +90,15 @@ const ShoppingList = ({
     setText("");
   };
 
-  /* =============================
-     Handlers – item CRUD
-  ============================= */
   const deleteItem = async (itemId) => {
     await deleteShoppingItem(itemId);
   };
 
-  // checkbox
   const toggleChecked = async (_id, currentChecked) => {
     const newChecked = !currentChecked;
     await updateShoppingItem(_id, { checked: newChecked });
   };
 
-  /* =============================
-     Handlers – per-item shop toggle
-  ============================= */
   const handleToggleShop = async (itemId, shopId) => {
     const item = newItem.find((i) => i._id === itemId);
     if (!item) return;
@@ -127,9 +116,6 @@ const ShoppingList = ({
     await updateShoppingItem(itemId, { shop: updatedShops });
   };
 
-  /* =============================
-     Handlers – shop options CRUD
-  ============================= */
   const handleDeleteShop = async (shopToDeleteId) => {
     try {
       const token = localStorage.getItem("token");
@@ -139,7 +125,6 @@ const ShoppingList = ({
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Lokálně taky smaž (aby se UI hned aktualizovalo)
       setShopOptions((prev) => prev.filter((s) => s._id !== shopToDeleteId));
       setNewItem((prevItems) =>
         prevItems.map((item) => ({
@@ -182,15 +167,12 @@ const ShoppingList = ({
     setAddingShop(false);
   }
 
-  /* =============================
-     Handlers – dropdown toggle
-  ============================= */
   const ToggleDropDown = (index) => {
     setIsDropDownOpen((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
   /* =============================
-     Derived – filtering
+     Filtering
   ============================= */
   const filteredItems = newItem.filter((item) => {
     if (filterShops.length === 0) return true;
@@ -202,12 +184,11 @@ const ShoppingList = ({
   });
 
   /* =============================
-     Derived – sorting
+     Sorting
   ============================= */
   const sortedItems = [...filteredItems];
 
   if (sortMode === "added") {
-    // nejnovější nahoře
     sortedItems.reverse();
   }
 

@@ -144,10 +144,9 @@
 
 .buttonAndShops {
   position: relative;
-  display: inline-flex; /* může být i flex */
+  display: inline-flex;
 }
 
-/* Kotva pro horní (input) dropdown */
 .buttonAndShopsInput {
   position: relative;
   display: inline-block;

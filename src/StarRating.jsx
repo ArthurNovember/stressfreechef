@@ -17,7 +17,14 @@ export default function StarRating({
   };
 
   return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+      }}
+    >
       <div role="img" aria-label={`${base.toFixed(1)} out of 5`}>
         {[0, 1, 2, 3, 4].map((i) => {
           const diff = base - i;

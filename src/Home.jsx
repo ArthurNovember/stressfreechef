@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { MdAddShoppingCart } from "react-icons/md";
 import StarRating from "./StarRating";
+import "./Home.css";
 
 /* -----------------------------
    API config

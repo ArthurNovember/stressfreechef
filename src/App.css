@@ -99,7 +99,6 @@ header nav a:hover {
 }
 
 .selectedRecipeContainer h2 {
-  border: 1px solid rgb(96, 94, 94);
   text-align: center;
   padding: 15px 10px;
   margin: 0;
@@ -115,7 +114,7 @@ header nav a:hover {
   max-height: 55vh;
   object-fit: cover;
 
-  border-bottom-left-radius: 10px;
+  border-radius: 10px;
   border-bottom-right-radius: 10px;
 }
 
@@ -188,7 +187,7 @@ header nav a:hover {
 
 .getStarted {
   margin-top: 18px;
-  font-weight: 800;
+  font-weight: bold;
   background: rgb(114, 3, 3);
   color: white;
   border: 0;
@@ -197,7 +196,8 @@ header nav a:hover {
   cursor: pointer;
 }
 .getStarted:hover {
-  filter: brightness(1.08);
+  background: rgb(114, 3, 3);
+  box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
 }
 
 .saveFloatingBtn {

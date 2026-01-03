@@ -60,18 +60,29 @@
   background-color: rgb(19, 19, 19);
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
 
   margin-left: auto;
   margin-right: auto;
-  flex-wrap: wrap;
+
+  /* ✅ přidej, ať to nevypadá “useknuté” */
+  padding: 14px 10px 30px;
+  gap: 12px;
 }
 
 .recipeCard {
-  width: 17%;
-  margin: 10px;
+  /* ⛔️ pryč width: 17% */
+  /* width: 17%; */
+
+  /* ✅ místo toho */
+  flex: 0 1 260px; /* šířka karty */
+  max-width: 320px;
+
   background: radial-gradient(circle at top, #212020 0, #161616 55%);
   border-radius: 8px;
   padding: 10px;
+  display: flex;
+  flex-direction: column;
 }
 
 .recipeCard img {

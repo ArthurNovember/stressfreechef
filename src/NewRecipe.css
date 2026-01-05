@@ -220,4 +220,106 @@
 
 .Ingredients li {
   margin-top: 10px;
+  flex-direction: row;
+  justify-content: space-between;
+  border-radius: 10px;
+}
+
+.Ingredients input {
+  width: 100%;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+.StepTimerRow {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.StepTimerLabel {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.StepTimerFields {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.StepTimerField {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.StepTimerField input {
+  width: 60px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 2px rgb(29, 29, 29) solid;
+  background: rgba(255, 255, 255, 0.06);
+  color: white;
+}
+
+/* AI Import */
+.AiImportBox {
+  border-bottom: 1px rgb(56, 52, 52) solid;
+  padding: 15px;
+}
+
+.AiImportBox label {
+  width: fit-content;
+}
+
+.AiImportHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.AiImportBtn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  cursor: pointer;
+}
+
+.AiImportTextarea {
+  width: 95%;
+  min-height: 140px;
+  resize: none;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.25);
+  color: white;
+}
+
+.AiButtonsRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.AiHint {
+  opacity: 0.85;
+
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.AiToggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0.9;
 }

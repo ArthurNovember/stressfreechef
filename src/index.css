@@ -35,14 +35,12 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #8e2525;
+  background-color: transparent;
   cursor: pointer;
   transition: border-color 0.25s;
   color: white;
 }
-button:hover {
-  border-color: #670303;
-}
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;

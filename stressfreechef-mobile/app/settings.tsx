@@ -7,14 +7,15 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { getLocales } from "expo-localization";
 
 import { API_BASE } from "../lib/api";
-import { t, Lang, LANG_KEY } from "../i18n/strings";
+import { t } from "../i18n/strings";
+import { useLang } from "../i18n/LanguageContext";
+
 import { useTheme } from "../theme/ThemeContext";
 
 /* =========================
@@ -38,25 +39,6 @@ async function clearToken() {
   } catch {}
 }
 
-async function loadStoredLang(): Promise<"en" | "cs" | null> {
-  try {
-    const stored = await AsyncStorage.getItem(LANG_KEY);
-    return stored === "en" || stored === "cs" ? stored : null;
-  } catch {
-    return null;
-  }
-}
-
-function getSystemLang(): "en" | "cs" {
-  const primary = getLocales()?.[0];
-  const tag = (
-    primary?.languageTag ||
-    primary?.languageCode ||
-    ""
-  ).toLowerCase();
-  return tag.startsWith("cs") ? "cs" : "en";
-}
-
 async function loadVoiceEnabled(): Promise<boolean> {
   try {
     const stored = await AsyncStorage.getItem(VOICE_ENABLED_KEY);
@@ -74,11 +56,11 @@ async function loadVoiceEnabled(): Promise<boolean> {
 /* =========================
    HELPERS 
 ========================= */
-function pickCancelText(lang: Lang) {
+function pickCancelText(lang: "en" | "cs") {
   return lang === "cs" ? "Zrušit" : "Cancel";
 }
 
-function pickDeleteText(lang: Lang) {
+function pickDeleteText(lang: "en" | "cs") {
   return lang === "cs" ? "Smazat" : "Delete";
 }
 
@@ -87,8 +69,8 @@ function pickDeleteText(lang: Lang) {
 ========================= */
 export default function SettingsScreen() {
   const { theme, setTheme, colors } = useTheme();
+  const { lang, setLang } = useLang();
 
-  const [lang, setLang] = useState<Lang>("en");
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [hasToken, setHasToken] = useState(false);
@@ -102,21 +84,11 @@ export default function SettingsScreen() {
 
     (async () => {
       try {
-        const storedLang = await loadStoredLang();
-        const systemLang = getSystemLang();
-
-        const nextLang: "en" | "cs" = storedLang ?? systemLang;
-
-        if (!storedLang) {
-          await AsyncStorage.setItem(LANG_KEY, systemLang);
-        }
-
         const token = await AsyncStorage.getItem(TOKEN_KEY);
         const voice = await loadVoiceEnabled();
 
         if (cancelled) return;
 
-        setLang(nextLang);
         setHasToken(!!token);
         setVoiceEnabled(voice);
       } finally {
@@ -139,10 +111,12 @@ export default function SettingsScreen() {
     [setTheme]
   );
 
-  const handleLangChange = useCallback(async (next: "en" | "cs") => {
-    setLang(next);
-    await AsyncStorage.setItem(LANG_KEY, next);
-  }, []);
+  const handleLangChange = useCallback(
+    async (next: "en" | "cs") => {
+      await setLang(next);
+    },
+    [setLang]
+  );
 
   const toggleVoiceEnabled = useCallback(() => {
     setVoiceEnabled((prev) => {

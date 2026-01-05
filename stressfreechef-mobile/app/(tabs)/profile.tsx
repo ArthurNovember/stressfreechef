@@ -440,7 +440,7 @@ function AuthFormRN({
       </View>
 
       {mode === "signup" ? (
-        <View style={styles.form}>
+        <View style={styles.form} key="signup">
           <Text style={[styles.label, { color: colors.text }]}>
             {t(lang, "profile", "username")}
           </Text>
@@ -525,7 +525,7 @@ function AuthFormRN({
           </Pressable>
         </View>
       ) : (
-        <View style={styles.form}>
+        <View style={styles.form} key="login">
           <Text style={[styles.label, { color: colors.text }]}>Email</Text>
           <TextInput
             style={[
@@ -539,7 +539,10 @@ function AuthFormRN({
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
+            autoCorrect={false}
             keyboardType="email-address"
+            importantForAutofill="yes"
+            autoComplete="username"
           />
 
           <Text style={[styles.label, { color: colors.text }]}>
@@ -557,6 +560,10 @@ function AuthFormRN({
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            importantForAutofill="yes"
+            autoComplete="password"
           />
 
           <Pressable

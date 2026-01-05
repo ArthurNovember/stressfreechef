@@ -192,7 +192,6 @@ header nav a:hover {
   color: white;
   border: 0;
   padding: 14px 22px;
-  border-radius: 999px;
   cursor: pointer;
 }
 .getStarted:hover {

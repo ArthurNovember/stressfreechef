@@ -2,6 +2,7 @@ import React from "react";
 import { Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider, useTheme } from "../theme/ThemeContext";
+import { LanguageProvider } from "../i18n/LanguageContext";
 
 import * as Font from "expo-font";
 
@@ -28,7 +29,9 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <RootWithStatusBar />
+      <LanguageProvider>
+        <RootWithStatusBar />
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

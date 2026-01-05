@@ -1,29 +1,17 @@
-import React, { useEffect, useState } from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-import { t, Lang, LANG_KEY } from "../../i18n/strings";
 import { useTheme } from "../../theme/ThemeContext";
-
-/* -----------------------------
-   Helpers
------------------------------ */
-async function loadStoredLang(): Promise<Lang> {
-  const stored = await AsyncStorage.getItem(LANG_KEY);
-  return stored === "cs" || stored === "en" ? stored : "cs";
-}
+import React from "react";
+import { t } from "../../i18n/strings";
+import { useLang } from "../../i18n/LanguageContext";
 
 /* -----------------------------
    Layout
 ----------------------------- */
 export default function Layout() {
-  const [lang, setLang] = useState<Lang>("cs");
   const { colors } = useTheme();
-
-  useEffect(() => {
-    loadStoredLang().then(setLang);
-  }, []);
+  const { lang, ready } = useLang();
+  if (!ready) return null;
 
   return (
     <Tabs

@@ -845,14 +845,13 @@ function useVoiceCommands(
     const s = text.toLowerCase().trim();
     if (!s) return;
 
-    // ignore duplicate transcripts (Android často posílá stejné)
     if (s === lastTranscriptRef.current) return;
     lastTranscriptRef.current = s;
 
     const words = s.split(/\s+/).filter(Boolean);
     const last1 = words.at(-1) ?? "";
-    const last2 = words.slice(-2).join(" "); // "start timer"
-    const last3 = words.slice(-3).join(" "); // pro jistotu, kdyby engine udělal "reset the timer" apod.
+    const last2 = words.slice(-2).join(" ");
+    const last3 = words.slice(-3).join(" ");
 
     const now = Date.now();
     if (now - lastCommandAtRef.current < 600) return;

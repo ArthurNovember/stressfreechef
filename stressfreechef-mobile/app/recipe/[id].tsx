@@ -19,7 +19,11 @@ import {
 import { useKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Video, ResizeMode } from "expo-av";
-import { Audio } from "expo-av";
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from "expo-speech-recognition";
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -64,9 +68,7 @@ type Recipe = {
 
 const BASE = API_BASE || "https://stressfreecheff-backend.onrender.com";
 const TOKEN_KEY = "token";
-const BLOW_NEXT_KEY = "settings:blowNextEnabled";
-
-let blowRecordingInUse = false;
+const VOICE_ENABLED_KEY = "settings:voiceEnabled";
 
 /* =========================
    STORAGE
@@ -87,7 +89,7 @@ async function loadLang(): Promise<Lang> {
 
 async function loadBlowNextEnabled(): Promise<boolean> {
   try {
-    const stored = await AsyncStorage.getItem(BLOW_NEXT_KEY);
+    const stored = await AsyncStorage.getItem(VOICE_ENABLED_KEY);
     return stored === "1";
   } catch {
     return false;
@@ -277,7 +279,7 @@ export default function RecipeStepsScreen() {
   const steps = recipe?.steps || [];
 
   const [lang, setLang] = useState<Lang>("en");
-  const [blowNextEnabled, setBlowNextEnabled] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
 
   const [current, setCurrent] = useState(0);
 
@@ -329,7 +331,7 @@ export default function RecipeStepsScreen() {
   }, []);
 
   useEffect(() => {
-    (async () => setBlowNextEnabled(await loadBlowNextEnabled()))();
+    (async () => setVoiceEnabled(await loadBlowNextEnabled()))();
   }, []);
 
   useEffect(() => {
@@ -518,22 +520,24 @@ export default function RecipeStepsScreen() {
     else setRemaining(null);
   }, [hasTimer, stepTimer]);
 
-  /* =========================
-     BLOW -> next step / start timer
+  /* =========================k
+    VOICE COMMANDS
   ========================= */
 
-  const handleBlow = useCallback(() => {
-    if (hasTimer && isRunning) return;
+  useVoiceCommands(voiceEnabled, {
+    onNext: () => setCurrent((p) => Math.min(steps.length - 1, p + 1)),
+    onPrev: () => setCurrent((p) => Math.max(0, p - 1)),
 
-    if (hasTimer && !isRunning && !justFinished) {
-      handleStartPause();
-      return;
-    }
-
-    setCurrent((p) => Math.min(steps.length - 1, p + 1));
-  }, [hasTimer, isRunning, justFinished, handleStartPause, steps.length]);
-
-  useBlowToNextStep(blowNextEnabled, handleBlow, current);
+    onStartTimer: () => {
+      if (hasTimer && !isRunning) handleStartPause();
+    },
+    onPauseTimer: () => {
+      if (hasTimer && isRunning) handleStartPause();
+    },
+    onResetTimer: () => {
+      if (hasTimer) handleResetTimer(); // 👈 uprav na název tvé reset funkce
+    },
+  });
 
   /* =========================
      EMPTY STATE
@@ -767,169 +771,166 @@ export default function RecipeStepsScreen() {
    HOOK: blow-to-next-step
 ========================= */
 
-function useBlowToNextStep(
+function useVoiceCommands(
   enabled: boolean,
-  onBlow: () => void,
-  currentStep: number
+  handlers: {
+    onNext: () => void;
+    onPrev: () => void;
+
+    onStartTimer: () => void;
+    onPauseTimer: () => void;
+    onResetTimer: () => void;
+  }
 ) {
-  const blowRef = useRef(onBlow);
+  const handlersRef = useRef(handlers);
+
+  const recognizingRef = useRef(false);
+  const restartingRef = useRef(false);
+
+  const lastCommandAtRef = useRef(0);
+  const lastTranscriptRef = useRef("");
 
   useEffect(() => {
-    blowRef.current = onBlow;
-  }, [onBlow]);
+    handlersRef.current = handlers;
+  }, [handlers]);
 
-  useEffect(() => {
-    if (!enabled) return;
+  const start = useCallback(async () => {
+    const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!perm.granted) return;
 
-    let cancelled = false;
-    let recording: Audio.Recording | null = null;
-    let lastTrigger = 0;
+    recognizingRef.current = true;
 
-    let baseline: number | null = null;
-    let samples = 0;
-    let hotCount = 0;
-    let hotMin: number | null = null;
-    let hotMax: number | null = null;
+    ExpoSpeechRecognitionModule.start({
+      lang: "en-US",
+      interimResults: false,
+      continuous: true,
+    });
+  }, []);
 
-    let interval: ReturnType<typeof setInterval> | null = null;
+  const stop = useCallback(() => {
+    if (!recognizingRef.current) return;
+    recognizingRef.current = false;
+    restartingRef.current = false;
+    ExpoSpeechRecognitionModule.abort();
+  }, []);
 
-    (async () => {
-      try {
-        while (blowRecordingInUse && !cancelled) {
-          await new Promise((r) => setTimeout(r, 50));
-        }
-        if (cancelled) return;
+  const restart = useCallback(() => {
+    if (!recognizingRef.current) return;
 
-        const perm = await Audio.requestPermissionsAsync();
-        if (!perm.granted) {
-          if (__DEV__) console.log("[BLOW] Mic permission not granted");
-          return;
-        }
+    restartingRef.current = true;
+    lastTranscriptRef.current = "";
 
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-        }).catch(() => {});
+    ExpoSpeechRecognitionModule.abort();
 
-        const recordingOptions: Audio.RecordingOptions = {
-          ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
-          isMeteringEnabled: true,
-        };
-
-        recording = new Audio.Recording();
-
-        blowRecordingInUse = true;
-        try {
-          await recording.prepareToRecordAsync(recordingOptions);
-          await recording.startAsync();
-        } catch (err) {
-          blowRecordingInUse = false;
-          recording = null;
-          if (__DEV__) console.log("[BLOW] start failed:", err);
-          return;
-        }
-
-        if (__DEV__) console.log("[BLOW] Recording started");
-
-        interval = setInterval(async () => {
-          if (cancelled || !recording) return;
-
-          let status;
-          try {
-            status = await recording.getStatusAsync();
-          } catch {
-            return;
-          }
-
-          if (!status.isRecording) return;
-
-          const amp =
-            typeof status.metering === "number" ? status.metering : null;
-          if (amp == null) return;
-
-          samples++;
-
-          if (samples < 10) {
-            baseline = baseline == null ? amp : baseline * 0.8 + amp * 0.2;
-            return;
-          }
-
-          if (baseline == null) {
-            baseline = amp;
-            return;
-          }
-
-          baseline = baseline * 0.9 + amp * 0.1;
-          const delta = amp - baseline;
-
-          const now = Date.now();
-          const MIN_DELTA = 40;
-          const MIN_AMP = -25;
-          const COOL_DOWN = 2500;
-
-          const isHot = delta > MIN_DELTA && amp > MIN_AMP;
-
-          if (isHot) {
-            hotCount++;
-            hotMin = hotMin == null ? amp : Math.min(hotMin, amp);
-            hotMax = hotMax == null ? amp : Math.max(hotMax, amp);
-          } else {
-            hotCount = 0;
-            hotMin = null;
-            hotMax = null;
-          }
-
-          const REQUIRED_HOT_SAMPLES = 3;
-          const MAX_HOT_VARIATION = 10;
-
-          if (
-            hotCount >= REQUIRED_HOT_SAMPLES &&
-            hotMin != null &&
-            hotMax != null &&
-            hotMax - hotMin <= MAX_HOT_VARIATION &&
-            now - lastTrigger > COOL_DOWN
-          ) {
-            lastTrigger = now;
-            hotCount = 0;
-            hotMin = null;
-            hotMax = null;
-
-            if (__DEV__) console.log("[BLOW] TRIGGER");
-            blowRef.current?.();
-          }
-        }, 120);
-      } catch (err) {
-        if (__DEV__) console.log("[BLOW] detection failed:", err);
+    setTimeout(() => {
+      if (!recognizingRef.current) {
+        restartingRef.current = false;
+        return;
       }
-    })();
+
+      ExpoSpeechRecognitionModule.start({
+        lang: "en-US",
+        interimResults: false,
+        continuous: true,
+      });
+
+      restartingRef.current = false;
+    }, 180);
+  }, []);
+
+  useSpeechRecognitionEvent("result", (event) => {
+    const text =
+      (event?.results?.[0]?.transcript ?? event?.results?.[0] ?? "") + "";
+
+    const s = text.toLowerCase().trim();
+    if (!s) return;
+
+    // ignore duplicate transcripts (Android často posílá stejné)
+    if (s === lastTranscriptRef.current) return;
+    lastTranscriptRef.current = s;
+
+    const words = s.split(/\s+/).filter(Boolean);
+    const last1 = words.at(-1) ?? "";
+    const last2 = words.slice(-2).join(" "); // "start timer"
+    const last3 = words.slice(-3).join(" "); // pro jistotu, kdyby engine udělal "reset the timer" apod.
+
+    const now = Date.now();
+    if (now - lastCommandAtRef.current < 600) return;
+
+    let handled = false;
+
+    // ----- TIMER commands -----
+    // start timer
+    if (last2 === "start timer") {
+      handled = true;
+      handlersRef.current.onStartTimer();
+
+      // pause timer
+    } else if (last2 === "pause timer" || last2 === "stop timer") {
+      handled = true;
+      handlersRef.current.onPauseTimer();
+
+      // reset timer
+    } else if (last2 === "reset timer" || last3 === "reset the timer") {
+      handled = true;
+      handlersRef.current.onResetTimer();
+
+      // ----- NAV commands -----
+    } else if (last1 === "next") {
+      handled = true;
+      handlersRef.current.onNext();
+    } else if (last1 === "previous" || last1 === "prev" || last1 === "back") {
+      handled = true;
+      handlersRef.current.onPrev();
+    }
+
+    if (handled) {
+      lastCommandAtRef.current = now;
+      restart();
+    }
+  });
+
+  useSpeechRecognitionEvent("end", () => {
+    if (!recognizingRef.current) return;
+    if (restartingRef.current) return;
+
+    setTimeout(() => {
+      if (!recognizingRef.current) return;
+      ExpoSpeechRecognitionModule.start({
+        lang: "en-US",
+        interimResults: false,
+        continuous: true,
+      });
+    }, 220);
+  });
+
+  useSpeechRecognitionEvent("error", () => {
+    if (!recognizingRef.current) return;
+    if (restartingRef.current) return;
+
+    setTimeout(() => {
+      if (!recognizingRef.current) return;
+      lastTranscriptRef.current = "";
+      ExpoSpeechRecognitionModule.start({
+        lang: "en-US",
+        interimResults: false,
+        continuous: true,
+      });
+    }, 320);
+  });
+
+  useEffect(() => {
+    if (!enabled) {
+      stop();
+      return;
+    }
+
+    start();
 
     return () => {
-      cancelled = true;
-
-      if (interval) clearInterval(interval);
-
-      if (recording) {
-        (async () => {
-          try {
-            const status = await recording.getStatusAsync().catch(() => null);
-            if (status?.isRecording) {
-              await recording.stopAndUnloadAsync().catch(() => {});
-            }
-          } finally {
-            blowRecordingInUse = false;
-            recording = null;
-            Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(
-              () => {}
-            );
-          }
-        })();
-      } else {
-        blowRecordingInUse = false;
-        Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
-      }
+      stop();
     };
-  }, [enabled, currentStep]);
+  }, [enabled, start, stop]);
 }
 
 /* =========================

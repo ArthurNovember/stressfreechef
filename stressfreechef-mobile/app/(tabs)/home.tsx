@@ -264,28 +264,30 @@ async function loadSavedCommunityRecipes(): Promise<
   if (!token) return { ok: true, data: { communityIds: [], baseIds: [] } };
 
   try {
-    const saved = await fetchJSON<any[]>(
+    const savedRaw = await fetchJSON<any>(
       `${API_BASE}/api/saved-community-recipes`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      { headers: { Authorization: `Bearer ${token}` } }
     );
+
+    const saved = Array.isArray(savedRaw)
+      ? savedRaw
+      : Array.isArray(savedRaw?.items)
+      ? savedRaw.items
+      : [];
 
     const communityIds: string[] = [];
     const baseIds: string[] = [];
 
-    if (Array.isArray(saved)) {
-      for (const r of saved) {
-        const cid = String((r as any)._id || (r as any).id || "");
-        if (cid) communityIds.push(cid);
+    for (const r of saved) {
+      const cid = String((r as any)._id || (r as any).id || "");
+      if (cid) communityIds.push(cid);
 
-        const src = (r as any).sourceRecipeId;
-        if (src) {
-          const baseStr = String(
-            typeof src === "object" && src._id ? src._id : src
-          );
-          if (baseStr) baseIds.push(baseStr);
-        }
+      const src = (r as any).sourceRecipeId;
+      if (src) {
+        const baseStr = String(
+          typeof src === "object" && src._id ? src._id : src
+        );
+        if (baseStr) baseIds.push(baseStr);
       }
     }
 

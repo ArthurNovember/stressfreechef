@@ -6,8 +6,8 @@ export const LANG_KEY = "app_lang";
 const STRINGS = {
   settings: {
     blowWarning: {
-      en: "(when enabled, StressFreeChef can listen for a short blow sound to move to the next step)",
-      cs: "(pokud je tato funkce zapnutá, StressFreeChef může naslouchat krátkému fouknutí, kterým se přesune na další krok)",
+      en: "(Voice control is English-only. Say: Next, Previous/Back, Start timer, Stop timer/Pause timer, Reset timer.)",
+      cs: "(Hlasové ovládání funguje pouze v angličtině. Řekněte: Next, Previous/Back, Start timer, Stop timer/Pause timer, Reset timer.)",
     },
 
     loading: {
@@ -89,8 +89,8 @@ const STRINGS = {
       cs: "Hands-free vaření",
     },
     handsfreeNext: {
-      en: "Next step by blowing into mic",
-      cs: "Další krok fouknutím do mikrofonu",
+      en: "Enable voice control",
+      cs: "Zapnout hlasové ovládání",
     },
     handsfreeHelper: {
       en: "(when enabled, StressFreeChef listens for a short blow to move to the next step)",

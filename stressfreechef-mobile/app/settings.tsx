@@ -21,7 +21,8 @@ import { useTheme } from "../theme/ThemeContext";
    CONSTS + STORAGE
 ========================= */
 const TOKEN_KEY = "token";
-const BLOW_NEXT_KEY = "settings:blowNextEnabled";
+const VOICE_ENABLED_KEY = "settings:voiceEnabled";
+const OLD_BLOW_NEXT_KEY = "settings:blowNextEnabled";
 
 async function getToken() {
   try {
@@ -56,10 +57,15 @@ function getSystemLang(): "en" | "cs" {
   return tag.startsWith("cs") ? "cs" : "en";
 }
 
-async function loadBlowNext(): Promise<boolean> {
+async function loadVoiceEnabled(): Promise<boolean> {
   try {
-    const stored = await AsyncStorage.getItem(BLOW_NEXT_KEY);
-    return stored === "1";
+    const stored = await AsyncStorage.getItem(VOICE_ENABLED_KEY);
+    if (stored === "1" || stored === "0") return stored === "1";
+    // ⤵️ migrace ze starého klíče (jen pokud nový ještě neexistuje)
+    const old = await AsyncStorage.getItem(OLD_BLOW_NEXT_KEY);
+    const migrated = old === "1";
+    await AsyncStorage.setItem(VOICE_ENABLED_KEY, migrated ? "1" : "0");
+    return migrated;
   } catch {
     return false;
   }
@@ -86,7 +92,7 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [hasToken, setHasToken] = useState(false);
-  const [blowNext, setBlowNext] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
 
   /* =========================
      EFFECTS
@@ -106,13 +112,13 @@ export default function SettingsScreen() {
         }
 
         const token = await AsyncStorage.getItem(TOKEN_KEY);
-        const blow = await loadBlowNext();
+        const voice = await loadVoiceEnabled();
 
         if (cancelled) return;
 
         setLang(nextLang);
         setHasToken(!!token);
-        setBlowNext(blow);
+        setVoiceEnabled(voice);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -138,10 +144,10 @@ export default function SettingsScreen() {
     await AsyncStorage.setItem(LANG_KEY, next);
   }, []);
 
-  const toggleBlowNext = useCallback(async () => {
-    setBlowNext((prev) => {
+  const toggleVoiceEnabled = useCallback(() => {
+    setVoiceEnabled((prev) => {
       const next = !prev;
-      AsyncStorage.setItem(BLOW_NEXT_KEY, next ? "1" : "0").catch(() => {});
+      AsyncStorage.setItem(VOICE_ENABLED_KEY, next ? "1" : "0").catch(() => {});
       return next;
     });
   }, []);
@@ -358,11 +364,11 @@ export default function SettingsScreen() {
 
         <View style={styles.row}>
           <Pressable
-            onPress={toggleBlowNext}
+            onPress={toggleVoiceEnabled}
             style={[
               styles.pill,
               { backgroundColor: colors.card, borderColor: colors.border },
-              blowNext && {
+              voiceEnabled && {
                 backgroundColor: colors.pillActive,
                 borderColor: colors.pillActive,
               },
@@ -372,7 +378,7 @@ export default function SettingsScreen() {
               style={[
                 styles.pillText,
                 { color: colors.text },
-                blowNext && styles.pillTextActive,
+                voiceEnabled && styles.pillTextActive,
               ]}
             >
               {t(lang, "settings", "handsfreeNext")}

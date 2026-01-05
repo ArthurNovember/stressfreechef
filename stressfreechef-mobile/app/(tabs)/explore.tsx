@@ -162,14 +162,18 @@ async function loadFavoriteIds(): Promise<ActionResult<string[]>> {
   if (!token) return { ok: true, data: [] };
 
   try {
-    const saved = await fetchJSON<CommunityRecipe[]>(
+    const saved = await fetchJSON<any>(
       `${API_BASE}/api/saved-community-recipes`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
-    const ids = Array.isArray(saved)
-      ? saved.map((r) => getId(r)).filter(Boolean)
+    const arr = Array.isArray(saved)
+      ? saved
+      : Array.isArray(saved?.items)
+      ? saved.items
       : [];
+
+    const ids = arr.map((r: any) => getId(r)).filter(Boolean);
 
     return { ok: true, data: ids };
   } catch (e: any) {

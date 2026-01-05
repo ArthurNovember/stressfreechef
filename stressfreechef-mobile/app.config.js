@@ -29,7 +29,22 @@ export default {
     web: {
       favicon: "./assets/favicon.png",
     },
-    plugins: ["expo-router", "expo-secure-store", "expo-font"],
+    plugins: [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-speech-recognition",
+        {
+          microphonePermission: "Allow $(PRODUCT_NAME) to use the microphone.",
+          speechRecognitionPermission:
+            "Allow $(PRODUCT_NAME) to use speech recognition.",
+          androidSpeechServicePackages: [
+            "com.google.android.googlequicksearchbox",
+          ],
+        },
+      ],
+    ],
     extra: {
       apiBase: process.env.EXPO_PUBLIC_API_BASE,
       eas: {

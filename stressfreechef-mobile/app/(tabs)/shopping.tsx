@@ -787,7 +787,7 @@ export default function ShoppingScreen() {
                 <Text
                   style={{
                     fontFamily: "MetropolisBold",
-                    fontSize: 34,
+                    fontSize: 30,
                     color: "#c2c2c2ff",
                     paddingTop: 10,
                     letterSpacing: 0.5,

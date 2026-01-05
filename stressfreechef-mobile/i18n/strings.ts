@@ -362,8 +362,8 @@ const STRINGS = {
       cs: "Zkusit znovu",
     },
     addNewItemTitle: {
-      en: "Shopping List",
-      cs: "Nákupní seznam",
+      en: "SHOPPING LIST",
+      cs: "NÁKUPNÍ SEZNAM",
     },
     addItemPlaceholder: {
       en: "Add item…",

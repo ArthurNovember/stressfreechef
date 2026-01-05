@@ -189,9 +189,14 @@ const ExploreRecipes = ({ addItem }) => {
         });
 
         const data = await res.json();
-        const ids = Array.isArray(data)
-          ? data.map((r) => r?.recipeId || r?._id).filter(Boolean)
+
+        const arr = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.items)
+          ? data.items
           : [];
+
+        const ids = arr.map((r) => r?.recipeId || r?._id).filter(Boolean);
 
         setSavedCommunityIds(ids);
       } catch {
@@ -398,7 +403,7 @@ const ExploreRecipes = ({ addItem }) => {
 
           return (
             <div className="recipeCard1" key={r?._id || `${title}-${url}`}>
-              <a href="#forNow" title={title}>
+              <a href="#modal" title={title}>
                 {isVideo ? (
                   <video
                     onClick={() => openModal(r)}
@@ -464,7 +469,7 @@ const ExploreRecipes = ({ addItem }) => {
               {selectedIsSaved ? "SAVED" : "SAVE"}
             </button>
 
-            <div id="forNow">
+            <div id="modal">
               <div className="nameAndPicture">
                 <h2>{selectedRecipe.title}</h2>
 

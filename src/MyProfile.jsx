@@ -553,7 +553,7 @@ const MyProfile = ({ userInfo, addItem }) => {
 
               return (
                 <div className="recipeCard2" key={r?._id}>
-                  <a href="#forNow" title={title}>
+                  <a href="#modal" title={title}>
                     {isVideo ? (
                       <video
                         src={url}
@@ -637,7 +637,7 @@ const MyProfile = ({ userInfo, addItem }) => {
             className="selectedRecipeContainer"
             onClick={(e) => e.stopPropagation()}
           >
-            <div id="forNow">
+            <div id="modal">
               <div className="nameAndPicture">
                 <h2>{selectedRecipe.title}</h2>
 

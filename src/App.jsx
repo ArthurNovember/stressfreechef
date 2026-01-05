@@ -431,7 +431,7 @@ function App() {
           <nav>
             <ul>
               <li>
-                <Link to="/domov" onClick={scrollToTop}>
+                <Link to="/home" onClick={scrollToTop}>
                   Home
                 </Link>
               </li>
@@ -483,7 +483,7 @@ function App() {
         />
 
         <Route
-          path="/domov"
+          path="/home"
           element={
             <Home
               displayRecipes={displayRecipes}

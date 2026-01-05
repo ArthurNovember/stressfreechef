@@ -1,4 +1,3 @@
-// theme/ThemeContext.tsx
 import React, {
   createContext,
   useContext,
@@ -36,7 +35,7 @@ const palettes = {
     reverseText: "#f4f4f4ff",
     secondaryText: "#222222",
     muted: "#666666",
-    pillActive: "#760101", // accent můžeš klidně změnit
+    pillActive: "#760101",
     danger: "#d32f2f",
     shop: "#ffffff",
     list: "#632929ff",
@@ -82,7 +81,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   if (!ready) {
-    // Můžeš sem dát vlastní splash / loader
     return null;
   }
 

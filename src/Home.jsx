@@ -143,16 +143,22 @@ const Home = ({
         });
 
         const data = await res.json();
+
+        const arr = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.items)
+          ? data.items
+          : [];
+
         const baseIds = [];
 
-        if (Array.isArray(data)) {
-          for (const r of data) {
-            const src = r?.sourceRecipeId;
-            if (!src) continue;
-
-            baseIds.push(typeof src === "object" ? src._id : src);
-          }
+        for (const r of arr) {
+          const src = r?.sourceRecipeId;
+          if (!src) continue;
+          baseIds.push(typeof src === "object" ? src._id : src);
         }
+
+        setSavedBaseIds(baseIds);
 
         setSavedBaseIds(baseIds);
       } catch {
@@ -216,6 +222,14 @@ const Home = ({
   ----------------------------- */
   const recipesToRender = useMemo(() => {
     const base = [...(displayRecipes || [])];
+
+    if (sortBy === "newest") {
+      base.sort((a, b) => {
+        const da = new Date(a?.createdAt || 0).getTime();
+        const db = new Date(b?.createdAt || 0).getTime();
+        return db - da;
+      });
+    }
 
     if (sortBy === "favorite") {
       base.sort((a, b) => {
@@ -307,7 +321,7 @@ const Home = ({
 
             return (
               <div className="recipeCard" key={rid}>
-                <a href="#forNow">
+                <a href="#modal">
                   <img onClick={() => openModal(recipe)} src={recipe.imgSrc} />
                 </a>
 
@@ -342,7 +356,7 @@ const Home = ({
                 {selectedIsSaved ? "SAVED" : "SAVE"}
               </button>
 
-              <div id="forNow">
+              <div id="modal">
                 <div className="nameAndPicture">
                   <h2>{selectedRecipe.title}</h2>
                   <img src={selectedRecipe.imgSrc} />

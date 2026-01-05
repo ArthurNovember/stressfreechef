@@ -45,7 +45,7 @@ const Recipe = () => {
     return (
       <div>
         <p>Recipe not found</p>
-        <Link to="/domov">
+        <Link to="/home">
           <button>Back to HOME</button>
         </Link>
       </div>
@@ -296,7 +296,7 @@ const Recipe = () => {
                   </p>
                 )}
 
-                <Link to="/domov">
+                <Link to="/home">
                   <button>Back to HOME</button>
                 </Link>
               </div>

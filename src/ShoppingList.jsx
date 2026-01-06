@@ -349,7 +349,7 @@ const ShoppingList = ({
                                 onClick={() => handleDeleteShop(_id)}
                                 className="deleteShop"
                               >
-                                ❌
+                                X
                               </button>
                             </li>
                           ))}
@@ -472,7 +472,7 @@ const ShoppingList = ({
                               onClick={() => handleDeleteShop(shop._id)}
                               className="deleteShop"
                             >
-                              ❌
+                              X
                             </button>
                           </li>
                         ))}

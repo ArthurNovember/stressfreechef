@@ -1,5 +1,6 @@
 .itemContainer {
-  background-color: rgb(58, 57, 57);
+  background: radial-gradient(0, #131111 55%);
+
   min-height: 300px;
 
   margin: auto;
@@ -11,26 +12,15 @@
 }
 
 .itemContainer h2 {
-  background-color: rgb(21, 21, 21);
   padding-top: 10px;
   padding-bottom: 10px;
   margin-top: 0px;
   border-radius: 3px;
 }
 
-.itemContainer li {
-  background-color: rgb(38, 38, 38);
-  padding-top: 10px;
-  padding-bottom: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 5px;
-}
-
 .writeFavorite {
   flex: 1;
-  height: 35px;
+  height: 45px;
   border: solid rgb(24, 24, 24) 0.1px;
   background-color: rgb(0, 0, 0);
   border-radius: 5px;
@@ -41,6 +31,7 @@
   max-width: 250px;
   margin-right: 10px;
   margin-left: 10px;
+  background-color: #2d2d2d;
 }
 
 .itemName {
@@ -60,7 +51,7 @@
 }
 
 .itemContainer li {
-  background-color: rgb(38, 38, 38);
+  background: radial-gradient(0, #291e1e 55%);
   padding-top: 10px;
   padding-bottom: 10px;
   display: flex;
@@ -69,6 +60,7 @@
   margin-top: 5px;
   padding-left: 7px;
   padding-right: 7px;
+  border-radius: 5px;
 }
 
 .AddTopFavorite {
@@ -111,17 +103,25 @@
 
 .addButtonTop {
   background-color: rgb(88, 7, 7);
-  padding: 8px 14px;
+  padding: 13px 18px;
   border-radius: 5px;
   border: none;
   cursor: pointer;
   white-space: nowrap;
 }
 
+.addButtonTop:hover {
+  background: rgb(114, 3, 3);
+  box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
+}
+
 .FavoriteCelek ul {
   display: flex;
   flex-direction: column;
   padding: 0px;
+  padding-bottom: 10px;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
 }
 
 .favoriteSelectAndSort {

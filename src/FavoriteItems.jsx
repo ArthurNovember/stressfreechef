@@ -305,7 +305,7 @@ const FavoriteItems = ({
                                 type="button"
                                 onClick={() => handleDeleteShop(_id)}
                               >
-                                ❌
+                                X
                               </button>
                             </li>
                           ))}
@@ -374,7 +374,7 @@ const FavoriteItems = ({
                                 type="button"
                                 onClick={() => handleDeleteShop(shop._id)}
                               >
-                                ❌
+                                X
                               </button>
                             </li>
                           ))}

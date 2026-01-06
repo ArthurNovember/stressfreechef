@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
 import "./Recipe.css";
 import { useLocation, Link } from "react-router-dom";
 import StarRating from "./StarRating";
@@ -32,6 +33,26 @@ function getToken() {
   return localStorage.getItem("token");
 }
 
+function parseTimerSeconds(step) {
+  const raw =
+    typeof step?.timerSeconds === "number"
+      ? step.timerSeconds
+      : Number(step?.timerSeconds ?? 0);
+
+  if (!raw || !Number.isFinite(raw) || raw <= 0) return null;
+  return Math.floor(raw);
+}
+
+function formatTime(totalSeconds) {
+  const safe = Math.max(0, Math.floor(totalSeconds || 0));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+    2,
+    "0"
+  )}`;
+}
+
 /* -----------------------------
    Component
 ----------------------------- */
@@ -40,6 +61,14 @@ const Recipe = () => {
   const recipe = location.state?.recipe;
 
   const [currentStep, setCurrentStep] = useState(0);
+  const step = recipe.steps[currentStep];
+
+  //Timer
+  const [remaining, setRemaining] = useState(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [startedAt, setStartedAt] = useState(null);
+  const [accumulated, setAccumulated] = useState(0);
+  const [justFinished, setJustFinished] = useState(false);
 
   if (!recipe || !Array.isArray(recipe.steps)) {
     return (
@@ -72,7 +101,8 @@ const Recipe = () => {
   const [rateMsg, setRateMsg] = useState(null);
 
   const canRateCommunity = Boolean(communityId) && !ensuring;
-  const step = recipe.steps[currentStep];
+  const stepTimer = parseTimerSeconds(step);
+  const hasTimer = stepTimer != null;
 
   /* =============================
      Effects
@@ -150,6 +180,57 @@ const Recipe = () => {
     };
   }, [communityId]);
 
+  useEffect(() => {
+    if (!step) {
+      setRemaining(null);
+      setIsRunning(false);
+      setStartedAt(null);
+      setAccumulated(0);
+      setJustFinished(false);
+      return;
+    }
+
+    if (!hasTimer) {
+      setRemaining(null);
+      setIsRunning(false);
+      setStartedAt(null);
+      setAccumulated(0);
+      setJustFinished(false);
+      return;
+    }
+
+    setRemaining(stepTimer);
+    setIsRunning(false);
+    setStartedAt(null);
+    setAccumulated(0);
+    setJustFinished(false);
+  }, [currentStep, hasTimer, stepTimer, step]);
+
+  useEffect(() => {
+    if (!isRunning || startedAt == null || !hasTimer) return;
+
+    const duration = stepTimer;
+    const id = setInterval(() => {
+      const elapsedSinceStart = (Date.now() - startedAt) / 1000;
+      const totalElapsed = accumulated + elapsedSinceStart;
+      const nextRemaining = Math.max(0, duration - Math.floor(totalElapsed));
+
+      setRemaining(nextRemaining);
+
+      if (nextRemaining <= 0) {
+        setIsRunning(false);
+        setStartedAt(null);
+        setAccumulated(duration);
+        setJustFinished(true);
+
+        // web “vibrace” -> aspoň malý feedback
+        // (když chceš, můžeme přidat sound později)
+      }
+    }, 1000);
+
+    return () => clearInterval(id);
+  }, [isRunning, startedAt, accumulated, hasTimer, stepTimer]);
+
   /* =============================
      Rating
   ============================= */
@@ -207,6 +288,46 @@ const Recipe = () => {
   }
 
   /* =============================
+     Timer
+  ============================= */
+
+  const handleStartPause = useCallback(() => {
+    if (!hasTimer) return;
+
+    if (!isRunning) {
+      setJustFinished(false);
+
+      if (remaining == null || remaining <= 0) {
+        setAccumulated(0);
+        setRemaining(stepTimer);
+      }
+
+      setStartedAt(Date.now());
+      setIsRunning(true);
+      return;
+    }
+
+    // pause
+    if (startedAt != null) {
+      const elapsedSinceStart = (Date.now() - startedAt) / 1000;
+      setAccumulated((acc) => acc + elapsedSinceStart);
+    }
+
+    setStartedAt(null);
+    setIsRunning(false);
+  }, [hasTimer, isRunning, remaining, startedAt, stepTimer]);
+
+  const handleResetTimer = useCallback(() => {
+    setIsRunning(false);
+    setStartedAt(null);
+    setAccumulated(0);
+    setJustFinished(false);
+
+    if (hasTimer) setRemaining(stepTimer);
+    else setRemaining(null);
+  }, [hasTimer, stepTimer]);
+
+  /* =============================
      Render
   ============================= */
   return (
@@ -239,6 +360,36 @@ const Recipe = () => {
         <div className="buttonAndStep">
           <h3 className="step">Step {currentStep + 1}</h3>
           <p className="instruction">{step.description}</p>
+          {/* ⏱ Timer (web) */}
+          {hasTimer && (
+            <div className="timerBox">
+              <div className="timerCircle">
+                <span className="timerValue">
+                  {formatTime(remaining != null ? remaining : stepTimer)}
+                </span>
+              </div>
+
+              {justFinished && <div className="timerFinished">TIMER DONE</div>}
+
+              <div className="timerRow">
+                <button
+                  type="button"
+                  className={`timerBtn ${isRunning ? "active" : ""}`}
+                  onClick={handleStartPause}
+                >
+                  {isRunning ? "❚❚" : "▶"}
+                </button>
+
+                <button
+                  type="button"
+                  className="timerBtn"
+                  onClick={handleResetTimer}
+                >
+                  ■
+                </button>
+              </div>
+            </div>
+          )}
 
           {currentStep < recipe.steps.length - 1 ? (
             <div className="buttonContainer">

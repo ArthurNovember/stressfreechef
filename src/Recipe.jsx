@@ -244,26 +244,26 @@ const Recipe = () => {
             <div className="buttonContainer">
               {currentStep > 0 ? (
                 <button
-                  className="previousStep"
+                  className="stepButton"
                   onClick={() => setCurrentStep((p) => p - 1)}
                 >
-                  PREVIOUS STEP
+                  PREVIOUS
                 </button>
               ) : (
                 <span />
               )}
               <button
-                className="nextStep"
+                className="stepButton"
                 onClick={() => setCurrentStep((p) => p + 1)}
               >
-                NEXT STEP
+                NEXT
               </button>
             </div>
           ) : (
             <div className="buttonContainer2">
               <div className="backPrevious">
                 <button
-                  className="previousStep"
+                  className="stepButton"
                   onClick={() => setCurrentStep((p) => Math.max(0, p - 1))}
                 >
                   PREVIOUS

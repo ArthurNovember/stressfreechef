@@ -535,10 +535,6 @@ Here is the recipe:`;
                 • 4) Import
                 <br />
               </p>
-              <p className="AiHint">
-                ⚠️ difficulty must stay in English: Beginner | Intermediate |
-                Hard
-              </p>
 
               <div className="AiButtonsRow">
                 <button

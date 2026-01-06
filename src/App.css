@@ -92,10 +92,11 @@ header nav a:hover {
 .selectedRecipeContainer {
   width: min(1100px, 100vw - 40px);
   max-height: 90vh;
-  background-color: #1a1a1a;
+  background: radial-gradient(0, #131111 55%);
   border-radius: 20px;
   overflow-y: auto;
   position: relative;
+  border: 3px rgb(41, 39, 39) solid;
 }
 
 .selectedRecipeContainer h2 {
@@ -119,10 +120,10 @@ header nav a:hover {
 }
 
 #modal {
-  background-color: #2d2d2d;
+  background: radial-gradient(0, #131111 55%);
   margin-left: auto;
   margin-right: auto;
-  border: solid 8px #1d1c1c;
+
   border-bottom: 0px;
   margin-top: 20px;
   display: flex;
@@ -177,12 +178,10 @@ header nav a:hover {
 }
 
 #startparent {
-  background-color: #2f2f2f;
+  background: radial-gradient(0, #131111 55%);
   height: 90px;
   margin: 0 auto;
-  border: solid 8px #1d1c1c;
-  border-bottom-left-radius: 30px;
-  border-bottom-right-radius: 30px;
+  border-top: 1px rgb(41, 39, 39) solid;
 }
 
 .getStarted {

@@ -6,9 +6,10 @@
   margin: auto;
   display: flex;
   flex-direction: column;
-  border: 7px solid rgb(43, 43, 43);
+
   padding: 10px;
   border-radius: 10px;
+  border: 2px rgb(41, 39, 39) solid;
 }
 
 .itemContainer h2 {

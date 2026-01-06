@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getLocales } from "expo-localization";
 import { Lang, LANG_KEY } from "./strings";
 
+
 type LangContextValue = {
   lang: Lang;
   setLang: (l: Lang) => Promise<void>;

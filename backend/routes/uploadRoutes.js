@@ -1,4 +1,3 @@
-// routes/uploadRoutes.js
 const express = require("express");
 const cloudinary = require("../utils/cloudinary");
 const { uploadMedia, multerErrorHandler } = require("../middleware/upload");
@@ -9,7 +8,6 @@ const UserRecipe = require("../models/UserRecipe");
 
 const router = express.Router();
 
-// 📤 Upload obrázku nebo videa k receptu
 router.post(
   "/recipe-media",
   authenticateToken,
@@ -20,7 +18,6 @@ router.post(
       if (!recipeId) return res.status(400).json({ error: "Missing recipeId" });
       if (!req.file) return res.status(400).json({ error: "Missing file" });
 
-      // najdeme recept
       const recipe = await UserRecipe.findById(recipeId);
       if (!recipe) return res.status(404).json({ error: "Recipe not found" });
       if (String(recipe.owner) !== String(req.user._id)) {
@@ -29,13 +26,12 @@ router.post(
 
       const folder = process.env.CLOUDINARY_FOLDER || "stressfreechef/recipes";
 
-      // nahraj do Cloudinary
       const uploadToCloudinary = () =>
         new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
             {
               folder,
-              resource_type: "auto", // 👈 auto = obrázek nebo video
+              resource_type: "auto",
               transformation: [{ quality: "auto", fetch_format: "auto" }],
             },
             (error, result) => {
@@ -48,7 +44,6 @@ router.post(
 
       const result = await uploadToCloudinary();
 
-      // smaž starý soubor, pokud už existuje
       if (recipe.image?.publicId) {
         try {
           await cloudinary.uploader.destroy(recipe.image.publicId, {
@@ -57,7 +52,6 @@ router.post(
         } catch {}
       }
 
-      // ulož metadata do DB
       recipe.image = {
         url: result.secure_url,
         publicId: result.public_id,
@@ -73,10 +67,9 @@ router.post(
       return res.status(500).json({ error: err.message || "Upload failed" });
     }
   },
-  multerErrorHandler // 👈 tady chytáme Multer chyby (400 místo 500)
+  multerErrorHandler
 );
 
-// ❌ Smazání obrázku/videa
 router.delete(
   "/recipe-media/:recipeId",
   authenticateToken,
@@ -108,14 +101,12 @@ router.delete(
   }
 );
 
-// 📤 Upload media pro konkrétní step (image/video)
 router.post(
   "/recipe-step-media",
   authenticateToken,
   uploadMedia.single("file"),
   async (req, res) => {
     try {
-      // --- validace vstupu
       const recipeId = String(req.body.recipeId || "").trim();
       const stepIndex = Number(req.body.stepIndex);
 
@@ -129,7 +120,6 @@ router.post(
         return res.status(400).json({ error: "Missing file" });
       }
 
-      // --- načti recept a ověř vlastnictví
       const recipe = await UserRecipe.findById(recipeId);
       if (!recipe) return res.status(404).json({ error: "Recipe not found" });
       if (String(recipe.owner) !== String(req.user._id)) {
@@ -139,17 +129,15 @@ router.post(
         return res.status(400).json({ error: "Step index out of range" });
       }
 
-      // --- složka v Cloudinary (podsložka /steps)
       const folderBase =
         process.env.CLOUDINARY_FOLDER || "stressfreechef/recipes";
       const folder = `${folderBase}/steps`;
 
-      // --- upload do Cloudinary (stream z paměti)
       const result = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
             folder,
-            resource_type: "auto", // image / video
+            resource_type: "auto",
             transformation: [{ quality: "auto", fetch_format: "auto" }],
           },
           (error, data) => (error ? reject(error) : resolve(data))
@@ -157,7 +145,6 @@ router.post(
         stream.end(req.file.buffer);
       });
 
-      // --- případně smaž staré médium ve stepu (pokud máš uložené publicId)
       const step = recipe.steps[stepIndex];
       if (step.mediaPublicId) {
         try {
@@ -167,12 +154,10 @@ router.post(
         } catch {}
       }
 
-      // --- ulož nová metadata do stepu
       const isVideo = result.resource_type === "video";
       step.type = isVideo ? "video" : "image";
       step.src = result.secure_url;
 
-      // volitelné meta – pokud sis rozšířil stepSchema
       step.mediaPublicId = result.public_id;
       step.mediaWidth = result.width;
       step.mediaHeight = result.height;
@@ -200,7 +185,6 @@ router.post(
   multerErrorHandler
 );
 
-// 🗑️ Smazání média u konkrétního stepu (odolná verze)
 router.delete(
   "/recipe-step-media/:recipeId/:stepIndex",
   authenticateToken,
@@ -210,7 +194,6 @@ router.delete(
       const stepIndexRaw = req.params.stepIndex;
       const stepIndex = Number(stepIndexRaw);
 
-      // 1) validace vstupů
       if (!mongoose.Types.ObjectId.isValid(recipeId)) {
         return res.status(400).json({ error: "Invalid recipeId" });
       }
@@ -218,7 +201,6 @@ router.delete(
         return res.status(400).json({ error: "Invalid stepIndex" });
       }
 
-      // 2) načti recept + autorizace
       const recipe = await UserRecipe.findById(recipeId);
       if (!recipe) return res.status(404).json({ error: "Recipe not found" });
       if (String(recipe.owner) !== String(req.user._id)) {
@@ -230,11 +212,9 @@ router.delete(
 
       const step = recipe.steps[stepIndex];
 
-      // 3) smaž asset v Cloudinary (publicId je volitelné)
       const publicId = step?.mediaPublicId;
       if (publicId) {
         try {
-          // auto by mělo stačit, ale pro jistotu fallback
           await cloudinary.uploader.destroy(publicId, {
             resource_type: "auto",
           });
@@ -257,15 +237,13 @@ router.delete(
                 "|",
                 errVid?.message || errVid
               );
-              // nepadáme – DB stejně uklidíme
             }
           }
         }
       }
 
-      // 4) vyčisti metadata stepu v DB
-      step.type = "text"; // 👈 přidej toto
-      step.src = undefined; // nebo "" – ale undefined je lepší
+      step.type = "text";
+      step.src = undefined;
       step.mediaPublicId = undefined;
       step.mediaWidth = undefined;
       step.mediaHeight = undefined;

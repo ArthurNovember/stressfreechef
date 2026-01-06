@@ -1,11 +1,10 @@
 const express = require("express");
-require("dotenv").config(); // Načti .env soubor
-const mongoose = require("mongoose"); // Import Mongoose
+require("dotenv").config();
+const mongoose = require("mongoose");
 const cors = require("cors");
 
 const Recipe = require("./models/Recipe");
 
-// Připojení k MongoDB
 mongoose
   .connect(process.env.MONGO_URL)
   .then(async () => {
@@ -20,11 +19,7 @@ const PORT = process.env.PORT || 4000;
 
 app.use(express.json());
 app.use(cors());
-// app.use(cors({
-//   origin: 'https://stressfreecheff-backend.onrender.com/' //  Až bude napojen frontend
-// }));
 
-// ✅ Připoj router
 const recipesRouter = require("./routes/recipes");
 app.use("/api/recipes", recipesRouter);
 

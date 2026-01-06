@@ -1,4 +1,3 @@
-// routes/myRecipes.js
 const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
@@ -7,7 +6,6 @@ const authenticateToken = require("../middleware/authenticateToken");
 const UserRecipe = require("../models/UserRecipe");
 const CommunityRecipe = require("../models/CommunityRecipe");
 
-// helper: validace steps
 function validateSteps(steps = []) {
   if (!Array.isArray(steps)) return false;
   for (const s of steps) {
@@ -24,7 +22,6 @@ function validateSteps(steps = []) {
   return true;
 }
 
-// ---- CREATE -------------------------------------------------
 router.post("/", authenticateToken, async (req, res) => {
   try {
     const {
@@ -46,7 +43,7 @@ router.post("/", authenticateToken, async (req, res) => {
     if (steps && !validateSteps(steps)) {
       return res.status(400).json({ error: "steps má neplatný formát." });
     }
-    // 1) vytvoř soukromý záznam
+
     const userRec = await UserRecipe.create({
       title: String(title).trim(),
       rating: typeof rating === "number" ? rating : 0,
@@ -62,7 +59,6 @@ router.post("/", authenticateToken, async (req, res) => {
       isPublic: !!isPublic,
     });
 
-    // 2) pokud je public → vytvoř i CommunityRecipe a ulož link
     if (isPublic) {
       const publicDoc = await CommunityRecipe.create({
         title: userRec.title,
@@ -73,7 +69,7 @@ router.post("/", authenticateToken, async (req, res) => {
         image: userRec.image,
         ingredients: userRec.ingredients,
         steps: userRec.steps,
-        owner: req.user._id, // volitelné, když chceš ukázat autora
+        owner: req.user._id,
       });
       userRec.publicRecipeId = publicDoc._id;
       await userRec.save();
@@ -86,7 +82,6 @@ router.post("/", authenticateToken, async (req, res) => {
   }
 });
 
-// ---- LIST (moje) --------------------------------------------
 router.get("/", authenticateToken, async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -109,7 +104,6 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// ---- DETAIL -------------------------------------------------
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -126,14 +120,12 @@ router.get("/:id", authenticateToken, async (req, res) => {
   }
 });
 
-// ---- UPDATE (PATCH) -----------------------------------------
 router.patch("/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id))
       return res.status(400).json({ error: "Neplatné ID." });
 
-    // povolená pole z body
     const allowed = [
       "title",
       "rating",
@@ -147,7 +139,6 @@ router.patch("/:id", authenticateToken, async (req, res) => {
     const update = {};
     for (const k of allowed) if (k in req.body) update[k] = req.body[k];
 
-    // validace vstupu
     if ("steps" in update && !validateSteps(update.steps)) {
       return res.status(400).json({ error: "steps má neplatný formát." });
     }
@@ -157,23 +148,19 @@ router.patch("/:id", authenticateToken, async (req, res) => {
         .json({ error: "ingredients musí být pole stringů." });
     }
 
-    // načti uživatelský recept
     const doc = await UserRecipe.findOne({ _id: id, owner: req.user._id });
     if (!doc)
       return res
         .status(404)
         .json({ error: "Recept nenalezen nebo nemáš oprávnění." });
 
-    // A) aplikuj změny do UserRecipe
     for (const k of allowed) {
       if (k in update) doc[k] = update[k];
     }
 
-    // B) synchronizace public kopie v CommunityRecipe
     const wantsPublic = !!doc.isPublic;
 
     if (wantsPublic && !doc.publicRecipeId) {
-      // private -> public: vytvoř public kopii
       const pub = await CommunityRecipe.create({
         title: doc.title,
         rating: doc.rating,
@@ -183,17 +170,15 @@ router.patch("/:id", authenticateToken, async (req, res) => {
         image: doc.image,
         ingredients: doc.ingredients,
         steps: doc.steps,
-        owner: req.user._id, // volitelné, pokud chceš autora u public
+        owner: req.user._id,
       });
       doc.publicRecipeId = pub._id;
     } else if (!wantsPublic && doc.publicRecipeId) {
-      // public -> private: smaž public kopii
       await CommunityRecipe.findByIdAndDelete(doc.publicRecipeId).catch(
         () => {}
       );
       doc.publicRecipeId = null;
     } else if (wantsPublic && doc.publicRecipeId) {
-      // public zůstává public: aktualizuj existující public kopii
       await CommunityRecipe.findByIdAndUpdate(
         doc.publicRecipeId,
         {
@@ -218,7 +203,6 @@ router.patch("/:id", authenticateToken, async (req, res) => {
   }
 });
 
-// ---- DELETE -------------------------------------------------
 router.delete("/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;

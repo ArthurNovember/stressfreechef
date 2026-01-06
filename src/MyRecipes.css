@@ -123,17 +123,3 @@
   margin-top: 30px;
 }
 
-@media (max-width: 768px) {
-  .backPrevious {
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-  }
-
-  /* ať se tlačítka neroztahují do šířky */
-  .backPrevious button {
-    width: 100%;
-    max-width: 320px;
-  }
-}

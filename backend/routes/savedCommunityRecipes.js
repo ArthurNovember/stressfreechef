@@ -4,7 +4,6 @@ const authenticateToken = require("../middleware/authenticateToken");
 const User = require("../models/User");
 const CommunityRecipe = require("../models/CommunityRecipe");
 
-// GET /api/saved-community-recipes?page=&limit=&sort=
 router.get("/", authenticateToken, async (req, res) => {
   const userId = req.user._id;
 
@@ -19,7 +18,6 @@ router.get("/", authenticateToken, async (req, res) => {
       sortSpec = { ratingAvg: -1, ratingCount: -1, createdAt: -1 };
     }
 
-    // 1) vezmi jen IDs uložených receptů
     const user = await User.findById(userId)
       .select("savedCommunityRecipes")
       .lean();
@@ -32,7 +30,6 @@ router.get("/", authenticateToken, async (req, res) => {
       return res.json({ items: [], page, limit, total, pages });
     }
 
-    // 2) dotáhni CommunityRecipe dokumenty, globálně seřaď a stránkuj
     const items = await CommunityRecipe.find({ _id: { $in: ids } })
       .sort(sortSpec)
       .skip(skip)
@@ -46,7 +43,6 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/saved-community-recipes  { recipeId }
 router.post("/", authenticateToken, async (req, res) => {
   const userId = req.user._id;
   const { recipeId } = req.body;
@@ -81,7 +77,6 @@ router.post("/", authenticateToken, async (req, res) => {
   }
 });
 
-// DELETE /api/saved-community-recipes/:id
 router.delete("/:id", authenticateToken, async (req, res) => {
   const userId = req.user._id;
   const recipeId = req.params.id;

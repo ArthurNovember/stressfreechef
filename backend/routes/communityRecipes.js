@@ -1,11 +1,8 @@
-// routes/communityRecipes.js
 const express = require("express");
 const router = express.Router();
 const CommunityRecipe = require("../models/CommunityRecipe");
 const Recipe = require("../models/Recipe");
 
-// GET /api/community-recipes?page=&limit=&q=
-// GET /api/community-recipes?page=&limit=&q=&sort=&includeDerived=
 router.get("/", async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -27,7 +24,6 @@ router.get("/", async (req, res) => {
     const total = await CommunityRecipe.countDocuments(filter);
     const pages = Math.ceil(total / limit);
 
-    // ✅ EASIEST = Beginner -> Intermediate -> Hard (správně přes aggregation)
     if (sort === "easiest") {
       const items = await CommunityRecipe.aggregate([
         { $match: filter },
@@ -54,8 +50,7 @@ router.get("/", async (req, res) => {
       return res.json({ items, page, limit, total, pages });
     }
 
-    // ✅ ostatní sorty = find().sort()
-    let sortSpec = { createdAt: -1 }; // newest
+    let sortSpec = { createdAt: -1 };
     if (sort === "favorite" || sort === "top" || sort === "rating") {
       sortSpec = { ratingAvg: -1, ratingCount: -1, createdAt: -1 };
     } else if (sort === "newest") {
@@ -74,7 +69,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET detail
 router.get("/:id", async (req, res) => {
   try {
     const doc = await CommunityRecipe.findById(req.params.id);
@@ -85,12 +79,10 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/community-recipes/ensure-from-recipe/:recipeId
 router.post("/ensure-from-recipe/:recipeId", async (req, res) => {
   try {
     const { recipeId } = req.params;
 
-    // 1) existuje community kopie?
     let doc = await CommunityRecipe.findOne({ sourceRecipeId: recipeId });
     if (doc) {
       return res.json({
@@ -101,11 +93,9 @@ router.post("/ensure-from-recipe/:recipeId", async (req, res) => {
       });
     }
 
-    // 2) načti ofiko Recipe
     const base = await Recipe.findById(recipeId);
     if (!base) return res.status(404).json({ error: "Base recipe not found." });
 
-    // 3) založ community „dvojče“
     doc = await CommunityRecipe.create({
       title: base.title,
       rating: base.rating || 0,

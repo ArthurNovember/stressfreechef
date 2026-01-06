@@ -1,4 +1,3 @@
-// models/CommunityRecipe.js
 const mongoose = require("mongoose");
 
 const imageSchema = new mongoose.Schema(
@@ -34,8 +33,8 @@ const stepSchema = new mongoose.Schema(
 const communityRecipeSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
-    // ⭐ Community rating (agregace + jednotlivé hlasy)
-    rating: { type: Number, default: 0 }, // legacy zaokrouhlený průměr
+
+    rating: { type: Number, default: 0 },
     ratingAvg: { type: Number, default: 0, min: 0, max: 5 },
     ratingCount: { type: Number, default: 0, min: 0 },
     ratings: {
@@ -53,7 +52,6 @@ const communityRecipeSchema = new mongoose.Schema(
       default: [],
     },
 
-    // 🔗 pro ofiko recepty (kolekce Recipe)
     sourceRecipeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Recipe",
@@ -62,11 +60,10 @@ const communityRecipeSchema = new mongoose.Schema(
     difficulty: { type: String, required: true },
     time: { type: String, required: true },
     imgSrc: { type: String },
-    image: imageSchema, // NOVÉ pole
+    image: imageSchema,
     ingredients: [{ type: String }],
     steps: [stepSchema],
 
-    // volitelné: ukázat autora u veřejných receptů
     owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }

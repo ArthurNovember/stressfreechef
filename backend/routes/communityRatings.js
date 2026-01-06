@@ -1,4 +1,3 @@
-// routes/communityRatings.js
 const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
@@ -6,8 +5,6 @@ const router = express.Router();
 const authenticateToken = require("../middleware/authenticateToken");
 const CommunityRecipe = require("../models/CommunityRecipe");
 
-// POST /api/community-recipes/:id/rate
-// Uloží/aktualizuje hlas přihlášeného uživatele (pouze celá 1..5)
 router.post("/:id/rate", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -23,7 +20,6 @@ router.post("/:id/rate", authenticateToken, async (req, res) => {
     const doc = await CommunityRecipe.findById(id);
     if (!doc) return res.status(404).json({ error: "Recipe not found." });
 
-    // upsert hlasu podle uživatele
     const uid = String(req.user._id);
     const idx = doc.ratings.findIndex((r) => String(r.user) === uid);
     if (idx >= 0) {
@@ -32,13 +28,11 @@ router.post("/:id/rate", authenticateToken, async (req, res) => {
       doc.ratings.push({ user: req.user._id, value });
     }
 
-    // přepočet agregací
     const count = doc.ratings.length;
     const sum = doc.ratings.reduce((acc, r) => acc + (r.value || 0), 0);
     doc.ratingCount = count;
     doc.ratingAvg = count ? sum / count : 0;
 
-    // zpětná kompatibilita (některé FE čtou rounded rating)
     doc.rating = Math.round(doc.ratingAvg);
 
     await doc.save();
@@ -55,7 +49,6 @@ router.post("/:id/rate", authenticateToken, async (req, res) => {
   }
 });
 
-// (volitelné) GET /api/community-recipes/:id/my-rating – vrátí můj hlas
 router.get("/:id/my-rating", authenticateToken, async (req, res) => {
   try {
     const doc = await CommunityRecipe.findById(req.params.id).select("ratings");

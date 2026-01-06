@@ -1,21 +1,17 @@
-// routes/favorites.js
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 const authenticateToken = require("../middleware/authenticateToken");
 
-// GET user's favorites
 router.get("/", authenticateToken, async (req, res) => {
   const user = await User.findById(req.user._id).populate("favoriteItems.shop");
   res.json(user.favoriteItems);
 });
 
-// POST add favorite
 router.post("/", authenticateToken, async (req, res) => {
-  const { text, shop } = req.body; // shop = [shopIds]
+  const { text, shop } = req.body;
   const user = await User.findById(req.user._id);
 
-  // volitelná deduplikace podle textu (klidně vyhoď, pokud nechceš)
   const already = user.favoriteItems.some(
     (i) => i.text.trim().toLowerCase() === (text || "").trim().toLowerCase()
   );
@@ -35,7 +31,6 @@ router.post("/", authenticateToken, async (req, res) => {
   res.json(user.favoriteItems);
 });
 
-// PATCH update favorite (aktuálně text / shop)
 router.patch("/:itemId", authenticateToken, async (req, res) => {
   const { itemId } = req.params;
   const user = await User.findById(req.user._id);
@@ -52,7 +47,6 @@ router.patch("/:itemId", authenticateToken, async (req, res) => {
   res.json(user.favoriteItems);
 });
 
-// DELETE favorite
 router.delete("/:itemId", authenticateToken, async (req, res) => {
   const { itemId } = req.params;
   const user = await User.findById(req.user._id);

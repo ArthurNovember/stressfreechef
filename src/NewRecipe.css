@@ -323,3 +323,84 @@
   gap: 10px;
   opacity: 0.9;
 }
+
+/* RESPONZIVITA */
+
+@media (max-width: 768px) {
+  .creation {
+    margin-left: 10px;
+    margin-right: 10px;
+    padding: 20px 10px;
+  }
+
+  .mainInfo {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+
+  .mainInfo label {
+    width: 100%;
+  }
+
+  .mainInfo input,
+  .mainInfo select {
+    width: 100%;
+  }
+
+  .inputAdd {
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+    height: auto;
+  }
+
+  .imagePreview {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  .Ingredients ol {
+    width: 100%;
+    padding: 0;
+  }
+
+  .Ingredients li {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .Steps li {
+    flex-direction: column;
+  }
+
+  .Steps textarea {
+    margin-left: 0;
+    height: 180px;
+    font-size: 16px;
+  }
+
+  .StepTimerFields {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .photoAndButton {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+
+  .addRecipe {
+    width: 140px;
+    height: 140px;
+    margin: 20px auto;
+  }
+
+  .public {
+    position: static;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+}

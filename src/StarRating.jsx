@@ -23,6 +23,8 @@ export default function StarRating({
         alignItems: "center",
         justifyContent: "center",
         gap: 8,
+        flexWrap: "wrap",
+        maxWidth: "100%",
       }}
     >
       <div role="img" aria-label={`${base.toFixed(1)} out of 5`}>

@@ -4,10 +4,9 @@
 
 .My {
   display: flex;
-  padding-top: 70px;
   flex-direction: row;
   align-items: baseline;
-  gap: 10vh;
+
   justify-content: center;
 }
 
@@ -30,7 +29,8 @@
   text-align: center;
   display: flex;
   justify-content: space-between;
-  width: 80vh;
+  width: 100%;
+  max-width: 760px;
 }
 
 .recipeCard2 img {
@@ -110,13 +110,10 @@
   border: 0;
 }
 
-.myRecipes {
-  width: 400vh;
-  margin-right: 8vh;
-}
+.myRecipes,
 .savedRecipes {
-  width: 400vh;
-  margin-left: 8vh;
+  width: min(820px, 100%);
+  padding: 2vh;
 }
 
 .profileFooter {
@@ -124,4 +121,19 @@
   text-align: left;
   border-top: solid 1px rgb(40, 38, 38);
   margin-top: 30px;
+}
+
+@media (max-width: 768px) {
+  .backPrevious {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  /* ať se tlačítka neroztahují do šířky */
+  .backPrevious button {
+    width: 100%;
+    max-width: 320px;
+  }
 }

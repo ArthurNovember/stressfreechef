@@ -104,7 +104,7 @@
 .Ingredients {
   padding: 20px;
   border-bottom: 1px rgb(56, 52, 52) solid;
-  display: flex;
+
   flex-direction: column;
   align-items: center;
 }
@@ -212,10 +212,6 @@
   border: 0px;
   align-items: baseline;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-}
-
-.Ingredients ol {
-  width: 1200px;
 }
 
 .Ingredients li {
@@ -362,7 +358,6 @@
   }
 
   .Ingredients ol {
-    width: 100%;
     padding: 0;
   }
 

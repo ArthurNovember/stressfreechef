@@ -768,7 +768,7 @@ export default function RecipeStepsScreen() {
 }
 
 /* =========================
-   HOOK: blow-to-next-step
+   Voice commands
 ========================= */
 
 function useVoiceCommands(

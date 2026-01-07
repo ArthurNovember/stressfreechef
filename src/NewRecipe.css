@@ -17,6 +17,8 @@
   padding-bottom: 50px;
   border-bottom: 1px rgb(56, 52, 52) solid;
   position: relative;
+  flex-wrap: wrap;
+  gap: 18px;
 }
 
 .mainInfo label p {

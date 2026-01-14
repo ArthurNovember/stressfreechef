@@ -10,6 +10,10 @@
   background: radial-gradient(circle at top, #301e21 0, #090505 55%);
 }
 
+.Recipe video {
+  width: 100%;
+}
+
 .imgContainer {
   background: radial-gradient(0, #131111 55%);
   display: flex;

@@ -46,7 +46,7 @@ type AiStepInput = {
 type AiRecipeInput = {
   title: string;
   difficulty?: Difficulty;
-  time: string; // "00:20"
+  time: string;
   ingredients: string[];
   steps: AiStepInput[];
 };

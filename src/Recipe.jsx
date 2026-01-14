@@ -346,7 +346,6 @@ const Recipe = () => {
           ) : step.type === "video" ? (
             <video
               autoPlay
-              muted
               loop
               className="recipeVideo"
               src={step.src}

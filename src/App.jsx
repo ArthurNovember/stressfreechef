@@ -460,7 +460,7 @@ function App() {
 
               <li id="nav">
                 <Link to={userInfo ? "/myprofile" : "/authform"}>
-                  {userInfo?.username ? userInfo.username : "MyProfile"}
+                  {userInfo?.username ? userInfo.username : "My Profile"}
                 </Link>
               </li>
             </ul>

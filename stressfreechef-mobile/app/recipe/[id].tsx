@@ -535,7 +535,7 @@ export default function RecipeStepsScreen() {
       if (hasTimer && isRunning) handleStartPause();
     },
     onResetTimer: () => {
-      if (hasTimer) handleResetTimer(); // 👈 uprav na název tvé reset funkce
+      if (hasTimer) handleResetTimer();
     },
   });
 

@@ -462,12 +462,17 @@ const ExploreRecipes = ({ addItem }) => {
             className="selectedRecipeContainer"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              className={`saveFloatingBtn ${selectedIsSaved ? "active" : ""}`}
-              onClick={() => toggleSaveExplore(selectedRecipe)}
-            >
-              {selectedIsSaved ? "SAVED" : "SAVE"}
-            </button>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button
+                className={`saveFloatingBtn ${selectedIsSaved ? "active" : ""}`}
+                onClick={() => toggleSaveExplore(selectedRecipe)}
+              >
+                {selectedIsSaved ? "SAVED" : "SAVE"}
+              </button>
+              <button classname="close" onClick={() => setSelectedRecipe(null)}>
+                X
+              </button>
+            </div>
 
             <div id="modal">
               <div className="nameAndPicture">

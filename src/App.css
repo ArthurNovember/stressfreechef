@@ -202,7 +202,7 @@ header nav a:hover {
   box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
 }
 
-.saveFloatingBtn {
+.close {
   position: absolute;
   top: 16px;
   right: 16px;

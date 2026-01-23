@@ -637,6 +637,11 @@ const MyProfile = ({ userInfo, addItem }) => {
             className="selectedRecipeContainer"
             onClick={(e) => e.stopPropagation()}
           >
+            <div style={{ display: "flex", justifyContent: "right" }}>
+              <button classname="close" onClick={() => setSelectedRecipe(null)}>
+                X
+              </button>
+            </div>
             <div id="modal">
               <div className="nameAndPicture">
                 <h2>{selectedRecipe.title}</h2>

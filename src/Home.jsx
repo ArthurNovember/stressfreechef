@@ -79,7 +79,7 @@ const Home = ({
       {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-      }
+      },
     );
 
     const ensure = await ensureRes.json();
@@ -106,7 +106,7 @@ const Home = ({
     });
 
     setSavedBaseIds((prev) =>
-      prev.includes(baseId) ? prev : [...prev, baseId]
+      prev.includes(baseId) ? prev : [...prev, baseId],
     );
   }
 
@@ -147,8 +147,8 @@ const Home = ({
         const arr = Array.isArray(data)
           ? data
           : Array.isArray(data?.items)
-          ? data.items
-          : [];
+            ? data.items
+            : [];
 
         const baseIds = [];
 
@@ -170,8 +170,8 @@ const Home = ({
   useEffect(() => {
     const ids = Array.from(
       new Set(
-        (displayRecipes || []).map((r) => r?._id || r?.id).filter(Boolean)
-      )
+        (displayRecipes || []).map((r) => r?._id || r?.id).filter(Boolean),
+      ),
     );
 
     if (ids.length === 0) {
@@ -187,7 +187,7 @@ const Home = ({
           ids.map(async (rid) => {
             const res = await fetch(
               `${API_BASE}/api/community-recipes/ensure-from-recipe/${rid}`,
-              { method: "POST" }
+              { method: "POST" },
             );
 
             const data = await res.json();
@@ -201,7 +201,7 @@ const Home = ({
                 count: Number(data.ratingCount || 0),
               },
             ];
-          })
+          }),
         );
 
         if (!aborted) {
@@ -349,13 +349,20 @@ const Home = ({
               className="selectedRecipeContainer"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                className={`saveFloatingBtn ${selectedIsSaved ? "active" : ""}`}
-                onClick={() => toggleSaveOfficial(selectedRecipe)}
-              >
-                {selectedIsSaved ? "SAVED" : "SAVE"}
-              </button>
-
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <button
+                  className={`saveFloatingBtn ${selectedIsSaved ? "active" : ""}`}
+                  onClick={() => toggleSaveOfficial(selectedRecipe)}
+                >
+                  {selectedIsSaved ? "SAVED" : "SAVE"}
+                </button>
+                <button
+                  classname="close"
+                  onClick={() => setSelectedRecipe(null)}
+                >
+                  X
+                </button>
+              </div>
               <div id="modal">
                 <div className="nameAndPicture">
                   <h2>{selectedRecipe.title}</h2>

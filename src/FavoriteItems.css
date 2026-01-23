@@ -73,6 +73,7 @@
   justify-content: space-between;
   gap: 10px;
   width: 100%;
+  flex-wrap: wrap;
 }
 
 .TopAddShop {
@@ -158,4 +159,25 @@
 
 form {
   width: 100%;
+}
+
+.addToListAndDelete {
+  display: flex;
+}
+
+.favAndShop {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+@media (max-width: 768px) {
+  .FavoriteCelek {
+    padding-left: 0px;
+    padding-right: 0px;
+  }
+
+  .itemName {
+    word-break: break-word;
+  }
 }

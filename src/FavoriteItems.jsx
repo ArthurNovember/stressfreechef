@@ -52,7 +52,7 @@ const FavoriteItems = ({
       const clickedTop = topDropdownRef.current?.contains(e.target);
 
       const clickedRow = Object.values(rowDropdownRefs.current).some(
-        (node) => node && node.contains(e.target)
+        (node) => node && node.contains(e.target),
       );
 
       if (!clickedTop && !clickedRow) {
@@ -96,20 +96,20 @@ const FavoriteItems = ({
       });
 
       setShopOptions((prev) =>
-        prev.filter((s) => String(s._id) !== String(shopId))
+        prev.filter((s) => String(s._id) !== String(shopId)),
       );
 
       setFavoriteNewItem((prev) =>
         prev.map((item) => ({
           ...item,
           shop: (item.shop || []).filter(
-            (s) => String(s._id) !== String(shopId)
+            (s) => String(s._id) !== String(shopId),
           ),
-        }))
+        })),
       );
 
       setFavoriteShop((prev) =>
-        prev.filter((id) => String(id) !== String(shopId))
+        prev.filter((id) => String(id) !== String(shopId)),
       );
     } catch (err) {
       console.error("Failed to delete shop:", err);
@@ -118,7 +118,7 @@ const FavoriteItems = ({
 
   function handleToggleShop(itemId, currentShops, shopId) {
     const currentIds = (currentShops || []).map((s) =>
-      typeof s === "string" ? s : s._id
+      typeof s === "string" ? s : s._id,
     );
 
     const exists = currentIds.some((id) => String(id) === String(shopId));
@@ -163,7 +163,7 @@ const FavoriteItems = ({
     if (filterShopsFavorite.length === 0) return true;
 
     const hasShop = (item.shop || []).some((s) =>
-      filterShopsFavorite.includes(s._id)
+      filterShopsFavorite.includes(s._id),
     );
 
     const noShop =
@@ -221,7 +221,7 @@ const FavoriteItems = ({
                     setFilterShopsFavorite((prev) =>
                       prev.includes(_id)
                         ? prev.filter((s) => s !== _id)
-                        : [...prev, _id]
+                        : [...prev, _id],
                     )
                   }
                 />
@@ -237,7 +237,7 @@ const FavoriteItems = ({
                   setFilterShopsFavorite((prev) =>
                     prev.includes("No Shop")
                       ? prev.filter((s) => s !== "No Shop")
-                      : [...prev, "No Shop"]
+                      : [...prev, "No Shop"],
                   )
                 }
               />
@@ -251,6 +251,7 @@ const FavoriteItems = ({
             <li>
               <form onSubmit={handleSubmit}>
                 <div className="AddTopFavorite">
+                  <div className="favoriteNameAndShop"></div>
                   <input
                     type="text"
                     className="writeFavorite"
@@ -277,7 +278,7 @@ const FavoriteItems = ({
                           ? "Shops▾"
                           : FavoriteShop.map((id) => {
                               const found = shopOptions.find(
-                                (s) => String(s._id) === String(id)
+                                (s) => String(s._id) === String(id),
                               );
                               return found ? found.name : "Unknown";
                             }).join(", ")}
@@ -295,7 +296,7 @@ const FavoriteItems = ({
                                     setFavoriteShop((prev) =>
                                       prev.includes(_id)
                                         ? prev.filter((s) => s !== _id)
-                                        : [...prev, _id]
+                                        : [...prev, _id],
                                     )
                                   }
                                 />
@@ -326,11 +327,12 @@ const FavoriteItems = ({
 
               return (
                 <li key={item._id}>
-                  <span className="itemName">
-                    <span className="numbering">{index + 1}</span>. {item.text}
-                  </span>
+                  <div className="favAndShop">
+                    <span className="itemName">
+                      <span className="numbering">{index + 1}</span>.{" "}
+                      {item.text}
+                    </span>
 
-                  <div>
                     <div
                       className="buttonAndShops"
                       ref={(el) => (rowDropdownRefs.current[index] = el)}
@@ -358,13 +360,13 @@ const FavoriteItems = ({
                                 <input
                                   type="checkbox"
                                   checked={(item.shop || []).some(
-                                    (s) => String(s._id) === String(shop._id)
+                                    (s) => String(s._id) === String(shop._id),
                                   )}
                                   onChange={() =>
                                     handleToggleShop(
                                       item._id,
                                       item.shop,
-                                      shop._id
+                                      shop._id,
                                     )
                                   }
                                 />
@@ -381,7 +383,8 @@ const FavoriteItems = ({
                         </ul>
                       )}
                     </div>
-
+                  </div>
+                  <div className="addToListAndDelete">
                     <button
                       className="addButton"
                       onClick={() =>
@@ -391,7 +394,7 @@ const FavoriteItems = ({
                         })
                       }
                     >
-                      ADD TO SHOPPING LIST
+                      ADD
                     </button>
 
                     <button onClick={() => deleteFavoriteItem(item)}>

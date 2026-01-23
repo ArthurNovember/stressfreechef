@@ -20,7 +20,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 70px;
+
   border-radius: 5px;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -45,7 +45,6 @@
 .imgtext img {
   width: 100px;
   position: relative;
-  top: -20px;
 }
 
 .imgtext h2 {
@@ -58,6 +57,9 @@
 
 .imgtext {
   margin-top: 50px;
+  display: flex;
+  justify-content: right;
+  margin-right: 3vw;
 }
 
 .addItem input {
@@ -86,7 +88,7 @@
   word-break: break-word;
   overflow-wrap: anywhere;
   margin-left: 10px;
-  font-size: 25px;
+  font-size: 3vh;
   max-width: fit-content;
 }
 
@@ -136,8 +138,18 @@
 
 .showShops {
   background-color: rgb(27, 26, 26);
-  border-radius: 0px;
-  width: 250px;
+  border-radius: 10px;
+  width: 100%;
+  margin-left: 2vw;
+  padding: 1vh 1.2vh;
+}
+
+.showShopsAdd {
+  background-color: rgb(27, 26, 26);
+
+  width: 100%;
+
+  padding: 1vh 1.2vh;
 }
 
 .showShops:hover {
@@ -159,6 +171,9 @@
   padding-bottom: 10px;
   border-bottom-left-radius: 5px;
   border-bottom-right-radius: 5px;
+  box-shadow: -1px 7px 14px 5px rgba(0, 0, 0, 0.49);
+  -webkit-box-shadow: -1px 7px 14px 5px rgba(0, 0, 0, 0.49);
+  -moz-box-shadow: -1px 7px 14px 5px rgba(0, 0, 0, 0.49);
 }
 
 .shopCheckboxList li {
@@ -192,6 +207,7 @@
 
 .buttonAndShopsInput {
   position: relative;
+  width: 100%;
   display: inline-block;
 }
 
@@ -200,7 +216,7 @@
   display: flex;
   flex-direction: column;
   background-color: black;
-  width: 250px;
+  width: 100%;
   z-index: 100;
   list-style-type: none;
   padding: 0;
@@ -210,6 +226,9 @@
   padding-bottom: 10px;
   border-bottom-left-radius: 5px;
   border-bottom-right-radius: 5px;
+  box-shadow: -1px 7px 14px 5px rgba(0, 0, 0, 0.49);
+  -webkit-box-shadow: -1px 7px 14px 5px rgba(0, 0, 0, 0.49);
+  -moz-box-shadow: -1px 7px 14px 5px rgba(0, 0, 0, 0.49);
 }
 
 .shopCheckboxListInput li {
@@ -255,8 +274,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-right: 40px;
-  margin-left: 40px;
+  margin-right: 4vw;
+  margin-left: 4vw;
+  margin-bottom: 2vw;
+  width: 100%;
 }
 
 .shoppingList li label {
@@ -280,13 +301,13 @@
   flex: 1;
   word-break: break-word;
   overflow-wrap: anywhere;
-  margin-left: 10px;
+  width: 100%;
   background-color: rgba(81, 16, 16, 0.408);
   align-items: center;
   border: none;
-  font-size: 20px;
+  font-size: 3vh;
   padding-left: 15px;
-  padding: 0.7em 1.2em;
+  height: 6vh;
 }
 
 .AddIngredient {
@@ -294,9 +315,8 @@
 }
 
 .submit {
-  width: 15%;
   background: rgb(114, 3, 3);
-  margin-right: 10px;
+
   border: none;
   color: white;
   font-weight: bold;
@@ -318,6 +338,7 @@
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 6px;
+  width: 100%;
 }
 
 .filter-btn {
@@ -344,4 +365,16 @@
 
 input[type="checkbox"] {
   accent-color: #b30d0d;
+}
+
+.changeButtons {
+  display: flex;
+}
+
+.textAndShopInput {
+  width: 100%;
+}
+
+.checkBoxAlign {
+  display: flex;
 }

@@ -1,6 +1,6 @@
 .main {
   background: radial-gradient(circle at top, #301e21 0, #090505 55%);
-  padding-top: 100px;
+  padding-top: 40px;
   min-height: 100vh;
   min-width: fit-content;
 }
@@ -12,7 +12,7 @@
 }
 
 .logoText p {
-  font-size: min(10vw, 88px);
+  font-size: min(11vw, 88px);
   color: rgb(238, 235, 235);
   font-weight: 700;
   z-index: 2;
@@ -63,7 +63,7 @@
   margin-left: auto;
   margin-right: auto;
   padding: 14px 10px 30px;
-  gap: 12px;
+  gap: 22px;
 }
 
 .recipeCard {
@@ -76,17 +76,28 @@
   display: flex;
   flex-direction: column;
 }
-
+.HMS {
+  width: 5vw;
+}
 .recipeCard img {
   width: 100%;
-  height: 200px;
   object-fit: cover;
   border-radius: 8px;
   cursor: pointer;
+  aspect-ratio: 1/1;
 }
 
 .recipeCard h3 {
   color: white;
   margin-top: 12px;
   margin-bottom: 6px;
+}
+
+@media (max-width: 768px) {
+  .recipeCard {
+    width: 100%;
+    flex: 100%;
+    max-width: none;
+    padding: 0;
+  }
 }

@@ -193,8 +193,8 @@ const ExploreRecipes = ({ addItem }) => {
         const arr = Array.isArray(data)
           ? data
           : Array.isArray(data?.items)
-          ? data.items
-          : [];
+            ? data.items
+            : [];
 
         const ids = arr.map((r) => r?.recipeId || r?._id).filter(Boolean);
 
@@ -240,7 +240,7 @@ const ExploreRecipes = ({ addItem }) => {
           throw new Error(
             `Non-JSON response (HTTP ${
               res.status
-            }). Check URL/CORS.\n${raw.slice(0, 200)}`
+            }). Check URL/CORS.\n${raw.slice(0, 200)}`,
           );
         }
 
@@ -285,7 +285,7 @@ const ExploreRecipes = ({ addItem }) => {
         fetchingMoreRef.current = true;
         setPage((p) => p + 1);
       },
-      { root: null, rootMargin: "200px", threshold: 0.01 }
+      { root: null, rootMargin: "200px", threshold: 0.01 },
     );
 
     obs.observe(el);
@@ -426,7 +426,7 @@ const ExploreRecipes = ({ addItem }) => {
                     src={url || PLACEHOLDER_IMG}
                     alt={title}
                     loading="lazy"
-                    style={{ width: "100%", height: 200, objectFit: "cover" }}
+                    style={{ width: "100%", objectFit: "cover" }}
                     onError={(e) => {
                       e.currentTarget.src = PLACEHOLDER_IMG;
                     }}

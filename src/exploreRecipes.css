@@ -56,8 +56,8 @@
 }
 
 .recipeCard1 img {
-  width: 100%;
   border-radius: 8px;
+  aspect-ratio: 1/1;
 }
 
 .eploreinput {
@@ -136,4 +136,13 @@
 .variantsExplore a:hover {
   background: rgb(114, 3, 3);
   box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
+}
+
+@media (max-width: 768px) {
+  .recipeCard1 {
+    width: 100%;
+    flex: 100%;
+    max-width: none;
+    padding: 0;
+  }
 }

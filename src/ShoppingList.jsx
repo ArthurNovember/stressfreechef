@@ -330,7 +330,7 @@ const ShoppingList = ({
                           >
                             {shopOptions.map(({ _id, name }) => (
                               <li key={_id}>
-                                <label>
+                                <label classname="label2">
                                   <input
                                     type="checkbox"
                                     checked={shop.includes(_id)}
@@ -367,6 +367,7 @@ const ShoppingList = ({
                             {addingShop && (
                               <li>
                                 <input
+                                  style={{ width: "100%" }}
                                   type="text"
                                   placeholder="New Shop"
                                   value={newShopName}

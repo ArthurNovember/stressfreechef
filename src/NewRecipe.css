@@ -25,18 +25,12 @@
   margin-left: 15px;
 }
 
-.mainInfo input {
+.mainInfo input,
+select {
   border: 2px rgb(29, 29, 29) solid;
   background-color: rgb(10, 10, 10);
   padding-left: 10px;
   border-radius: 5px;
-  margin-top: 5px;
-}
-
-.mainInfo select {
-  background-color: rgb(10, 10, 10);
-  border: 2px rgb(29, 29, 29) solid;
-  padding-left: 10px;
   margin-top: 5px;
 }
 
@@ -47,23 +41,22 @@
 .inputAdd {
   display: flex;
   justify-content: space-between;
-  text-align: left;
-  height: 50px;
 }
 
 .inputAdd input,
 select {
   height: 6vh;
+  width: 100%;
 }
 
 .imagePreview {
-  width: 300px;
   height: 300px;
   border: 5px solid #00000056;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  width: 100%;
 }
 
 .imagePreview:hover {
@@ -158,8 +151,8 @@ select {
 .addRecipe {
   margin-top: 30px;
   border-radius: 50%;
-  width: 200px;
-  height: 200px;
+  width: 10vw;
+  height: 10vw;
   background: radial-gradient(circle at top, #201d1d 0, #0b0b0b 55%);
   border: 1px solid #1b1b1b;
   box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.2);
@@ -189,6 +182,7 @@ select {
 .new label {
   display: flex;
   align-items: center;
+  width: 25vw;
 }
 
 .Steps li {
@@ -226,6 +220,7 @@ select {
 
 .Ingredients input {
   width: 100%;
+
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
 }
@@ -257,12 +252,15 @@ select {
 }
 
 .StepTimerField input {
-  width: 60px;
   padding: 8px;
   border-radius: 8px;
   border: 2px rgb(29, 29, 29) solid;
   background: rgba(255, 255, 255, 0.06);
   color: white;
+}
+
+.nameDifTime {
+  width: 60%;
 }
 
 /* AI Import */
@@ -319,8 +317,21 @@ select {
 .AiToggle {
   display: flex;
   align-items: center;
+  justify-content: right;
   gap: 10px;
   opacity: 0.9;
+}
+
+.sendButtonContainer {
+  border-top: 1px rgb(56, 52, 52) solid;
+  display: flex;
+  justify-content: right;
+  padding-right: 20px;
+  padding-bottom: 20px;
+}
+
+.uploadContainer1 {
+  width: 100%;
 }
 
 /* RESPONZIVITA */
@@ -332,14 +343,15 @@ select {
     padding: 20px 10px;
   }
 
+  .nameDifTime {
+    width: 100%;
+  }
+
   .mainInfo {
     flex-direction: column;
     align-items: stretch;
     gap: 15px;
-  }
-
-  .mainInfo label {
-    width: 100%;
+    justify-content: center;
   }
 
   .inputAdd {
@@ -347,18 +359,11 @@ select {
     height: auto;
   }
 
-  .imagePreview {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1 / 1;
-  }
-
   .Ingredients ol {
     padding: 0;
   }
 
   .Ingredients li {
-    flex-direction: column;
     gap: 8px;
   }
 
@@ -389,9 +394,20 @@ select {
     margin: 20px auto;
   }
 
-  .public {
-    position: static;
+  .imagePreview {
+    min-width: 70vw;
+  }
+
+  .uploadContainer {
+    display: flex;
+    justify-content: center;
+  }
+
+  .new label {
     width: 100%;
-    margin-bottom: 10px;
+  }
+
+  .HMS {
+    width: 5vw;
   }
 }

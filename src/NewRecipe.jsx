@@ -467,6 +467,16 @@ Here is the recipe:`;
                 onChange={(e) => setTime(e.target.value)}
               />
             </div>
+            <div className="inputAdd">
+              <label>Recipe visibility</label>
+              <select
+                value={isPublic ? "Public" : "Private"}
+                onChange={(e) => setIsPublic(e.target.value === "Public")}
+              >
+                <option>Public</option>
+                <option>Private</option>
+              </select>
+            </div>
           </div>
 
           <div className="uploadContainer">
@@ -491,24 +501,6 @@ Here is the recipe:`;
               hidden
               onChange={handleThumbnailChange}
             />
-          </div>
-
-          <img
-            className="addRecipe"
-            src="https://i.imgur.com/wPktOjd.png"
-            alt="Create"
-            style={{ opacity: saving ? 0.6 : 1 }}
-            onClick={() => (!saving ? handleSubmit() : null)}
-          />
-
-          <div className="public">
-            <select
-              value={isPublic ? "Public" : "Private"}
-              onChange={(e) => setIsPublic(e.target.value === "Public")}
-            >
-              <option>Public</option>
-              <option>Private</option>
-            </select>
           </div>
         </div>
 
@@ -596,7 +588,7 @@ Here is the recipe:`;
               {steps.map((step, index) => (
                 <li key={index}>
                   <label htmlFor={`step-${index}`}>
-                    <div className="uploadContainer">
+                    <div className="uploadContainer1">
                       <div className="imagePreview">
                         {step.preview ? (
                           step.type === "video" ? (
@@ -634,7 +626,7 @@ Here is the recipe:`;
 
                     <div className="StepTimerFields">
                       <div className="StepTimerField">
-                        <span>h</span>
+                        <span className="HMS">h</span>
                         <input
                           value={step.timerH}
                           onChange={(e) =>
@@ -646,7 +638,7 @@ Here is the recipe:`;
                       </div>
 
                       <div className="StepTimerField">
-                        <span>m</span>
+                        <span className="HMS">m</span>
                         <input
                           value={step.timerM}
                           onChange={(e) =>
@@ -658,7 +650,7 @@ Here is the recipe:`;
                       </div>
 
                       <div className="StepTimerField">
-                        <span>s</span>
+                        <span className="HMS">s</span>
                         <input
                           value={step.timerS}
                           onChange={(e) =>
@@ -684,6 +676,15 @@ Here is the recipe:`;
               </li>
             </ol>
           </div>
+        </div>
+        <div className="sendButtonContainer">
+          <img
+            className="addRecipe"
+            src="https://i.imgur.com/wPktOjd.png"
+            alt="Create"
+            style={{ opacity: saving ? 0.6 : 1 }}
+            onClick={() => (!saving ? handleSubmit() : null)}
+          />
         </div>
       </div>
     </div>

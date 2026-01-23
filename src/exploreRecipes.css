@@ -83,6 +83,7 @@
 }
 .searchAndViews button {
   outline: none;
+  padding: 0 4px 0 4px;
 }
 
 .modalOverlay video {
@@ -98,20 +99,10 @@
 }
 
 .variantsExplore {
-  width: 98%;
   margin-top: 20px;
-  margin-left: 20px;
-  margin-right: 20px;
   padding-top: 30px;
   border-radius: 5px;
-}
-
-.variantsExplore a {
-  background-color: #322222;
-  height: 15px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  width: 100%;
 }
 
 .variantsExplore a.activeSection {
@@ -119,15 +110,13 @@
   box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
 }
 
-/* ===== Explore tabs list layout (bylo dřív nepřímo “globálně”) ===== */
 .variantsExplore ul {
   display: flex;
-
-  gap: 12px;
-
+  gap: 1vw;
   list-style: none;
   padding-bottom: 10px;
   margin: 0;
+  padding-left: 3vw;
 }
 
 .variantsExplore a {
@@ -135,15 +124,12 @@
   color: white;
   text-decoration: none;
 
-  padding: 10px 14px;
+  padding: min(1.5vw, 10px);
   border-radius: 20px;
 
   display: flex;
-  align-items: center;
-  justify-content: center;
 
-  width: 100px;
-  height: auto; /* důležité: pryč s 15px */
+  height: auto;
   box-shadow: 0 0.1px 20px rgba(62, 59, 59, 0.35);
 }
 

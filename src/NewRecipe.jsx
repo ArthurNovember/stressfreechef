@@ -76,7 +76,7 @@ const NewRecipe = () => {
 
   function updateStepDescription(index, value) {
     setSteps((arr) =>
-      arr.map((s, i) => (i === index ? { ...s, description: value } : s))
+      arr.map((s, i) => (i === index ? { ...s, description: value } : s)),
     );
   }
 
@@ -96,8 +96,8 @@ const NewRecipe = () => {
                   : "image"
                 : "text",
             }
-          : s
-      )
+          : s,
+      ),
     );
   }
 
@@ -149,7 +149,7 @@ const NewRecipe = () => {
     const total = clampInt(
       parseInt(totalSeconds || 0, 10),
       0,
-      99 * 3600 + 59 * 60 + 59
+      99 * 3600 + 59 * 60 + 59,
     );
 
     const h = Math.floor(total / 3600);
@@ -176,7 +176,7 @@ const NewRecipe = () => {
           return { ...s, timerS: normalizeTimerField(value, 59) };
 
         return s;
-      })
+      }),
     );
   }
 
@@ -270,14 +270,14 @@ Here is the recipe:`;
     setDifficulty(
       data.difficulty && DIFFICULTIES.includes(data.difficulty)
         ? data.difficulty
-        : "Beginner"
+        : "Beginner",
     );
     setTime(String(data.time || "").trim());
 
     setIngredients(
       (data.ingredients || [])
         .map((i) => String(i || "").trim())
-        .filter(Boolean)
+        .filter(Boolean),
     );
 
     setSteps(
@@ -294,7 +294,7 @@ Here is the recipe:`;
             ...parts,
           };
         })
-        .filter((s) => s.description)
+        .filter((s) => s.description),
     );
   }
 
@@ -307,7 +307,7 @@ Here is the recipe:`;
     }
 
     const hasTextStep = steps.some(
-      (s) => (s.description || "").trim().length > 0
+      (s) => (s.description || "").trim().length > 0,
     );
 
     if (!hasTextStep) {
@@ -379,8 +379,8 @@ Here is the recipe:`;
 
       await Promise.all(
         steps.map((s, idx) =>
-          s.file ? uploadStepMedia(recipeId, idx, s.file) : null
-        )
+          s.file ? uploadStepMedia(recipeId, idx, s.file) : null,
+        ),
       );
 
       if (isPublic) {

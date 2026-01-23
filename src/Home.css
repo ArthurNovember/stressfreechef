@@ -12,7 +12,7 @@
 }
 
 .logoText p {
-  font-size: min(7vw, 200px);
+  font-size: min(10vw, 88px);
   color: rgb(238, 235, 235);
   font-weight: 700;
   z-index: 2;

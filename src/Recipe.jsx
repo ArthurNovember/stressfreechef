@@ -49,7 +49,7 @@ function formatTime(totalSeconds) {
   const seconds = safe % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
     2,
-    "0"
+    "0",
   )}`;
 }
 
@@ -86,7 +86,7 @@ const Recipe = () => {
   ============================= */
   const initialCommunityId = useMemo(
     () => getInitialCommunityId(recipe, location.state),
-    [recipe, location.state]
+    [recipe, location.state],
   );
 
   const [communityId, setCommunityId] = useState(initialCommunityId);
@@ -124,7 +124,7 @@ const Recipe = () => {
 
         const res = await fetch(
           `${API_BASE}/api/community-recipes/ensure-from-recipe/${recipe._id}`,
-          { method: "POST" }
+          { method: "POST" },
         );
 
         const data = await res.json();
@@ -157,7 +157,7 @@ const Recipe = () => {
     (async () => {
       try {
         const res = await fetch(
-          `${API_BASE}/api/community-recipes/${communityId}`
+          `${API_BASE}/api/community-recipes/${communityId}`,
         );
         const data = await res.json();
 
@@ -264,7 +264,7 @@ const Recipe = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ value }),
-        }
+        },
       );
 
       const raw = await res.text();
@@ -419,6 +419,9 @@ const Recipe = () => {
                   PREVIOUS
                 </button>
 
+                <Link to="/home">
+                  <button>Back to HOME</button>
+                </Link>
                 <StarRating
                   value={myRating || community.avg}
                   onRate={canRateCommunity ? submitRating : undefined}
@@ -434,22 +437,17 @@ const Recipe = () => {
                       : "This recipe cannot be rated."}
                   </p>
                 )}
-
-                {rateMsg && (
-                  <p
-                    style={{
-                      marginTop: 8,
-                      color: rateMsg.type === "ok" ? "limegreen" : "tomato",
-                    }}
-                  >
-                    {rateMsg.text}
-                  </p>
-                )}
-
-                <Link to="/home">
-                  <button>Back to HOME</button>
-                </Link>
               </div>
+              {rateMsg && (
+                <p
+                  style={{
+                    marginTop: 8,
+                    color: rateMsg.type === "ok" ? "limegreen" : "tomato",
+                  }}
+                >
+                  {rateMsg.text}
+                </p>
+              )}
             </div>
           )}
         </div>

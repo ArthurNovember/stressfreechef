@@ -42,7 +42,7 @@
   background: radial-gradient(0, #131111 55%);
   border: 1px rgb(41, 39, 39) solid;
   margin: 0;
-  overflow-y: auto;
+
   border-bottom: 0px;
   height: 100%;
   padding-top: 50px;
@@ -164,4 +164,30 @@
 .timerBtn.active {
   background: #000000;
   border-color: #111;
+}
+
+@media (max-width: 768px) {
+  .imgAndTextRecipe {
+    flex-wrap: wrap;
+  }
+  .buttonAndStep {
+    width: 100%;
+    height: 49.5vh;
+  }
+  .step {
+    border-radius: 0px;
+  }
+  .imgContainer {
+    border-bottom-left-radius: 0px;
+    border-top-right-radius: 10px;
+  }
+
+  .Recipe {
+    padding: 0px;
+    min-height: 100%;
+  }
+  .backPrevious {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 }

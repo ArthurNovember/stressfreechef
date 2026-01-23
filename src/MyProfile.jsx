@@ -113,7 +113,7 @@ const MyProfile = ({ userInfo, addItem }) => {
 
   async function handleDeleteAccount() {
     const sure = window.confirm(
-      "This will permanently delete your account, recipes, shopping list and favorites. This action cannot be undone. Do you want to continue?"
+      "This will permanently delete your account, recipes, shopping list and favorites. This action cannot be undone. Do you want to continue?",
     );
     if (!sure) return;
 
@@ -165,7 +165,7 @@ const MyProfile = ({ userInfo, addItem }) => {
       }
 
       setSavedItems((prev) =>
-        prev.filter((r) => String(r?._id || r?.id) !== String(id))
+        prev.filter((r) => String(r?._id || r?.id) !== String(id)),
       );
       setSavedTotal((t) => Math.max(0, t - 1));
     } catch (e) {
@@ -334,7 +334,7 @@ const MyProfile = ({ userInfo, addItem }) => {
         myFetchingMoreRef.current = true;
         setPage((p) => p + 1);
       },
-      { root: null, rootMargin: "250px", threshold: 0.01 }
+      { root: null, rootMargin: "250px", threshold: 0.01 },
     );
 
     obs.observe(el);
@@ -357,7 +357,7 @@ const MyProfile = ({ userInfo, addItem }) => {
         savedFetchingMoreRef.current = true;
         setSavedPage((p) => p + 1);
       },
-      { root: null, rootMargin: "250px", threshold: 0.01 }
+      { root: null, rootMargin: "250px", threshold: 0.01 },
     );
 
     obs.observe(el);
@@ -366,7 +366,7 @@ const MyProfile = ({ userInfo, addItem }) => {
 
   useEffect(() => {
     const ids = Array.from(
-      new Set((items || []).map((r) => r?.publicRecipeId).filter(Boolean))
+      new Set((items || []).map((r) => r?.publicRecipeId).filter(Boolean)),
     );
 
     if (ids.length === 0) {
@@ -392,7 +392,7 @@ const MyProfile = ({ userInfo, addItem }) => {
                 count: Number(data?.ratingCount || 0),
               },
             ];
-          })
+          }),
         );
 
         if (!aborted) {
@@ -481,9 +481,9 @@ const MyProfile = ({ userInfo, addItem }) => {
                         onClick={() => openModal(r)}
                         alt={title}
                         loading="lazy"
+                        className="obrazek"
                         style={{
-                          width: "100%",
-                          height: 200,
+                          aspectRatio: "1/1",
                           objectFit: "cover",
                         }}
                         onError={(e) => {
@@ -594,7 +594,7 @@ const MyProfile = ({ userInfo, addItem }) => {
                     <StarRating
                       value={
                         r?.publicRecipeId
-                          ? communityRatings[r.publicRecipeId]?.avg ?? 0
+                          ? (communityRatings[r.publicRecipeId]?.avg ?? 0)
                           : Number(r?.rating || 0)
                       }
                       readOnly

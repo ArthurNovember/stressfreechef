@@ -34,7 +34,6 @@
 }
 
 .recipeCard2 img {
-  width: 15vw;
   border-radius: 8px;
 }
 
@@ -123,3 +122,21 @@
   margin-top: 30px;
 }
 
+.obrazek {
+  height: 200px;
+}
+
+@media (max-width: 768px) {
+  .My {
+    flex-wrap: wrap;
+  }
+
+  .recipeCard2 {
+    flex-direction: column;
+  }
+
+  .obrazek {
+    width: 100%;
+    height: 100%;
+  }
+}

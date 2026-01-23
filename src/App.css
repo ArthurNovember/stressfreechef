@@ -217,3 +217,92 @@ header nav a:hover {
   background: #8b0e0d;
   border-color: #8b0e0d;
 }
+
+/* --- Mobile hamburger nav --- */
+
+.navRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* burger defaultně schovaný (desktop) */
+.burgerBtn {
+  display: none;
+  background: transparent;
+  border: 0;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.burgerLine {
+  display: block;
+  width: 22px;
+  height: 2px;
+  margin: 5px 0;
+  background: white;
+}
+
+/* původní UL zůstává jako desktop nav, jen mu dáme class */
+.navList {
+  display: flex;
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* overlay */
+.navOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  border: 0;
+  z-index: 900;
+}
+
+/* Mobile layout */
+@media (max-width: 768px) {
+  header {
+    left: 0;
+    right: 0;
+    padding: 0 16px;
+    justify-content: flex-end;
+  }
+
+  .burgerBtn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1002;
+  }
+
+  /* menu jako "drawer" */
+  .navList {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: min(78vw, 320px);
+    height: 100%;
+    padding: 10px 12px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+
+    background: rgba(10, 5, 5, 0.98);
+    transform: translateX(110%);
+    transition: transform 0.2s ease;
+
+    z-index: 1001;
+  }
+
+  .navList.open {
+    transform: translateX(0);
+  }
+
+  header nav a {
+    padding: 14px 10px;
+    justify-content: flex-start;
+  }
+}

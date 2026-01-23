@@ -57,6 +57,8 @@ function genLocalId() {
 function App() {
   const [userInfo, setUserInfo] = useState(null);
 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   const token = useMemo(() => getToken(), [userInfo]);
 
   async function verifyTokenAndSetUserInfo() {
@@ -138,7 +140,7 @@ function App() {
 
   function bestSortRecipes() {
     const sorted = [...recipes].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     );
     setDisplayRecipes(sorted);
   }
@@ -178,7 +180,7 @@ function App() {
         console.error(
           "Načítání shopping listu FAIL:",
           res.status,
-          await res.text()
+          await res.text(),
         );
         return;
       }
@@ -233,7 +235,7 @@ function App() {
               ...i,
               ...("checked" in updates ? { checked: updates.checked } : {}),
             }
-          : i
+          : i,
       );
 
       saveLocalList(updated);
@@ -427,44 +429,95 @@ function App() {
   return (
     <Router>
       <div>
-        <header>
-          <nav>
-            <ul>
-              <li>
-                <Link to="/home" onClick={scrollToTop}>
-                  Home
-                </Link>
-              </li>
+        <header className="header">
+          <div className="navRow">
+            <button
+              className="burgerBtn"
+              onClick={() => setIsMenuOpen((v) => !v)}
+              aria-label="Open menu"
+              aria-expanded={isMenuOpen}
+              aria-controls="mobile-nav"
+              type="button"
+            >
+              <div>
+                <span className="burgerLine" />
+                <span className="burgerLine" />
+                <span className="burgerLine" />{" "}
+              </div>
+            </button>
 
-              <li>
-                <Link to="/ExploreRecipes">Community Recipes</Link>
-              </li>
-
-              <li>
-                {token ? (
-                  <Link to="/NewRecipe">Add Recipe</Link>
-                ) : (
+            <nav className="nav">
+              <ul
+                id="mobile-nav"
+                className={`navList ${isMenuOpen ? "open" : ""}`}
+              >
+                <li>
                   <Link
+                    to="/home"
                     onClick={() => {
-                      alert("Log in to add a new recipe.");
+                      setIsMenuOpen(false);
+                      scrollToTop();
                     }}
                   >
-                    Add Recipe
+                    Home
                   </Link>
-                )}
-              </li>
+                </li>
 
-              <li>
-                <Link to="/shopping-list">Shopping List</Link>
-              </li>
+                <li>
+                  <Link
+                    to="/ExploreRecipes"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Community Recipes
+                  </Link>
+                </li>
 
-              <li id="nav">
-                <Link to={userInfo ? "/myprofile" : "/authform"}>
-                  {userInfo?.username ? userInfo.username : "My Profile"}
-                </Link>
-              </li>
-            </ul>
-          </nav>
+                <li>
+                  {token ? (
+                    <Link to="/NewRecipe" onClick={() => setIsMenuOpen(false)}>
+                      Add Recipe
+                    </Link>
+                  ) : (
+                    <Link
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        alert("Log in to add a new recipe.");
+                      }}
+                    >
+                      Add Recipe
+                    </Link>
+                  )}
+                </li>
+
+                <li>
+                  <Link
+                    to="/shopping-list"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Shopping List
+                  </Link>
+                </li>
+
+                <li id="nav">
+                  <Link
+                    to={userInfo ? "/myprofile" : "/authform"}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {userInfo?.username ? userInfo.username : "My Profile"}
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+
+            {isMenuOpen && (
+              <button
+                className="navOverlay"
+                onClick={() => setIsMenuOpen(false)}
+                aria-label="Close menu overlay"
+                type="button"
+              />
+            )}
+          </div>
         </header>
       </div>
 

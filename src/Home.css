@@ -6,14 +6,13 @@
 }
 
 .logoText {
-  width: 700px;
   margin: auto;
   position: relative;
   top: 20px;
 }
 
 .logoText p {
-  font-size: 88px;
+  font-size: min(7vw, 200px);
   color: rgb(238, 235, 235);
   font-weight: 700;
   z-index: 2;
@@ -36,7 +35,6 @@
 .variants ul.HomeUl {
   display: flex;
   justify-content: center;
-  gap: 12px;
 
   list-style: none;
   padding: 0;
@@ -64,18 +62,12 @@
 
   margin-left: auto;
   margin-right: auto;
-
-  /* ✅ přidej, ať to nevypadá “useknuté” */
   padding: 14px 10px 30px;
   gap: 12px;
 }
 
 .recipeCard {
-  /* ⛔️ pryč width: 17% */
-  /* width: 17%; */
-
-  /* ✅ místo toho */
-  flex: 0 1 260px; /* šířka karty */
+  flex: 0 1 260px;
   max-width: 320px;
 
   background: radial-gradient(circle at top, #212020 0, #161616 55%);

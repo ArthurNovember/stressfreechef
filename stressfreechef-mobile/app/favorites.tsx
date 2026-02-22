@@ -73,7 +73,7 @@ export default function FavoritesScreen() {
   const [savingFavorite, setSavingFavorite] = useState(false);
 
   const [editingFavoriteId, setEditingFavoriteId] = useState<string | null>(
-    null
+    null,
   );
 
   const [manageShopsVisible, setManageShopsVisible] = useState(false);
@@ -104,10 +104,10 @@ export default function FavoritesScreen() {
 
       const sub = BackHandler.addEventListener(
         "hardwareBackPress",
-        onBackPress
+        onBackPress,
       );
       return () => sub.remove();
-    }, [router])
+    }, [router]),
   );
 
   const loadAll = useCallback(async () => {
@@ -139,7 +139,7 @@ export default function FavoritesScreen() {
   useFocusEffect(
     useCallback(() => {
       loadAll();
-    }, [loadAll])
+    }, [loadAll]),
   );
 
   /* =========================
@@ -189,11 +189,11 @@ export default function FavoritesScreen() {
       } catch (e: any) {
         Alert.alert(
           t(lang, "shopping", "failedUpdateFavorites"),
-          e?.message || String(e)
+          e?.message || String(e),
         );
       }
     },
-    [lang]
+    [lang],
   );
 
   const handleAddFavorite = useCallback(async () => {
@@ -206,7 +206,7 @@ export default function FavoritesScreen() {
       if (!token) {
         Alert.alert(
           t(lang, "shopping", "loginRequiredFavoritesTitle"),
-          t(lang, "shopping", "loginRequiredFavoritesMsg")
+          t(lang, "shopping", "loginRequiredFavoritesMsg"),
         );
         return;
       }
@@ -230,7 +230,7 @@ export default function FavoritesScreen() {
     } catch (e: any) {
       Alert.alert(
         t(lang, "shopping", "failedAddFavorite"),
-        e?.message || String(e)
+        e?.message || String(e),
       );
     } finally {
       setSavingFavorite(false);
@@ -244,7 +244,7 @@ export default function FavoritesScreen() {
         if (!token) {
           Alert.alert(
             t(lang, "shopping", "loginRequiredFavoritesTitle"),
-            t(lang, "shopping", "loginRequiredFavoritesMsg")
+            t(lang, "shopping", "loginRequiredFavoritesMsg"),
           );
           return;
         }
@@ -268,16 +268,16 @@ export default function FavoritesScreen() {
 
         Alert.alert(
           t(lang, "favorites", "addedToShoppingTitle"),
-          t(lang, "favorites", "addedToShoppingMsg")
+          t(lang, "favorites", "addedToShoppingMsg"),
         );
       } catch (e: any) {
         Alert.alert(
           t(lang, "shopping", "failedAddItem"),
-          e?.message || String(e)
+          e?.message || String(e),
         );
       }
     },
-    [lang]
+    [lang],
   );
 
   const deleteFavorite = useCallback(
@@ -287,7 +287,7 @@ export default function FavoritesScreen() {
         if (!token) {
           Alert.alert(
             t(lang, "shopping", "loginRequiredFavoritesTitle"),
-            t(lang, "shopping", "loginRequiredFavoritesMsg")
+            t(lang, "shopping", "loginRequiredFavoritesMsg"),
           );
           return;
         }
@@ -305,17 +305,17 @@ export default function FavoritesScreen() {
       } catch (e: any) {
         Alert.alert(
           t(lang, "shopping", "failedUpdateFavorites"),
-          e?.message || String(e)
+          e?.message || String(e),
         );
       }
     },
-    [lang]
+    [lang],
   );
 
   const toggleShopForFavorite = useCallback(
     async (fav: FavoriteItem, shopId: string) => {
       const currentIds = (fav.shop || []).map((s) =>
-        typeof s === "string" ? s : s._id
+        typeof s === "string" ? s : s._id,
       );
       const has = currentIds.some((id) => String(id) === String(shopId));
       const nextIds = has
@@ -324,7 +324,7 @@ export default function FavoritesScreen() {
 
       await updateFavorite(fav._id, { shop: nextIds });
     },
-    [updateFavorite]
+    [updateFavorite],
   );
 
   const handleAddShopOption = useCallback(async () => {
@@ -359,7 +359,7 @@ export default function FavoritesScreen() {
     } catch (e: any) {
       Alert.alert(
         t(lang, "shopping", "failedAddShop"),
-        e?.message || String(e)
+        e?.message || String(e),
       );
     } finally {
       setAddingShopBusy(false);
@@ -384,7 +384,7 @@ export default function FavoritesScreen() {
                   {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${token}` },
-                  }
+                  },
                 );
 
                 if (!res.ok) {
@@ -393,7 +393,7 @@ export default function FavoritesScreen() {
                 }
 
                 setShopOptions((prev) =>
-                  prev.filter((s) => s._id !== shopToDeleteId)
+                  prev.filter((s) => s._id !== shopToDeleteId),
                 );
 
                 // lokální cleanup (aby UI hned sedělo)
@@ -401,22 +401,22 @@ export default function FavoritesScreen() {
                   prev.map((item) => ({
                     ...item,
                     shop: (item.shop || []).filter(
-                      (s) => s._id !== shopToDeleteId
+                      (s) => s._id !== shopToDeleteId,
                     ),
-                  }))
+                  })),
                 );
                 setNewFavoriteShopIds((prev) =>
-                  prev.filter((id) => id !== shopToDeleteId)
+                  prev.filter((id) => id !== shopToDeleteId),
                 );
               } catch (e: any) {
                 Alert.alert("Failed to delete shop", e?.message || String(e));
               }
             },
           },
-        ]
+        ],
       );
     },
-    [lang]
+    [lang],
   );
 
   /* =========================
@@ -472,8 +472,6 @@ export default function FavoritesScreen() {
             styles.newItemCard,
             {
               backgroundColor: colors.favorite,
-              borderColor: "#353535ff",
-              borderWidth: 5,
             },
           ]}
         >
@@ -530,7 +528,7 @@ export default function FavoritesScreen() {
                         setNewFavoriteShopIds((prev) =>
                           prev.includes(shop._id)
                             ? prev.filter((id) => id !== shop._id)
-                            : [...prev, shop._id]
+                            : [...prev, shop._id],
                         );
                       }}
                     >
@@ -622,7 +620,7 @@ export default function FavoritesScreen() {
                     setFilterShopIds((prev) =>
                       prev.includes(shop._id)
                         ? prev.filter((id) => id !== shop._id)
-                        : [...prev, shop._id]
+                        : [...prev, shop._id],
                     );
                   }}
                   style={[
@@ -655,7 +653,7 @@ export default function FavoritesScreen() {
                 setFilterShopIds((prev) =>
                   prev.includes("No Shop")
                     ? prev.filter((id) => id !== "No Shop")
-                    : [...prev, "No Shop"]
+                    : [...prev, "No Shop"],
                 );
               }}
               style={[

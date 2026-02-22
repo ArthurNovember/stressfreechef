@@ -17,6 +17,10 @@ import {
   Text,
   TextInput,
   View,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -175,7 +179,7 @@ async function apiAddItem(token: string, text: string, shopIds: string[]) {
 async function apiUpdateItem(
   token: string,
   id: string,
-  updates: ShoppingItemUpdate
+  updates: ShoppingItemUpdate,
 ) {
   const res = await fetch(`${BASE}/api/shopping-list/${id}`, {
     method: "PATCH",
@@ -322,7 +326,7 @@ export default function ShoppingScreen() {
   useFocusEffect(
     useCallback(() => {
       loadAll();
-    }, [loadAll])
+    }, [loadAll]),
   );
 
   /* =========================
@@ -391,7 +395,7 @@ export default function ShoppingScreen() {
     } catch (e: any) {
       Alert.alert(
         t(lang, "shopping", "failedAddItem"),
-        e?.message || String(e)
+        e?.message || String(e),
       );
     }
   }, [lang, newText, newItemShopIds]);
@@ -428,11 +432,11 @@ export default function ShoppingScreen() {
       } catch (e: any) {
         Alert.alert(
           t(lang, "shopping", "updateFailed"),
-          e?.message || String(e)
+          e?.message || String(e),
         );
       }
     },
-    [lang]
+    [lang],
   );
 
   const deleteItemInstant = useCallback(async (id: string) => {
@@ -459,7 +463,7 @@ export default function ShoppingScreen() {
     async (item: ShoppingItem) => {
       await updateItem(item._id, { checked: !item.checked });
     },
-    [updateItem]
+    [updateItem],
   );
 
   const toggleShopForItem = useCallback(
@@ -471,7 +475,7 @@ export default function ShoppingScreen() {
         : [...currentIds, shopId];
       await updateItem(item._id, { shop: updatedIds });
     },
-    [updateItem]
+    [updateItem],
   );
 
   /* =========================
@@ -485,7 +489,7 @@ export default function ShoppingScreen() {
         if (!token) {
           requireLogin(
             "loginRequiredFavoritesTitle",
-            "loginRequiredFavoritesMsg"
+            "loginRequiredFavoritesMsg",
           );
           return;
         }
@@ -501,11 +505,11 @@ export default function ShoppingScreen() {
       } catch (e: any) {
         Alert.alert(
           t(lang, "shopping", "failedAddFavorite"),
-          e?.message || String(e)
+          e?.message || String(e),
         );
       }
     },
-    [lang, requireLogin]
+    [lang, requireLogin],
   );
 
   const deleteFavoriteById = useCallback(
@@ -515,7 +519,7 @@ export default function ShoppingScreen() {
         if (!token) {
           requireLogin(
             "loginRequiredFavoritesTitle",
-            "loginRequiredFavoritesMsg"
+            "loginRequiredFavoritesMsg",
           );
           return;
         }
@@ -525,11 +529,11 @@ export default function ShoppingScreen() {
       } catch (e: any) {
         Alert.alert(
           t(lang, "shopping", "failedUpdateFavorites"),
-          e?.message || String(e)
+          e?.message || String(e),
         );
       }
     },
-    [lang, requireLogin]
+    [lang, requireLogin],
   );
 
   const toggleFavoriteForItem = useCallback(
@@ -538,7 +542,7 @@ export default function ShoppingScreen() {
       if (match) await deleteFavoriteById(match._id);
       else await addFavoriteFromItem(item);
     },
-    [favoriteItems, addFavoriteFromItem, deleteFavoriteById]
+    [favoriteItems, addFavoriteFromItem, deleteFavoriteById],
   );
 
   /* =========================
@@ -567,7 +571,7 @@ export default function ShoppingScreen() {
     } catch (e: any) {
       Alert.alert(
         t(lang, "shopping", "failedAddShop"),
-        e?.message || String(e)
+        e?.message || String(e),
       );
     } finally {
       setAddingShopBusy(false);
@@ -592,29 +596,29 @@ export default function ShoppingScreen() {
                 await apiDeleteShopOption(token, shopToDeleteId);
 
                 setShopOptions((prev) =>
-                  prev.filter((s) => s._id !== shopToDeleteId)
+                  prev.filter((s) => s._id !== shopToDeleteId),
                 );
 
                 setItems((prev) =>
                   prev.map((item) => ({
                     ...item,
                     shop: (item.shop || []).filter(
-                      (s) => s._id !== shopToDeleteId
+                      (s) => s._id !== shopToDeleteId,
                     ),
-                  }))
+                  })),
                 );
               } catch (e: any) {
                 Alert.alert(
                   t(lang, "shopping", "failedDeleteShop"),
-                  e?.message || String(e)
+                  e?.message || String(e),
                 );
               }
             },
           },
-        ]
+        ],
       );
     },
-    [lang]
+    [lang],
   );
 
   /* =========================
@@ -675,7 +679,7 @@ export default function ShoppingScreen() {
                 if (!hasToken) {
                   Alert.alert(
                     t(lang, "shopping", "loginRequiredFavoritesTitle"),
-                    t(lang, "shopping", "loginRequiredStoresMsg")
+                    t(lang, "shopping", "loginRequiredStoresMsg"),
                   );
                   return;
                 }
@@ -707,7 +711,7 @@ export default function ShoppingScreen() {
       lang,
       toggleChecked,
       toggleFavoriteForItem,
-    ]
+    ],
   );
 
   /* =========================
@@ -773,8 +777,9 @@ export default function ShoppingScreen() {
                 styles.newItemCard,
                 {
                   backgroundColor: colors.list,
-                  borderColor: "#171717ff",
-                  borderWidth: 5,
+                  borderWidth: 2,
+                  borderColor: colors.extraborder,
+                  borderRadius: 7,
                 },
               ]}
             >
@@ -788,7 +793,7 @@ export default function ShoppingScreen() {
                   style={{
                     fontFamily: "MetropolisBold",
                     fontSize: 30,
-                    color: "#c2c2c2ff",
+                    color: colors.heading,
                     paddingTop: 10,
                     letterSpacing: 0.5,
                   }}
@@ -801,7 +806,7 @@ export default function ShoppingScreen() {
                     if (!hasToken) {
                       Alert.alert(
                         t(lang, "shopping", "loginRequiredFavoritesTitle"),
-                        t(lang, "shopping", "loginRequiredFavoritesMsg")
+                        t(lang, "shopping", "loginRequiredFavoritesMsg"),
                       );
                       return;
                     }
@@ -809,8 +814,14 @@ export default function ShoppingScreen() {
                   }}
                 >
                   <Image
-                    source={{ uri: "https://i.imgur.com/DmXZvGl.png" }}
-                    style={{ width: 70, height: 70 }}
+                    source={{
+                      uri: "https://i.postimg.cc/XJbXPVXV/Chat-GPT-Image-22-2-2026-19-09-36.png",
+                    }}
+                    style={{
+                      width: 75,
+                      height: 75,
+                      bottom: 10,
+                    }}
                   />
                 </Pressable>
               </View>
@@ -823,7 +834,7 @@ export default function ShoppingScreen() {
                 style={[
                   styles.input,
                   {
-                    backgroundColor: colors.card,
+                    backgroundColor: colors.innerParts,
                     borderColor: colors.border,
                     color: colors.text,
                   },
@@ -845,19 +856,18 @@ export default function ShoppingScreen() {
                           style={[
                             styles.chipSmall,
                             {
-                              backgroundColor: colors.card,
+                              backgroundColor: colors.innerParts,
                               borderColor: colors.border,
                             },
                             active && {
-                              backgroundColor: "#b30d0dff",
-                              borderColor: colors.pillActive,
+                              backgroundColor: "rgb(155, 28, 28)",
                             },
                           ]}
                           onPress={() => {
                             setNewItemShopIds((prev) =>
                               prev.includes(shop._id)
                                 ? prev.filter((id) => id !== shop._id)
-                                : [...prev, shop._id]
+                                : [...prev, shop._id],
                             );
                           }}
                         >
@@ -882,7 +892,7 @@ export default function ShoppingScreen() {
                   style={[
                     styles.manageShopsBtn,
                     {
-                      backgroundColor: colors.card,
+                      backgroundColor: colors.innerParts,
                       borderColor: colors.border,
                     },
                   ]}
@@ -899,7 +909,7 @@ export default function ShoppingScreen() {
               )}
 
               <Pressable
-                style={[styles.primaryBtn, { backgroundColor: "#111111ff" }]}
+                style={[styles.primaryBtn, { backgroundColor: "rgb(0, 0, 0)" }]}
                 onPress={handleAddItem}
               >
                 <Text style={[styles.primaryBtnText, { color: "white" }]}>
@@ -954,7 +964,7 @@ export default function ShoppingScreen() {
                           setFilterShopIds((prev) =>
                             prev.includes(shop._id)
                               ? prev.filter((id) => id !== shop._id)
-                              : [...prev, shop._id]
+                              : [...prev, shop._id],
                           );
                         }}
                         style={[
@@ -981,7 +991,7 @@ export default function ShoppingScreen() {
                       setFilterShopIds((prev) =>
                         prev.includes("No Shop")
                           ? prev.filter((id) => id !== "No Shop")
-                          : [...prev, "No Shop"]
+                          : [...prev, "No Shop"],
                       );
                     }}
                     style={[
@@ -1014,118 +1024,127 @@ export default function ShoppingScreen() {
         animationType="slide"
         onRequestClose={() => setEditingItemId(null)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {editingItem?.text || t(lang, "shopping", "itemFallback")}
-            </Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {editingItem?.text || t(lang, "shopping", "itemFallback")}
+              </Text>
 
-            <Text
-              style={[styles.modalSubtitle, { color: colors.secondaryText }]}
-            >
-              {t(lang, "shopping", "shopsTitle")}
-            </Text>
+              <Text
+                style={[styles.modalSubtitle, { color: colors.secondaryText }]}
+              >
+                {t(lang, "shopping", "shopsTitle")}
+              </Text>
 
-            <ScrollView style={{ maxHeight: 260, marginTop: 8 }}>
-              {shopOptions.map((shop) => {
-                const itemShopIds =
-                  editingItem?.shop?.map((s) => String(s._id)) || [];
-                const active = itemShopIds.includes(shop._id);
+              <ScrollView style={{ maxHeight: 260, marginTop: 8 }}>
+                {shopOptions.map((shop) => {
+                  const itemShopIds =
+                    editingItem?.shop?.map((s) => String(s._id)) || [];
+                  const active = itemShopIds.includes(shop._id);
 
-                return (
-                  <View
-                    key={shop._id}
-                    style={[
-                      styles.modalRow,
-                      { borderBottomColor: colors.border },
-                      active && { backgroundColor: colors.card },
-                    ]}
-                  >
-                    <Pressable
-                      style={{
-                        flex: 1,
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                      }}
-                      onPress={() =>
-                        editingItem && toggleShopForItem(editingItem, shop._id)
-                      }
+                  return (
+                    <View
+                      key={shop._id}
+                      style={[
+                        styles.modalRow,
+                        { borderBottomColor: colors.border },
+                        active && { backgroundColor: colors.card },
+                      ]}
                     >
-                      <Text
-                        style={[styles.modalRowText, { color: colors.text }]}
+                      <Pressable
+                        style={{
+                          flex: 1,
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                        }}
+                        onPress={() =>
+                          editingItem &&
+                          toggleShopForItem(editingItem, shop._id)
+                        }
                       >
-                        {shop.name}
-                      </Text>
-                      {active ? (
                         <Text
                           style={[styles.modalRowText, { color: colors.text }]}
                         >
-                          ✓
+                          {shop.name}
                         </Text>
-                      ) : null}
-                    </Pressable>
-                  </View>
-                );
-              })}
-            </ScrollView>
+                        {active ? (
+                          <Text
+                            style={[
+                              styles.modalRowText,
+                              { color: colors.text },
+                            ]}
+                          >
+                            ✓
+                          </Text>
+                        ) : null}
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </ScrollView>
 
-            <View style={{ marginTop: 12 }}>
-              <Text style={styles.label}>
-                {t(lang, "shopping", "addNewShopLabel")}
-              </Text>
-              <View style={styles.addShopRow}>
-                <TextInput
-                  value={addingShopName}
-                  onChangeText={setAddingShopName}
-                  placeholder={t(lang, "shopping", "newShopPlaceholder")}
-                  placeholderTextColor={colors.muted}
-                  style={[
-                    styles.input,
-                    {
-                      flex: 1,
-                      marginBottom: 0,
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                      color: colors.text,
-                    },
-                  ]}
-                />
-                <Pressable
-                  style={[
-                    styles.primaryBtn,
-                    {
-                      marginLeft: 8,
-                      paddingHorizontal: 16,
-                      backgroundColor: colors.pillActive,
-                    },
-                  ]}
-                  disabled={addingShopBusy}
-                  onPress={handleAddShopOption}
-                >
-                  <Text style={styles.primaryBtnText}>
-                    {addingShopBusy ? "…" : "+"}
-                  </Text>
-                </Pressable>
+              <View style={{ marginTop: 12 }}>
+                <Text style={styles.label}>
+                  {t(lang, "shopping", "addNewShopLabel")}
+                </Text>
+                <View style={styles.addShopRow}>
+                  <TextInput
+                    value={addingShopName}
+                    onChangeText={setAddingShopName}
+                    placeholder={t(lang, "shopping", "newShopPlaceholder")}
+                    placeholderTextColor={colors.muted}
+                    style={[
+                      styles.input,
+                      {
+                        flex: 1,
+                        marginBottom: 0,
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                        color: colors.text,
+                      },
+                    ]}
+                  />
+                  <Pressable
+                    style={[
+                      styles.primaryBtn,
+                      {
+                        marginLeft: 8,
+                        paddingHorizontal: 16,
+                        backgroundColor: colors.pillActive,
+                      },
+                    ]}
+                    disabled={addingShopBusy}
+                    onPress={handleAddShopOption}
+                  >
+                    <Text style={styles.primaryBtnText}>
+                      {addingShopBusy ? "…" : "+"}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
 
-            <Pressable
-              style={[
-                styles.secondaryBtn,
-                {
-                  marginTop: 16,
-                  borderColor: colors.border,
-                  backgroundColor: colors.border,
-                },
-              ]}
-              onPress={() => setEditingItemId(null)}
-            >
-              <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
-                {t(lang, "shopping", "close")}
-              </Text>
-            </Pressable>
+              <Pressable
+                style={[
+                  styles.secondaryBtn,
+                  {
+                    marginTop: 16,
+                    borderColor: colors.border,
+                    backgroundColor: colors.border,
+                  },
+                ]}
+                onPress={() => setEditingItemId(null)}
+              >
+                <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
+                  {t(lang, "shopping", "close")}
+                </Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal
@@ -1134,84 +1153,89 @@ export default function ShoppingScreen() {
         animationType="slide"
         onRequestClose={() => setManageShopsVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {t(lang, "shopping", "manageShopsTitle")}
-            </Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {t(lang, "shopping", "manageShopsTitle")}
+              </Text>
 
-            <ScrollView style={{ maxHeight: 260, marginTop: 8 }}>
-              {shopOptions.map((shop) => (
-                <View key={shop._id} style={styles.modalRow}>
-                  <Text style={[styles.modalRowText, { color: colors.text }]}>
-                    {shop.name}
+              <ScrollView style={{ maxHeight: 260, marginTop: 8 }}>
+                {shopOptions.map((shop) => (
+                  <View key={shop._id} style={styles.modalRow}>
+                    <Text style={[styles.modalRowText, { color: colors.text }]}>
+                      {shop.name}
+                    </Text>
+                    <Pressable
+                      style={styles.modalDeleteShopBtn}
+                      onPress={() => deleteShopOption(shop._id)}
+                    >
+                      <Text style={styles.modalDeleteShopText}>❌</Text>
+                    </Pressable>
+                  </View>
+                ))}
+
+                {shopOptions.length === 0 && (
+                  <Text style={{ color: colors.muted, marginTop: 4 }}>
+                    {t(lang, "shopping", "noShopsYet")}
                   </Text>
+                )}
+              </ScrollView>
+
+              <View style={{ marginTop: 12 }}>
+                <Text style={styles.label}>
+                  {t(lang, "shopping", "addNewShopLabel")}
+                </Text>
+                <View style={styles.addShopRow}>
+                  <TextInput
+                    value={addingShopName}
+                    onChangeText={setAddingShopName}
+                    placeholder={t(lang, "shopping", "newShopPlaceholder")}
+                    placeholderTextColor={colors.muted}
+                    style={[
+                      styles.input,
+                      {
+                        flex: 1,
+                        marginBottom: 0,
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                        color: colors.text,
+                      },
+                    ]}
+                  />
                   <Pressable
-                    style={styles.modalDeleteShopBtn}
-                    onPress={() => deleteShopOption(shop._id)}
+                    style={[
+                      styles.primaryBtn,
+                      {
+                        marginLeft: 8,
+                        paddingHorizontal: 16,
+                        backgroundColor: colors.pillActive,
+                      },
+                    ]}
+                    disabled={addingShopBusy}
+                    onPress={handleAddShopOption}
                   >
-                    <Text style={styles.modalDeleteShopText}>❌</Text>
+                    <Text style={styles.primaryBtnText}>
+                      {addingShopBusy ? "…" : "+"}
+                    </Text>
                   </Pressable>
                 </View>
-              ))}
-
-              {shopOptions.length === 0 && (
-                <Text style={{ color: colors.muted, marginTop: 4 }}>
-                  {t(lang, "shopping", "noShopsYet")}
-                </Text>
-              )}
-            </ScrollView>
-
-            <View style={{ marginTop: 12 }}>
-              <Text style={styles.label}>
-                {t(lang, "shopping", "addNewShopLabel")}
-              </Text>
-              <View style={styles.addShopRow}>
-                <TextInput
-                  value={addingShopName}
-                  onChangeText={setAddingShopName}
-                  placeholder={t(lang, "shopping", "newShopPlaceholder")}
-                  placeholderTextColor={colors.muted}
-                  style={[
-                    styles.input,
-                    {
-                      flex: 1,
-                      marginBottom: 0,
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                      color: colors.text,
-                    },
-                  ]}
-                />
-                <Pressable
-                  style={[
-                    styles.primaryBtn,
-                    {
-                      marginLeft: 8,
-                      paddingHorizontal: 16,
-                      backgroundColor: colors.pillActive,
-                    },
-                  ]}
-                  disabled={addingShopBusy}
-                  onPress={handleAddShopOption}
-                >
-                  <Text style={styles.primaryBtnText}>
-                    {addingShopBusy ? "…" : "+"}
-                  </Text>
-                </Pressable>
               </View>
-            </View>
 
-            <Pressable
-              style={[styles.secondaryBtn, { marginTop: 16 }]}
-              onPress={() => setManageShopsVisible(false)}
-            >
-              <Text style={styles.secondaryBtnText}>
-                {t(lang, "shopping", "close")}
-              </Text>
-            </Pressable>
+              <Pressable
+                style={[styles.secondaryBtn, { marginTop: 16 }]}
+                onPress={() => setManageShopsVisible(false)}
+              >
+                <Text style={styles.secondaryBtnText}>
+                  {t(lang, "shopping", "close")}
+                </Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -1225,6 +1249,7 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     paddingTop: 20,
+    paddingHorizontal: 5,
   },
 
   center: {

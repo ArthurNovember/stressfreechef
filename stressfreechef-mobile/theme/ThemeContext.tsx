@@ -24,11 +24,14 @@ const palettes = {
     pillActive: "#760101",
     danger: "#940000ff",
     shop: "#161515ff",
-    list: "#4f1313ff",
+    list: "#222222",
     favorite: "#353535ff",
+    extraborder: "#2c2c2c",
+    heading: "rgb(211, 211, 211)",
+    innerParts: "rgb(55, 55, 55)",
   },
   light: {
-    background: "#f5f5f5",
+    background: "#e7e7e7",
     card: "#ffffff",
     border: "#f2f0f0ff",
     text: "#111111",
@@ -38,8 +41,11 @@ const palettes = {
     pillActive: "#760101",
     danger: "#d32f2f",
     shop: "#ffffff",
-    list: "#632929ff",
+    list: "rgb(255, 255, 255)",
     favorite: "#7e2828ff",
+    extraborder: "#cdc9c9",
+    heading: "rgb(75, 73, 73)",
+    innerParts: "rgb(238, 235, 235)",
   },
 };
 
@@ -58,7 +64,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       const stored = (await AsyncStorage.getItem(
-        THEME_KEY
+        THEME_KEY,
       )) as ThemeName | null;
 
       if (stored === "light" || stored === "dark") {

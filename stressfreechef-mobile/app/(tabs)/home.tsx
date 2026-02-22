@@ -112,7 +112,7 @@ function getRecipeIngredients(r: Recipe, lang: Lang): string[] {
 function getRatingFromStatsOrRecipe(
   rid: string,
   recipe: Recipe,
-  statsMap: CommunityStatsMap
+  statsMap: CommunityStatsMap,
 ) {
   const stats = rid ? statsMap[rid] : undefined;
 
@@ -120,15 +120,15 @@ function getRatingFromStatsOrRecipe(
     typeof stats?.avg === "number"
       ? stats.avg
       : typeof recipe.ratingAvg === "number"
-      ? recipe.ratingAvg
-      : recipe.rating || 0;
+        ? recipe.ratingAvg
+        : recipe.rating || 0;
 
   const ratingCount =
     typeof stats?.count === "number"
       ? stats.count
       : typeof recipe.ratingCount === "number"
-      ? recipe.ratingCount
-      : undefined;
+        ? recipe.ratingCount
+        : undefined;
 
   return { ratingVal, ratingCount, communityId: stats?.id };
 }
@@ -139,7 +139,7 @@ function sortNewest(src: Recipe[]) {
     .sort(
       (a, b) =>
         new Date(b.createdAt || 0).getTime() -
-        new Date(a.createdAt || 0).getTime()
+        new Date(a.createdAt || 0).getTime(),
     );
 }
 
@@ -149,7 +149,7 @@ function sortEasiest(src: Recipe[]) {
     .sort(
       (a, b) =>
         difficultyOrder.indexOf((a.difficulty || "") as any) -
-        difficultyOrder.indexOf((b.difficulty || "") as any)
+        difficultyOrder.indexOf((b.difficulty || "") as any),
     );
 }
 
@@ -208,7 +208,7 @@ async function fetchOfficialRecipes(): Promise<ActionResult<Recipe[]>> {
 }
 
 async function ensureCommunityStatsForOfficialRecipes(
-  baseIds: string[]
+  baseIds: string[],
 ): Promise<ActionResult<CommunityStatsMap>> {
   if (!API_BASE) return { ok: false, error: "Missing API_BASE" };
 
@@ -220,7 +220,7 @@ async function ensureCommunityStatsForOfficialRecipes(
         try {
           const data = await fetchJSON<any>(
             `${API_BASE}/api/community-recipes/ensure-from-recipe/${rid}`,
-            { method: "POST" }
+            { method: "POST" },
           );
 
           if (!data?._id) return null;
@@ -236,7 +236,7 @@ async function ensureCommunityStatsForOfficialRecipes(
         } catch {
           return null;
         }
-      })
+      }),
     );
 
     const next: CommunityStatsMap = {};
@@ -266,14 +266,14 @@ async function loadSavedCommunityRecipes(): Promise<
   try {
     const savedRaw = await fetchJSON<any>(
       `${API_BASE}/api/saved-community-recipes`,
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Authorization: `Bearer ${token}` } },
     );
 
     const saved = Array.isArray(savedRaw)
       ? savedRaw
       : Array.isArray(savedRaw?.items)
-      ? savedRaw.items
-      : [];
+        ? savedRaw.items
+        : [];
 
     const communityIds: string[] = [];
     const baseIds: string[] = [];
@@ -285,7 +285,7 @@ async function loadSavedCommunityRecipes(): Promise<
       const src = (r as any).sourceRecipeId;
       if (src) {
         const baseStr = String(
-          typeof src === "object" && src._id ? src._id : src
+          typeof src === "object" && src._id ? src._id : src,
         );
         if (baseStr) baseIds.push(baseStr);
       }
@@ -300,7 +300,7 @@ async function loadSavedCommunityRecipes(): Promise<
 async function toggleSaveOfficialRecipe(
   lang: Lang,
   baseRecipeId: string,
-  savedCommunityIds: string[]
+  savedCommunityIds: string[],
 ): Promise<ActionResult<{ nextSaved: boolean; communityId: string }>> {
   if (!API_BASE) return { ok: false, error: "Missing API_BASE" };
 
@@ -308,7 +308,7 @@ async function toggleSaveOfficialRecipe(
   if (!token) {
     Alert.alert(
       t(lang, "home", "loginRequiredTitle"),
-      t(lang, "home", "loginRequiredMsg")
+      t(lang, "home", "loginRequiredMsg"),
     );
     return { ok: false, error: "Login required" };
   }
@@ -322,7 +322,7 @@ async function toggleSaveOfficialRecipe(
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
 
     const communityId = String(ensure?._id || "");
@@ -335,7 +335,7 @@ async function toggleSaveOfficialRecipe(
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       if (!res.ok && res.status !== 204) {
@@ -389,14 +389,14 @@ async function addIngredientToShopping(ingredient: string, lang: Lang) {
 
       await AsyncStorage.setItem(
         GUEST_SHOPPING_KEY,
-        JSON.stringify([...list, newItem])
+        JSON.stringify([...list, newItem]),
       );
 
       Alert.alert(
         lang === "cs" ? "Přidáno" : "Added",
         lang === "cs"
           ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
-          : `"${trimmed}" was added to your shopping list.`
+          : `"${trimmed}" was added to your shopping list.`,
       );
       return;
     }
@@ -421,7 +421,7 @@ async function addIngredientToShopping(ingredient: string, lang: Lang) {
       lang === "cs" ? "Přidáno" : "Added",
       lang === "cs"
         ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
-        : `"${trimmed}" was added to your shopping list.`
+        : `"${trimmed}" was added to your shopping list.`,
     );
   } catch (e: any) {
     Alert.alert(t(lang, "home", "addFailedTitle"), e?.message || String(e));
@@ -571,7 +571,7 @@ export default function HomeScreen() {
       return () => {
         alive = false;
       };
-    }, [])
+    }, []),
   );
 
   /* =========================
@@ -587,15 +587,15 @@ export default function HomeScreen() {
     selectedStats && typeof selectedStats.avg === "number"
       ? selectedStats.avg
       : selected && typeof selected.ratingAvg === "number"
-      ? selected.ratingAvg
-      : selected?.rating || 0;
+        ? selected.ratingAvg
+        : selected?.rating || 0;
 
   const selectedRatingCount =
     selectedStats && typeof selectedStats.count === "number"
       ? selectedStats.count
       : selected && typeof selected.ratingCount === "number"
-      ? selected.ratingCount
-      : undefined;
+        ? selected.ratingCount
+        : undefined;
 
   const selectedIsSaved = selectedBaseId
     ? savedBaseIds.includes(selectedBaseId)
@@ -678,7 +678,7 @@ export default function HomeScreen() {
     const { ratingVal, ratingCount } = getRatingFromStatsOrRecipe(
       rid,
       item,
-      communityStats
+      communityStats,
     );
 
     return (

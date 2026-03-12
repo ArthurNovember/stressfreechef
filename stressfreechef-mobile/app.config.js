@@ -18,6 +18,7 @@ export default {
       supportsTablet: true,
     },
     android: {
+      versionCode: 2, //  zvýšit při každém vydání
       adaptiveIcon: {
         foregroundImage: "./assets/icon.png",
         backgroundColor: "#ffffff",

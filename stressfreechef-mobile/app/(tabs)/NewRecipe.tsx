@@ -765,7 +765,31 @@ Here is the recipe:`;
     },
     [lang],
   );
-
+  const resetForm = useCallback(() => {
+    setTitle("");
+    setDifficulty("Beginner");
+    setTime("00:00");
+    setServings("1");
+    setIsPublic(false);
+    setThumbPreviewUri(null);
+    setThumbUploadUri(null);
+    setThumbMediaType("image");
+    setSteps([
+      {
+        description: "",
+        timerInput: "",
+        previewUri: null,
+        uploadUri: null,
+        mediaType: null,
+      },
+    ]);
+    setIngredients([""]);
+    setAiText("");
+    setAiImportErr(null);
+    setAiMode(false);
+    setErr(null);
+    setSuccessMsg(null);
+  }, []);
   const handleSubmit = useCallback(async () => {
     try {
       setErr(null);
@@ -774,6 +798,7 @@ Here is the recipe:`;
         setErr(t(lang, "newRecipe", "errorFillMainFields"));
         return;
       }
+
       const servingsNumber = parseInt(servings, 10);
       if (Number.isNaN(servingsNumber) || servingsNumber < 1) {
         setErr(
@@ -910,11 +935,8 @@ Here is the recipe:`;
         const pub = await publishRecipeMobile(token, recipeId);
         if (!pub.ok) throw new Error(pub.error);
       }
-
       if (isEditMode) {
-        setSuccessMsg(
-          lang === "cs" ? "Recept byl upraven." : "Recipe was updated.",
-        );
+        resetForm();
 
         Alert.alert(
           lang === "cs" ? "Recept upraven" : "Recipe updated",

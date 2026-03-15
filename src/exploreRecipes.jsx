@@ -3,7 +3,7 @@ import "./exploreRecipes.css";
 import { Link } from "react-router-dom";
 import StarRating from "./StarRating";
 import { MdAddShoppingCart } from "react-icons/md";
-
+import { getScaledIngredients } from "./recipeScaling";
 /* -----------------------------
    API config
 ----------------------------- */
@@ -103,6 +103,7 @@ const ExploreRecipes = ({ addItem }) => {
   const [savedCommunityIds, setSavedCommunityIds] = useState([]);
 
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [selectedServings, setSelectedServings] = useState(1);
 
   /* -----------------------------
      Refs (infinite scroll)
@@ -124,7 +125,17 @@ const ExploreRecipes = ({ addItem }) => {
 
   function openModal(recipe) {
     setSelectedRecipe(recipe);
+    setSelectedServings(
+      Number(recipe?.servings) > 0 ? Number(recipe.servings) : 1,
+    );
   }
+
+  const baseServings =
+    Number(selectedRecipe?.servings) > 0 ? Number(selectedRecipe.servings) : 1;
+
+  const scaledIngredients = selectedRecipe
+    ? getScaledIngredients(selectedRecipe, selectedServings)
+    : [];
 
   async function toggleSaveExplore(recipe) {
     if (!recipe?._id) return;
@@ -500,8 +511,34 @@ const ExploreRecipes = ({ addItem }) => {
               </div>
 
               <div className="displayIngredience">
+                <div className="servingsBar">
+                  <span>Servings:</span>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedServings((prev) => Math.max(1, prev - 1))
+                    }
+                  >
+                    -
+                  </button>
+
+                  <span>{selectedServings}</span>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedServings((prev) => prev + 1)}
+                  >
+                    +
+                  </button>
+
+                  <span className="baseServingsInfo">
+                    Original recipe: {baseServings}
+                  </span>
+                </div>
+
                 <ol>
-                  {selectedRecipe.ingredients.map((ingredient, index) => (
+                  {scaledIngredients.map((ingredient, index) => (
                     <li key={index} className="ingredient">
                       {ingredient}
                       <button

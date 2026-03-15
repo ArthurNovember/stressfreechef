@@ -5,8 +5,26 @@ const authenticateToken = require("../middleware/authenticateToken");
 const mongoose = require("mongoose");
 
 const UserRecipe = require("../models/UserRecipe");
-
+const CommunityRecipe = require("../models/CommunityRecipe");
 const router = express.Router();
+
+async function syncPublicRecipeFromUserRecipe(recipe) {
+  if (!recipe.publicRecipeId) return;
+
+  await CommunityRecipe.findByIdAndUpdate(recipe.publicRecipeId, {
+    title: recipe.title,
+    rating: recipe.rating,
+    difficulty: recipe.difficulty,
+    time: recipe.time,
+    imgSrc: recipe.imgSrc,
+    image: recipe.image,
+    ingredients: recipe.ingredients,
+    steps: recipe.steps,
+    servings: recipe.servings,
+    structuredIngredients: recipe.structuredIngredients,
+    owner: recipe.owner,
+  });
+}
 
 router.post(
   "/recipe-media",
@@ -37,7 +55,7 @@ router.post(
             (error, result) => {
               if (error) reject(error);
               else resolve(result);
-            }
+            },
           );
           stream.end(req.file.buffer);
         });
@@ -60,14 +78,18 @@ router.post(
         format: result.format,
       };
       await recipe.save();
+      await syncPublicRecipeFromUserRecipe(recipe);
 
-      return res.json({ ok: true, image: recipe.image });
+      return res.json({
+        ok: true,
+        image: recipe.image,
+      });
     } catch (err) {
       console.error("UPLOAD ERROR >>>", err);
       return res.status(500).json({ error: err.message || "Upload failed" });
     }
   },
-  multerErrorHandler
+  multerErrorHandler,
 );
 
 router.delete(
@@ -92,13 +114,14 @@ router.delete(
 
       recipe.image = undefined;
       await recipe.save();
+      await syncPublicRecipeFromUserRecipe(recipe);
 
       return res.json({ ok: true });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Delete failed" });
     }
-  }
+  },
 );
 
 router.post(
@@ -140,7 +163,7 @@ router.post(
             resource_type: "auto",
             transformation: [{ quality: "auto", fetch_format: "auto" }],
           },
-          (error, data) => (error ? reject(error) : resolve(data))
+          (error, data) => (error ? reject(error) : resolve(data)),
         );
         stream.end(req.file.buffer);
       });
@@ -164,7 +187,7 @@ router.post(
       step.mediaFormat = result.format;
 
       await recipe.save();
-
+      await syncPublicRecipeFromUserRecipe(recipe);
       return res.json({
         ok: true,
         stepIndex,
@@ -182,7 +205,7 @@ router.post(
       return res.status(500).json({ error: "Upload failed" });
     }
   },
-  multerErrorHandler
+  multerErrorHandler,
 );
 
 router.delete(
@@ -235,7 +258,7 @@ router.delete(
                 "|",
                 errImg?.message || errImg,
                 "|",
-                errVid?.message || errVid
+                errVid?.message || errVid,
               );
             }
           }
@@ -250,13 +273,14 @@ router.delete(
       step.mediaFormat = undefined;
 
       await recipe.save();
+      await syncPublicRecipeFromUserRecipe(recipe);
 
       return res.json({ ok: true });
     } catch (err) {
       console.error("STEP DELETE ERROR >>>", err?.message || err);
       return res.status(500).json({ error: "Delete failed" });
     }
-  }
+  },
 );
 
 module.exports = router;

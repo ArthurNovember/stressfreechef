@@ -5,6 +5,9 @@ const router = express.Router();
 const authenticateToken = require("../middleware/authenticateToken");
 const UserRecipe = require("../models/UserRecipe");
 const CommunityRecipe = require("../models/CommunityRecipe");
+const cloudinary = require("../utils/cloudinary");
+
+const { parseIngredientList } = require("../utils/ingredientParser");
 
 function validateSteps(steps = []) {
   if (!Array.isArray(steps)) return false;
@@ -22,6 +25,99 @@ function validateSteps(steps = []) {
   return true;
 }
 
+function normalizeDifficulty(value) {
+  const allowed = ["Beginner", "Intermediate", "Hard"];
+  if (typeof value !== "string") return null;
+
+  const trimmed = value.trim();
+  return allowed.includes(trimmed) ? trimmed : null;
+}
+
+function normalizeTime(value) {
+  if (typeof value !== "string") return null;
+
+  const trimmed = value.trim();
+  return /^\d{2}:\d{2}$/.test(trimmed) ? trimmed : null;
+}
+
+async function syncPublicRecipeFromUserRecipe(userRecipe) {
+  if (!userRecipe.publicRecipeId) return;
+
+  await CommunityRecipe.findByIdAndUpdate(userRecipe.publicRecipeId, {
+    title: userRecipe.title,
+    rating: userRecipe.rating,
+    difficulty: userRecipe.difficulty,
+    time: userRecipe.time,
+    imgSrc: userRecipe.imgSrc,
+    image: userRecipe.image,
+    ingredients: userRecipe.ingredients,
+    steps: userRecipe.steps,
+    servings: userRecipe.servings,
+    structuredIngredients: userRecipe.structuredIngredients,
+    owner: userRecipe.owner,
+  });
+}
+
+async function createPublicRecipeFromUserRecipe(userRecipe) {
+  const publicDoc = await CommunityRecipe.create({
+    title: userRecipe.title,
+    rating: userRecipe.rating,
+    difficulty: userRecipe.difficulty,
+    time: userRecipe.time,
+    imgSrc: userRecipe.imgSrc,
+    image: userRecipe.image,
+    ingredients: userRecipe.ingredients,
+    steps: userRecipe.steps,
+    servings: userRecipe.servings,
+    structuredIngredients: userRecipe.structuredIngredients,
+    owner: userRecipe.owner,
+  });
+
+  userRecipe.publicRecipeId = publicDoc._id;
+  await userRecipe.save();
+}
+
+async function removePublicRecipeLink(userRecipe) {
+  if (!userRecipe.publicRecipeId) return;
+
+  await CommunityRecipe.findByIdAndDelete(userRecipe.publicRecipeId).catch(
+    () => {},
+  );
+
+  userRecipe.publicRecipeId = null;
+  await userRecipe.save();
+}
+
+async function destroyCloudinaryAsset(publicId) {
+  if (!publicId) return;
+
+  try {
+    await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+    return;
+  } catch {}
+
+  try {
+    await cloudinary.uploader.destroy(publicId, { resource_type: "video" });
+    return;
+  } catch {}
+
+  try {
+    await cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
+  } catch {}
+}
+
+async function deleteRecipeAssets(recipe) {
+  if (recipe?.image?.publicId) {
+    await destroyCloudinaryAsset(recipe.image.publicId);
+  }
+
+  for (const step of recipe.steps || []) {
+    if (step?.mediaPublicId) {
+      await destroyCloudinaryAsset(step.mediaPublicId);
+    }
+  }
+}
+
 router.post("/", authenticateToken, async (req, res) => {
   try {
     const {
@@ -32,6 +128,7 @@ router.post("/", authenticateToken, async (req, res) => {
       imgSrc,
       ingredients,
       steps,
+      servings,
       isPublic,
     } = req.body;
 
@@ -40,39 +137,53 @@ router.post("/", authenticateToken, async (req, res) => {
         .status(400)
         .json({ error: "title, difficulty a time jsou povinné." });
     }
+
+    const normalizedDifficulty = normalizeDifficulty(difficulty);
+    if (!normalizedDifficulty) {
+      return res.status(400).json({
+        error: "difficulty musí být Beginner, Intermediate nebo Hard.",
+      });
+    }
+
+    const normalizedTime = normalizeTime(time);
+    if (!normalizedTime) {
+      return res.status(400).json({
+        error: "time musí být ve formátu HH:MM.",
+      });
+    }
+
     if (steps && !validateSteps(steps)) {
       return res.status(400).json({ error: "steps má neplatný formát." });
     }
 
+    const normalizedIngredients = Array.isArray(ingredients)
+      ? ingredients.map((i) => String(i).trim()).filter(Boolean)
+      : [];
+
+    const parsedServings = Number(servings);
+    const safeServings =
+      Number.isInteger(parsedServings) && parsedServings > 0
+        ? parsedServings
+        : 1;
+
+    const structuredIngredients = parseIngredientList(normalizedIngredients);
+
     const userRec = await UserRecipe.create({
       title: String(title).trim(),
       rating: typeof rating === "number" ? rating : 0,
-      difficulty: String(difficulty).trim(),
-      time: String(time).trim(),
+      difficulty: normalizedDifficulty,
+      time: normalizedTime,
       imgSrc: imgSrc ? String(imgSrc) : undefined,
       image: req.body?.image,
-      ingredients: Array.isArray(ingredients)
-        ? ingredients.map((i) => String(i).trim()).filter(Boolean)
-        : [],
+      ingredients: normalizedIngredients,
       steps: steps || [],
+      servings: safeServings,
+      structuredIngredients,
       owner: req.user._id,
       isPublic: !!isPublic,
     });
-
-    if (isPublic) {
-      const publicDoc = await CommunityRecipe.create({
-        title: userRec.title,
-        rating: userRec.rating,
-        difficulty: userRec.difficulty,
-        time: userRec.time,
-        imgSrc: userRec.imgSrc,
-        image: userRec.image,
-        ingredients: userRec.ingredients,
-        steps: userRec.steps,
-        owner: req.user._id,
-      });
-      userRec.publicRecipeId = publicDoc._id;
-      await userRec.save();
+    if (userRec.isPublic) {
+      await createPublicRecipeFromUserRecipe(userRec);
     }
 
     res.status(201).json(userRec);
@@ -123,83 +234,124 @@ router.get("/:id", authenticateToken, async (req, res) => {
 router.patch("/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.isValidObjectId(id))
+    if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ error: "Neplatné ID." });
-
-    const allowed = [
-      "title",
-      "rating",
-      "difficulty",
-      "time",
-      "imgSrc",
-      "ingredients",
-      "steps",
-      "isPublic",
-    ];
-    const update = {};
-    for (const k of allowed) if (k in req.body) update[k] = req.body[k];
-
-    if ("steps" in update && !validateSteps(update.steps)) {
-      return res.status(400).json({ error: "steps má neplatný formát." });
     }
-    if ("ingredients" in update && !Array.isArray(update.ingredients)) {
-      return res
-        .status(400)
-        .json({ error: "ingredients musí být pole stringů." });
-    }
+
+    const updatedFields = req.body;
 
     const doc = await UserRecipe.findOne({ _id: id, owner: req.user._id });
-    if (!doc)
-      return res
-        .status(404)
-        .json({ error: "Recept nenalezen nebo nemáš oprávnění." });
-
-    for (const k of allowed) {
-      if (k in update) doc[k] = update[k];
+    if (!doc) {
+      return res.status(404).json({ error: "Recept nenalezen." });
     }
 
-    const wantsPublic = !!doc.isPublic;
+    const hadPublicBefore = !!doc.publicRecipeId;
 
-    if (wantsPublic && !doc.publicRecipeId) {
-      const pub = await CommunityRecipe.create({
-        title: doc.title,
-        rating: doc.rating,
-        difficulty: doc.difficulty,
-        time: doc.time,
-        imgSrc: doc.imgSrc,
-        image: doc.image,
-        ingredients: doc.ingredients,
-        steps: doc.steps,
-        owner: req.user._id,
-      });
-      doc.publicRecipeId = pub._id;
-    } else if (!wantsPublic && doc.publicRecipeId) {
-      await CommunityRecipe.findByIdAndDelete(doc.publicRecipeId).catch(
-        () => {}
+    if ("title" in updatedFields) {
+      if (
+        typeof updatedFields.title !== "string" ||
+        updatedFields.title.trim() === ""
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Nový název receptu je neplatný." });
+      }
+
+      doc.title = updatedFields.title.trim();
+    }
+
+    if ("difficulty" in updatedFields) {
+      const normalizedDifficulty = normalizeDifficulty(
+        updatedFields.difficulty,
       );
-      doc.publicRecipeId = null;
-    } else if (wantsPublic && doc.publicRecipeId) {
-      await CommunityRecipe.findByIdAndUpdate(
-        doc.publicRecipeId,
-        {
-          title: doc.title,
-          rating: doc.rating,
-          difficulty: doc.difficulty,
-          time: doc.time,
-          imgSrc: doc.imgSrc,
-          image: doc.image,
-          ingredients: doc.ingredients,
-          steps: doc.steps,
-        },
-        { new: false }
-      );
+
+      if (!normalizedDifficulty) {
+        return res.status(400).json({
+          error: "difficulty musí být Beginner, Intermediate nebo Hard.",
+        });
+      }
+
+      doc.difficulty = normalizedDifficulty;
+    }
+
+    if ("time" in updatedFields) {
+      const normalizedTime = normalizeTime(updatedFields.time);
+
+      if (!normalizedTime) {
+        return res.status(400).json({
+          error: "time musí být ve formátu HH:MM.",
+        });
+      }
+
+      doc.time = normalizedTime;
+    }
+
+    if ("rating" in updatedFields) {
+      if (
+        typeof updatedFields.rating !== "number" ||
+        updatedFields.rating < 0
+      ) {
+        return res.status(400).json({ error: "rating musí být číslo >= 0." });
+      }
+
+      doc.rating = updatedFields.rating;
+    }
+
+    if ("ingredients" in updatedFields) {
+      if (!Array.isArray(updatedFields.ingredients)) {
+        return res
+          .status(400)
+          .json({ error: "ingredients musí být pole stringů." });
+      }
+
+      const normalizedIngredients = updatedFields.ingredients
+        .map((i) => String(i).trim())
+        .filter(Boolean);
+
+      doc.ingredients = normalizedIngredients;
+      doc.structuredIngredients = parseIngredientList(normalizedIngredients);
+    }
+
+    if ("steps" in updatedFields) {
+      if (!validateSteps(updatedFields.steps)) {
+        return res.status(400).json({ error: "steps má neplatný formát." });
+      }
+
+      doc.steps = updatedFields.steps;
+    }
+
+    if ("servings" in updatedFields) {
+      const parsedServings = Number(updatedFields.servings);
+
+      if (!Number.isInteger(parsedServings) || parsedServings < 1) {
+        return res
+          .status(400)
+          .json({ error: "servings musí být celé číslo >= 1." });
+      }
+
+      doc.servings = parsedServings;
+    }
+
+    if ("isPublic" in updatedFields) {
+      doc.isPublic = !!updatedFields.isPublic;
     }
 
     await doc.save();
-    return res.json(doc);
+
+    if (doc.isPublic && !hadPublicBefore && !doc.publicRecipeId) {
+      await createPublicRecipeFromUserRecipe(doc);
+    } else if (!doc.isPublic && hadPublicBefore && doc.publicRecipeId) {
+      await removePublicRecipeLink(doc);
+    } else if (doc.isPublic && doc.publicRecipeId) {
+      await syncPublicRecipeFromUserRecipe(doc);
+    }
+
+    const freshDoc = await UserRecipe.findById(doc._id);
+
+    res.json(freshDoc);
   } catch (err) {
     console.error("PATCH /api/my-recipes/:id error:", err);
-    return res.status(500).json({ error: "Interní chyba serveru." });
+    res.status(500).json({ error: "Interní chyba serveru." });
   }
 });
 
@@ -209,20 +361,26 @@ router.delete("/:id", authenticateToken, async (req, res) => {
     if (!mongoose.isValidObjectId(id))
       return res.status(400).json({ error: "Neplatné ID." });
 
-    const doc = await UserRecipe.findOneAndDelete({
+    const doc = await UserRecipe.findOne({
       _id: id,
       owner: req.user._id,
     });
-    if (!doc)
+
+    if (!doc) {
       return res
         .status(404)
         .json({ error: "Recept nenalezen nebo nemáš oprávnění." });
+    }
+
+    await deleteRecipeAssets(doc);
 
     if (doc.publicRecipeId) {
       await CommunityRecipe.findByIdAndDelete(doc.publicRecipeId).catch(
-        () => {}
+        () => {},
       );
     }
+
+    await doc.deleteOne();
 
     res.json({ message: "Recept smazán." });
   } catch (err) {

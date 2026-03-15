@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { deleteMyRecipe } from "./api";
 import StarRating from "./StarRating";
 import { MdAddShoppingCart } from "react-icons/md";
-
+import { getScaledIngredients } from "./recipeScaling";
 /* -----------------------------
    API config
 ----------------------------- */
@@ -88,7 +88,7 @@ const MyProfile = ({ userInfo, addItem }) => {
   const [savedLoading, setSavedLoading] = useState(false);
 
   const [selectedRecipe, setSelectedRecipe] = useState(null);
-
+  const [selectedServings, setSelectedServings] = useState(1);
   const selectedMedia = useMemo(() => {
     if (!selectedRecipe) return null;
     return getCover(selectedRecipe);
@@ -172,14 +172,23 @@ const MyProfile = ({ userInfo, addItem }) => {
       alert("Removing saved recipe failed: " + (e?.message || e));
     }
   }
-
   function openModal(recipe) {
     setSelectedRecipe(recipe);
+    setSelectedServings(
+      Number(recipe?.servings) > 0 ? Number(recipe.servings) : 1,
+    );
   }
 
   function closeModal() {
     setSelectedRecipe(null);
   }
+
+  const baseServings =
+    Number(selectedRecipe?.servings) > 0 ? Number(selectedRecipe.servings) : 1;
+
+  const scaledIngredients = selectedRecipe
+    ? getScaledIngredients(selectedRecipe, selectedServings)
+    : [];
 
   /* =============================
      Effects 
@@ -668,8 +677,34 @@ const MyProfile = ({ userInfo, addItem }) => {
               </div>
 
               <div className="displayIngredience">
+                <div className="servingsBar">
+                  <span>Servings:</span>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedServings((prev) => Math.max(1, prev - 1))
+                    }
+                  >
+                    -
+                  </button>
+
+                  <span>{selectedServings}</span>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedServings((prev) => prev + 1)}
+                  >
+                    +
+                  </button>
+
+                  <span className="baseServingsInfo">
+                    Original recipe: {baseServings}
+                  </span>
+                </div>
+
                 <ol>
-                  {selectedRecipe.ingredients.map((ingredient, index) => (
+                  {scaledIngredients.map((ingredient, index) => (
                     <li key={index} className="ingredient">
                       {ingredient}
                       <button

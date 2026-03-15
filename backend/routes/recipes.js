@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Recipe = require("../models/Recipe");
-
+const { parseIngredientList } = require("../utils/ingredientParser");
 router.get("/", async (req, res) => {
   const filter = {};
   if (req.query.search) {
@@ -51,9 +51,29 @@ router.post("/", async (req, res) => {
     ingredients,
     ingredientsCs,
     steps,
+    servings,
   } = req.body;
 
   try {
+    const normalizedIngredients = Array.isArray(ingredients)
+      ? ingredients.map((i) => String(i).trim()).filter(Boolean)
+      : [];
+
+    const normalizedIngredientsCs = Array.isArray(ingredientsCs)
+      ? ingredientsCs.map((i) => String(i).trim()).filter(Boolean)
+      : [];
+
+    const parsedServings = Number(servings);
+    const safeServings =
+      Number.isInteger(parsedServings) && parsedServings > 0
+        ? parsedServings
+        : 1;
+
+    const structuredIngredients = parseIngredientList(normalizedIngredients);
+    const structuredIngredientsCs = parseIngredientList(
+      normalizedIngredientsCs,
+    );
+
     const newRecipe = new Recipe({
       title,
       titleCs,
@@ -61,9 +81,12 @@ router.post("/", async (req, res) => {
       difficulty,
       time,
       imgSrc,
-      ingredients,
-      ingredientsCs,
+      ingredients: normalizedIngredients,
+      ingredientsCs: normalizedIngredientsCs,
       steps,
+      servings: safeServings,
+      structuredIngredients,
+      structuredIngredientsCs,
     });
 
     await newRecipe.save();
@@ -83,12 +106,13 @@ router.delete("/:id", (req, res) => {
       res.status(204).send();
     })
     .catch((err) =>
-      res.status(500).json({ error: "Chyba při mazání receptu" })
+      res.status(500).json({ error: "Chyba při mazání receptu" }),
     );
 });
 
 router.patch("/:id", (req, res) => {
   const updatedFields = req.body;
+
   if ("title" in updatedFields) {
     if (
       typeof updatedFields.title !== "string" ||
@@ -98,6 +122,51 @@ router.patch("/:id", (req, res) => {
     }
     updatedFields.title = updatedFields.title.trim();
   }
+
+  if ("ingredients" in updatedFields) {
+    if (!Array.isArray(updatedFields.ingredients)) {
+      return res
+        .status(400)
+        .json({ error: "ingredients musí být pole stringů." });
+    }
+
+    updatedFields.ingredients = updatedFields.ingredients
+      .map((i) => String(i).trim())
+      .filter(Boolean);
+
+    updatedFields.structuredIngredients = parseIngredientList(
+      updatedFields.ingredients,
+    );
+  }
+
+  if ("ingredientsCs" in updatedFields) {
+    if (!Array.isArray(updatedFields.ingredientsCs)) {
+      return res
+        .status(400)
+        .json({ error: "ingredientsCs musí být pole stringů." });
+    }
+
+    updatedFields.ingredientsCs = updatedFields.ingredientsCs
+      .map((i) => String(i).trim())
+      .filter(Boolean);
+
+    updatedFields.structuredIngredientsCs = parseIngredientList(
+      updatedFields.ingredientsCs,
+    );
+  }
+
+  if ("servings" in updatedFields) {
+    const parsedServings = Number(updatedFields.servings);
+
+    if (!Number.isInteger(parsedServings) || parsedServings < 1) {
+      return res
+        .status(400)
+        .json({ error: "servings musí být celé číslo >= 1." });
+    }
+
+    updatedFields.servings = parsedServings;
+  }
+
   Recipe.findByIdAndUpdate(req.params.id, updatedFields, {
     new: true,
     runValidators: true,
@@ -109,7 +178,7 @@ router.patch("/:id", (req, res) => {
       res.json(updated);
     })
     .catch((err) =>
-      res.status(500).json({ error: "Chyba při úpravě receptu" })
+      res.status(500).json({ error: "Chyba při úpravě receptu" }),
     );
 });
 

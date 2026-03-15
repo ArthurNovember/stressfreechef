@@ -25,6 +25,17 @@ const stepSchema = new mongoose.Schema({
   },
 });
 
+const structuredIngredientSchema = new mongoose.Schema(
+  {
+    original: { type: String, required: true },
+    quantity: { type: Number, default: null },
+    unit: { type: String, default: null },
+    name: { type: String, required: true },
+    scalable: { type: Boolean, default: false },
+  },
+  { _id: false },
+);
+
 const recipeSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
@@ -37,8 +48,13 @@ const recipeSchema = new mongoose.Schema(
     ingredientsCs: [{ type: String }],
     steps: [stepSchema],
     id: { type: Number },
+    servings: { type: Number, min: 1, default: 1 },
+
+    structuredIngredients: [structuredIngredientSchema],
+
+    structuredIngredientsCs: [structuredIngredientSchema],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Recipe = mongoose.model("Recipe", recipeSchema);

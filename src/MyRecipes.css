@@ -127,6 +127,35 @@
   height: 200px;
 }
 
+.recipeActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.editRecipeBtn {
+  max-height: 40px;
+  max-width: 40px;
+  position: relative;
+  text-align: center;
+}
+
+.editRecipeBtn:hover {
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.deleteRecipeBtn {
+  background: #e33;
+  color: white;
+}
+
+.recipeButtonWrapper {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
 @media (max-width: 768px) {
   .My {
     flex-wrap: wrap;

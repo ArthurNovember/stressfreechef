@@ -5,6 +5,7 @@ import { deleteMyRecipe } from "./api";
 import StarRating from "./StarRating";
 import { MdAddShoppingCart } from "react-icons/md";
 import { getScaledIngredients } from "./recipeScaling";
+
 /* -----------------------------
    API config
 ----------------------------- */
@@ -618,13 +619,26 @@ const MyProfile = ({ userInfo, addItem }) => {
                     <p>Difficulty: {r?.difficulty || "—"}</p>
                     <p>Time: {r?.time || "—"} ⏱️</p>
                   </div>
-
-                  <img
-                    src="https://i.imgur.com/aRJEINp.png"
-                    className="deleteButton"
-                    onClick={() => handleDeleteMyRecipe(r._id)}
-                    alt="Delete my recipe"
-                  />
+                  <div className="recipeButtonWrapper">
+                    <Link
+                      to="/NewRecipe"
+                      state={{
+                        mode: "edit",
+                        recipe: r,
+                      }}
+                    >
+                      <img
+                        className="editRecipeBtn"
+                        src="https://i.postimg.cc/3dRXtJTx/Chat-GPT-Image-15-3-2026-13-00-08.png"
+                      ></img>
+                    </Link>
+                    <img
+                      src="https://i.imgur.com/aRJEINp.png"
+                      className="deleteButton"
+                      onClick={() => handleDeleteMyRecipe(r._id)}
+                      alt="Delete my recipe"
+                    />
+                  </div>
                 </div>
               );
             })}

@@ -73,7 +73,7 @@ export async function deleteStepMedia(recipeId, stepIndex) {
     {
       method: "DELETE",
       headers: { ...authHeaders() },
-    }
+    },
   );
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -84,6 +84,21 @@ export async function deleteMyRecipe(recipeId) {
     method: "DELETE",
     headers: { ...authHeaders() },
   });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// UPDATE
+export async function updateMyRecipe(recipeId, payload) {
+  const res = await fetch(`${BASE}/api/my-recipes/${recipeId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }

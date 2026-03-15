@@ -1,16 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./NewRecipe.css";
-
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   createMyRecipe,
   publishMyRecipe,
   uploadRecipeMedia,
   uploadStepMedia,
+  updateMyRecipe,
 } from "./api";
 
 const DIFFICULTIES = ["Beginner", "Intermediate", "Hard"];
 
 const NewRecipe = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const editingRecipe = location.state?.recipe || null;
+  const isEditMode = Boolean(editingRecipe);
   /* -----------------------------
      States
   ----------------------------- */
@@ -43,6 +49,48 @@ const NewRecipe = () => {
   const [aiMode, setAiMode] = useState(false);
   const [aiText, setAiText] = useState("");
   const [aiImportErr, setAiImportErr] = useState(null);
+
+  /* =============================
+     Effects
+  ============================= */
+  useEffect(() => {
+    if (!editingRecipe) return;
+
+    setTitle(editingRecipe.title || "");
+    setDifficulty(editingRecipe.difficulty || "Beginner");
+    setTime(editingRecipe.time || "00:00");
+    setIsPublic(Boolean(editingRecipe.isPublic));
+
+    setIngredients(
+      editingRecipe.ingredients?.length ? editingRecipe.ingredients : [""],
+    );
+
+    setSteps(
+      editingRecipe.steps?.length
+        ? editingRecipe.steps.map((s) => {
+            const parts = secondsToParts(s.timerSeconds || 0);
+
+            return {
+              description: s.description || "",
+              file: null,
+              preview: s.src || null,
+              type: s.type || "text",
+              ...parts,
+            };
+          })
+        : [
+            {
+              description: "",
+              file: null,
+              preview: null,
+              type: "text",
+              timerH: "",
+              timerM: "",
+              timerS: "",
+            },
+          ],
+    );
+  }, [editingRecipe]);
 
   /* =============================
      Handlers
@@ -367,11 +415,18 @@ Here is the recipe:`;
           })
           .filter((s) => s.description),
 
-        isPublic: false,
+        isPublic,
       };
 
-      const created = await createMyRecipe(payload);
-      const recipeId = created._id;
+      let recipeId;
+
+      if (isEditMode) {
+        const updated = await updateMyRecipe(editingRecipe._id, payload);
+        recipeId = updated._id;
+      } else {
+        const created = await createMyRecipe(payload);
+        recipeId = created._id;
+      }
 
       if (thumbFile) {
         await uploadRecipeMedia(recipeId, thumbFile);
@@ -397,6 +452,11 @@ Here is the recipe:`;
       setMsg({ type: "error", text: e.message || "Save failed." });
     } finally {
       setSaving(false);
+    }
+
+    if (isEditMode) {
+      navigate("/myprofile");
+      return;
     }
   }
 
@@ -434,6 +494,7 @@ Here is the recipe:`;
       {msg && <p className={msg.type}>{msg.text}</p>}
 
       <div className="creation">
+        <h2>{isEditMode ? "Edit Recipe" : "Create Recipe"}</h2>
         <div className="mainInfo">
           <div className="nameDifTime">
             <div className="inputAdd">

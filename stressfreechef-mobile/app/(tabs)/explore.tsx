@@ -5,6 +5,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import Swiper from "react-native-deck-swiper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { getScaledIngredients } from "../../lib/recipeScaling";
 
 import {
   View,
@@ -45,6 +46,14 @@ type CommunityRecipe = {
   imgSrc?: string;
   image?: { url?: string; format?: string };
   ingredients?: string[];
+  structuredIngredients?: {
+    quantity?: number | null;
+    unit?: string;
+    name?: string;
+    original?: string;
+    scalable?: boolean;
+  }[];
+  servings?: number;
   steps?: Step[];
   rating?: number;
   ratingAvg?: number;
@@ -164,14 +173,14 @@ async function loadFavoriteIds(): Promise<ActionResult<string[]>> {
   try {
     const saved = await fetchJSON<any>(
       `${API_BASE}/api/saved-community-recipes`,
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Authorization: `Bearer ${token}` } },
     );
 
     const arr = Array.isArray(saved)
       ? saved
       : Array.isArray(saved?.items)
-      ? saved.items
-      : [];
+        ? saved.items
+        : [];
 
     const ids = arr.map((r: any) => getId(r)).filter(Boolean);
 
@@ -187,7 +196,7 @@ async function loadFavoriteIds(): Promise<ActionResult<string[]>> {
 async function toggleSaveFavorite(
   lang: Lang,
   recipeId: string,
-  currentlySaved: boolean
+  currentlySaved: boolean,
 ): Promise<ActionResult<{ nextSaved: boolean }>> {
   if (!API_BASE) return { ok: false, error: "Missing API_BASE" };
 
@@ -195,7 +204,7 @@ async function toggleSaveFavorite(
   if (!token) {
     Alert.alert(
       t(lang, "home", "loginRequiredTitle"),
-      t(lang, "home", "loginRequiredMsg")
+      t(lang, "home", "loginRequiredMsg"),
     );
     return { ok: false, error: "Login required" };
   }
@@ -204,7 +213,7 @@ async function toggleSaveFavorite(
     if (currentlySaved) {
       const res = await fetch(
         `${API_BASE}/api/saved-community-recipes/${recipeId}`,
-        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
       );
 
       if (!res.ok && res.status !== 204) {
@@ -259,14 +268,14 @@ async function addIngredientToShopping(ingredient: string, lang: Lang) {
 
       await AsyncStorage.setItem(
         GUEST_SHOPPING_KEY,
-        JSON.stringify([...list, newItem])
+        JSON.stringify([...list, newItem]),
       );
 
       Alert.alert(
         lang === "cs" ? "Přidáno" : "Added",
         lang === "cs"
           ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
-          : `"${trimmed}" was added to your shopping list.`
+          : `"${trimmed}" was added to your shopping list.`,
       );
       return;
     }
@@ -291,7 +300,7 @@ async function addIngredientToShopping(ingredient: string, lang: Lang) {
       lang === "cs" ? "Přidáno" : "Added",
       lang === "cs"
         ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
-        : `"${trimmed}" was added to your shopping list.`
+        : `"${trimmed}" was added to your shopping list.`,
     );
   } catch (e: any) {
     Alert.alert("Failed to add", e?.message || String(e));
@@ -368,6 +377,7 @@ export default function ExploreScreen() {
   const [err, setErr] = useState<string | null>(null);
 
   const [selected, setSelected] = useState<CommunityRecipe | null>(null);
+  const [selectedServings, setSelectedServings] = useState(1);
   const [randomSeed, setRandomSeed] = useState(0);
   const justFocusedRef = useRef(false);
 
@@ -407,7 +417,7 @@ export default function ExploreScreen() {
       return () => {
         alive = false;
       };
-    }, [])
+    }, []),
   );
 
   useEffect(() => {
@@ -493,6 +503,14 @@ export default function ExploreScreen() {
   /* =========================
      HANDLERS
   ========================= */
+  function openRecipeModal(recipe: CommunityRecipe | null | undefined) {
+    if (!recipe) return;
+
+    setSelected(recipe);
+    setSelectedServings(
+      Number(recipe?.servings) > 0 ? Number(recipe.servings) : 1,
+    );
+  }
 
   async function handleToggleSave(recipe: CommunityRecipe | null | undefined) {
     if (!recipe) return;
@@ -544,7 +562,7 @@ export default function ExploreScreen() {
           styles.card,
           { backgroundColor: colors.card, borderColor: colors.border },
         ]}
-        onPress={() => setSelected(item)}
+        onPress={() => openRecipeModal(item)}
       >
         {cover.isVideo ? (
           <Video
@@ -678,6 +696,12 @@ export default function ExploreScreen() {
   const selectedIsSaved = !!(selectedId && favoriteIds.includes(selectedId));
   const selectedCover = selected ? getCover(selected) : null;
 
+  const baseServings =
+    Number(selected?.servings) > 0 ? Number(selected?.servings) : 1;
+
+  const scaledIngredients = selected
+    ? getScaledIngredients(selected, selectedServings)
+    : [];
   /* =========================
      UI
   ========================= */
@@ -942,7 +966,10 @@ export default function ExploreScreen() {
         visible={!!selected}
         animationType="slide"
         transparent
-        onRequestClose={() => setSelected(null)}
+        onRequestClose={() => {
+          setSelected(null);
+          setSelectedServings(1);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
@@ -999,16 +1026,91 @@ export default function ExploreScreen() {
               </Text>
 
               <Text style={[styles.modalMeta, { color: colors.secondaryText }]}>
-                {t(lang, "home", "time")}: {selected?.time || "—"} ⏱️
+                {t(lang, "home", "time")}: {selected?.time || "—"}
               </Text>
+              {selected && (
+                <View
+                  style={[
+                    styles.servingsBox,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.background,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.servingsLabel,
+                      { color: colors.secondaryText },
+                    ]}
+                  >
+                    {lang === "cs" ? "Počet porcí" : "Servings"}
+                  </Text>
 
-              {selected?.ingredients?.length ? (
+                  <View style={styles.servingsControls}>
+                    <Pressable
+                      style={[
+                        styles.servingBtn,
+                        {
+                          borderColor: colors.border,
+                          backgroundColor: colors.card,
+                        },
+                      ]}
+                      onPress={() =>
+                        setSelectedServings((prev) => Math.max(1, prev - 1))
+                      }
+                    >
+                      <Text
+                        style={[styles.servingBtnText, { color: colors.text }]}
+                      >
+                        −
+                      </Text>
+                    </Pressable>
+
+                    <Text
+                      style={[styles.servingsValue, { color: colors.text }]}
+                    >
+                      {selectedServings}
+                    </Text>
+
+                    <Pressable
+                      style={[
+                        styles.servingBtn,
+                        {
+                          borderColor: colors.border,
+                          backgroundColor: colors.card,
+                        },
+                      ]}
+                      onPress={() => setSelectedServings((prev) => prev + 1)}
+                    >
+                      <Text
+                        style={[styles.servingBtnText, { color: colors.text }]}
+                      >
+                        +
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.servingsHint,
+                      { color: colors.secondaryText },
+                    ]}
+                  >
+                    {lang === "cs"
+                      ? `Původní recept: ${baseServings} porce`
+                      : `Original recipe: ${baseServings} servings`}
+                  </Text>
+                </View>
+              )}
+
+              {scaledIngredients.length ? (
                 <>
                   <Text style={[styles.section, { color: colors.pillActive }]}>
                     {t(lang, "explore", "ingredients")}
                   </Text>
 
-                  {selected.ingredients.map((ing, i) => (
+                  {scaledIngredients.map((ing, i) => (
                     <View
                       key={i}
                       style={[
@@ -1046,6 +1148,7 @@ export default function ExploreScreen() {
                 onPress={() => {
                   openRecipe(selected);
                   setSelected(null);
+                  setSelectedServings(1);
                 }}
               >
                 <Text style={styles.primaryBtnText}>
@@ -1058,7 +1161,10 @@ export default function ExploreScreen() {
                   styles.secondaryBtn,
                   { borderColor: colors.border, backgroundColor: colors.card },
                 ]}
-                onPress={() => setSelected(null)}
+                onPress={() => {
+                  setSelected(null);
+                  setSelectedServings(1);
+                }}
               >
                 <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
                   {t(lang, "explore", "close")}
@@ -1305,4 +1411,46 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   modalSaveBtnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  servingsBox: {
+    marginTop: 12,
+    marginBottom: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 14,
+  },
+  servingsLabel: {
+    fontSize: 13,
+    marginBottom: 8,
+    fontWeight: "700",
+  },
+  servingsControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+  },
+  servingBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  servingBtnText: {
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 24,
+  },
+  servingsValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    minWidth: 36,
+    textAlign: "center",
+  },
+  servingsHint: {
+    marginTop: 8,
+    textAlign: "center",
+    fontSize: 12,
+  },
 });

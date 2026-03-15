@@ -23,7 +23,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { t, Lang, LANG_KEY } from "../../i18n/strings";
 import { API_BASE, fetchJSON } from "../../lib/api";
 import { useTheme } from "../../theme/ThemeContext";
-
+import { getScaledIngredients } from "../../lib/recipeScaling";
 /* =========================
    TYPES
 ========================= */
@@ -119,7 +119,7 @@ async function addIngredientToShopping(ingredient: string, lang: Lang) {
     if (!token) {
       Alert.alert(
         t(lang, "home", "loginRequiredTitle"),
-        t(lang, "home", "loginRequiredMsg")
+        t(lang, "home", "loginRequiredMsg"),
       );
       return;
     }
@@ -144,7 +144,7 @@ async function addIngredientToShopping(ingredient: string, lang: Lang) {
       t(lang, "profile", "addedTitle"),
       lang === "cs"
         ? `"${trimmed}" bylo přidáno do nákupního seznamu.`
-        : `"${trimmed}" was added to your shopping list.`
+        : `"${trimmed}" was added to your shopping list.`,
     );
   } catch (e: any) {
     Alert.alert("Failed to add", e?.message || String(e));
@@ -164,7 +164,7 @@ async function fetchMe(token: string): Promise<ActionResult<any>> {
 
 async function fetchMyRecipesPage(
   token: string,
-  page: number
+  page: number,
 ): Promise<ActionResult<PagedResponse<RecipeLike>>> {
   try {
     const res = await fetchJSON<PagedResponse<RecipeLike>>(
@@ -174,7 +174,7 @@ async function fetchMyRecipesPage(
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
 
     return {
@@ -192,7 +192,7 @@ async function fetchMyRecipesPage(
 
 async function fetchSavedRecipesPage(
   token: string,
-  page: number
+  page: number,
 ): Promise<ActionResult<PagedResponse<RecipeLike>>> {
   try {
     const res = await fetchJSON<PagedResponse<RecipeLike>>(
@@ -202,7 +202,7 @@ async function fetchSavedRecipesPage(
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
 
     return {
@@ -220,7 +220,7 @@ async function fetchSavedRecipesPage(
 
 async function deleteMyRecipe(
   token: string,
-  id: string
+  id: string,
 ): Promise<ActionResult<true>> {
   try {
     const res = await fetch(`${BASE}/api/my-recipes/${id}`, {
@@ -241,7 +241,7 @@ async function deleteMyRecipe(
 
 async function removeSavedRecipe(
   token: string,
-  id: string
+  id: string,
 ): Promise<ActionResult<true>> {
   try {
     const res = await fetch(`${BASE}/api/saved-community-recipes/${id}`, {
@@ -355,14 +355,14 @@ function AuthFormRN({
 
       Alert.alert(
         t(lang, "profile", "registrationSuccessfulTitle"),
-        t(lang, "profile", "registrationSuccessfulMsg")
+        t(lang, "profile", "registrationSuccessfulMsg"),
       );
 
       setMode("login");
     } catch (e: any) {
       Alert.alert(
         t(lang, "profile", "registrationFailedTitle"),
-        e?.message || String(e)
+        e?.message || String(e),
       );
     } finally {
       setBusy(false);
@@ -390,7 +390,7 @@ function AuthFormRN({
     } catch (e: any) {
       Alert.alert(
         t(lang, "profile", "loginFailedTitle"),
-        e?.message || String(e)
+        e?.message || String(e),
       );
     } finally {
       setBusy(false);
@@ -602,6 +602,7 @@ function MyProfileRN({
 
   const [user, setUser] = useState<any>(null);
   const [selected, setSelected] = useState<any | null>(null);
+  const [selectedServings, setSelectedServings] = useState(1);
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -616,9 +617,19 @@ function MyProfileRN({
   const [myPages, setMyPages] = useState(1);
   const [myLoadingMore, setMyLoadingMore] = useState(false);
 
+  const baseServings = useMemo(
+    () => (Number(selected?.servings) > 0 ? Number(selected.servings) : 1),
+    [selected],
+  );
+
+  const scaledIngredients = useMemo(
+    () => (selected ? getScaledIngredients(selected, selectedServings) : []),
+    [selected, selectedServings],
+  );
+
   const selectedCover = useMemo(
     () => (selected ? getCover(selected) : null),
-    [selected]
+    [selected],
   );
 
   const logout = useCallback(async () => {
@@ -674,7 +685,7 @@ function MyProfileRN({
   useFocusEffect(
     useCallback(() => {
       loadAll();
-    }, [loadAll])
+    }, [loadAll]),
   );
 
   const loadMoreSaved = useCallback(async () => {
@@ -743,10 +754,10 @@ function MyProfileRN({
               }
             },
           },
-        ]
+        ],
       );
     },
-    [lang]
+    [lang],
   );
 
   const confirmRemoveSaved = useCallback(
@@ -763,20 +774,29 @@ function MyProfileRN({
               if (!res.ok) throw new Error(res.error);
 
               setSavedItems((prev) =>
-                prev.filter((r) => String(r?._id || r?.id) !== id)
+                prev.filter((r) => String(r?._id || r?.id) !== id),
               );
             } catch (e: any) {
               Alert.alert(
                 t(lang, "profile", "removeFailedTitle"),
-                e?.message || String(e)
+                e?.message || String(e),
               );
             }
           },
         },
       ]);
     },
-    [lang]
+    [lang],
   );
+
+  const openRecipeModal = useCallback((recipe: any | null | undefined) => {
+    if (!recipe) return;
+
+    setSelected(recipe);
+    setSelectedServings(
+      Number(recipe?.servings) > 0 ? Number(recipe.servings) : 1,
+    );
+  }, []);
 
   const openDetailFromModal = useCallback(() => {
     if (!selected) return;
@@ -792,6 +812,7 @@ function MyProfileRN({
     });
 
     setSelected(null);
+    setSelectedServings(1);
   }, [selected]);
 
   if (loading) {
@@ -885,7 +906,7 @@ function MyProfileRN({
             >
               <Pressable
                 style={{ flex: 1, flexDirection: "row" }}
-                onPress={() => setSelected(item)}
+                onPress={() => openRecipeModal(item)}
               >
                 {cover.isVideo ? (
                   <Video
@@ -976,7 +997,7 @@ function MyProfileRN({
             >
               <Pressable
                 style={{ flex: 1, flexDirection: "row" }}
-                onPress={() => setSelected(item)}
+                onPress={() => openRecipeModal(item)}
               >
                 {cover.isVideo ? (
                   <Video
@@ -1035,7 +1056,10 @@ function MyProfileRN({
         visible={!!selected}
         animationType="slide"
         transparent
-        onRequestClose={() => setSelected(null)}
+        onRequestClose={() => {
+          setSelected(null);
+          setSelectedServings(1);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
@@ -1068,14 +1092,98 @@ function MyProfileRN({
                   textColor={colors.secondaryText}
                 />
               )}
+              <Text style={[styles.modalMeta, { color: colors.secondaryText }]}>
+                {t(lang, "home", "difficulty")}:{" "}
+                {translateDifficulty(lang, selected?.difficulty || "—")}
+              </Text>
 
-              {selected?.ingredients?.length ? (
+              <Text style={[styles.modalMeta, { color: colors.secondaryText }]}>
+                {t(lang, "home", "time")}: {selected?.time || "—"} ⏱️
+              </Text>
+
+              {selected && (
+                <View
+                  style={[
+                    styles.servingsBox,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.background,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.servingsLabel,
+                      { color: colors.secondaryText },
+                    ]}
+                  >
+                    {lang === "cs" ? "Počet porcí" : "Servings"}
+                  </Text>
+
+                  <View style={styles.servingsControls}>
+                    <Pressable
+                      style={[
+                        styles.servingBtn,
+                        {
+                          borderColor: colors.border,
+                          backgroundColor: colors.card,
+                        },
+                      ]}
+                      onPress={() =>
+                        setSelectedServings((prev) => Math.max(1, prev - 1))
+                      }
+                    >
+                      <Text
+                        style={[styles.servingBtnText, { color: colors.text }]}
+                      >
+                        −
+                      </Text>
+                    </Pressable>
+
+                    <Text
+                      style={[styles.servingsValue, { color: colors.text }]}
+                    >
+                      {selectedServings}
+                    </Text>
+
+                    <Pressable
+                      style={[
+                        styles.servingBtn,
+                        {
+                          borderColor: colors.border,
+                          backgroundColor: colors.card,
+                        },
+                      ]}
+                      onPress={() => setSelectedServings((prev) => prev + 1)}
+                    >
+                      <Text
+                        style={[styles.servingBtnText, { color: colors.text }]}
+                      >
+                        +
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.servingsHint,
+                      { color: colors.secondaryText },
+                    ]}
+                  >
+                    {lang === "cs"
+                      ? `Původní recept: ${baseServings} porce`
+                      : `Original recipe: ${baseServings} servings`}
+                  </Text>
+                </View>
+              )}
+
+              {scaledIngredients.length ? (
                 <>
                   <Text style={[styles.section, { color: colors.pillActive }]}>
                     {t(lang, "profile", "ingredients")}
                   </Text>
 
-                  {selected.ingredients.map((ing: string, i: number) => (
+                  {scaledIngredients.map((ing: string, i: number) => (
                     <View
                       key={i}
                       style={[
@@ -1125,7 +1233,10 @@ function MyProfileRN({
                     borderColor: colors.border,
                   },
                 ]}
-                onPress={() => setSelected(null)}
+                onPress={() => {
+                  setSelected(null);
+                  setSelectedServings(1);
+                }}
               >
                 <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
                   {t(lang, "profile", "close")}
@@ -1301,5 +1412,52 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
     alignSelf: "flex-start",
+  },
+  modalMeta: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+
+  servingsBox: {
+    marginTop: 12,
+    marginBottom: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 14,
+  },
+  servingsLabel: {
+    fontSize: 13,
+    marginBottom: 8,
+    fontWeight: "700",
+  },
+  servingsControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+  },
+  servingBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  servingBtnText: {
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 24,
+  },
+  servingsValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    minWidth: 36,
+    textAlign: "center",
+  },
+  servingsHint: {
+    marginTop: 8,
+    textAlign: "center",
+    fontSize: 12,
   },
 });

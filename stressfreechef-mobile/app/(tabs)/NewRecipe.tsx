@@ -47,10 +47,10 @@ type AiRecipeInput = {
   title: string;
   difficulty?: Difficulty;
   time: string;
+  servings?: number;
   ingredients: string[];
   steps: AiStepInput[];
 };
-
 type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
 /* =========================
@@ -81,7 +81,7 @@ function secondsToHmsInput(total: number | undefined | null): string {
   const m = Math.floor(rem / 60);
   const s = rem % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(
-    s
+    s,
   ).padStart(2, "0")}`;
 }
 
@@ -237,7 +237,7 @@ async function pickMediaFromLibrary(): Promise<{
 async function uploadRecipeMediaMobile(
   token: string,
   recipeId: string,
-  uri: string
+  uri: string,
 ): Promise<ActionResult<true>> {
   try {
     const formData = new FormData();
@@ -274,7 +274,7 @@ async function uploadStepMediaMobile(
   recipeId: string,
   stepIndex: number,
   uri: string,
-  mediaType: LocalMediaType
+  mediaType: LocalMediaType,
 ): Promise<ActionResult<true>> {
   try {
     const formData = new FormData();
@@ -304,7 +304,7 @@ async function uploadStepMediaMobile(
 
 async function publishRecipeMobile(
   token: string,
-  recipeId: string
+  recipeId: string,
 ): Promise<ActionResult<true>> {
   try {
     const res = await fetch(`${BASE}/api/my-recipes/${recipeId}`, {
@@ -329,7 +329,7 @@ async function publishRecipeMobile(
 
 function validateAiRecipeInput(
   lang: Lang,
-  parsed: any
+  parsed: any,
 ): ActionResult<AiRecipeInput> {
   if (!parsed || typeof parsed !== "object") {
     return {
@@ -374,7 +374,18 @@ function validateAiRecipeInput(
           : "Missing steps (at least one step with description).",
     };
   }
-
+  if (
+    parsed.servings != null &&
+    (!Number.isFinite(Number(parsed.servings)) || Number(parsed.servings) < 1)
+  ) {
+    return {
+      ok: false,
+      error:
+        lang === "cs"
+          ? 'Pole "servings" musí být číslo 1 nebo větší.'
+          : '"servings" must be a number greater than or equal to 1.',
+    };
+  }
   return { ok: true, data: parsed as AiRecipeInput };
 }
 
@@ -387,8 +398,9 @@ export default function NewRecipeScreen() {
   const { colors } = useTheme();
 
   const [title, setTitle] = useState("");
-  const [difficulty, setDifficulty] = useState<Difficulty>("Beginner");
-  const [time, setTime] = useState(""); // "HH:MM"
+  const [difficulty, setDifficulty] = useState("Beginner");
+  const [time, setTime] = useState("00:00");
+  const [servings, setServings] = useState("1");
   const [isPublic, setIsPublic] = useState(false);
 
   const [thumbUri, setThumbUri] = useState<string | null>(null);
@@ -434,14 +446,14 @@ export default function NewRecipeScreen() {
       prev.map((s, i) =>
         i === index
           ? { ...s, localUri: picked.uri, mediaType: picked.mediaType }
-          : s
-      )
+          : s,
+      ),
     );
   }, []);
 
   const updateStepDesc = useCallback((index: number, value: string) => {
     setSteps((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, description: value } : s))
+      prev.map((s, i) => (i === index ? { ...s, description: value } : s)),
     );
   }, []);
 
@@ -471,7 +483,7 @@ export default function NewRecipeScreen() {
   function updateStepTimerPart(
     index: number,
     part: "h" | "m" | "s",
-    raw: string
+    raw: string,
   ) {
     setSteps((prev) =>
       prev.map((step, i) => {
@@ -486,11 +498,11 @@ export default function NewRecipeScreen() {
         const nextS = part === "s" ? n : Number(current.s);
 
         const formatted = `${String(nextH).padStart(2, "0")}:${String(
-          nextM
+          nextM,
         ).padStart(2, "0")}:${String(nextS).padStart(2, "0")}`;
 
         return { ...step, timerInput: formatted };
-      })
+      }),
     );
   }
 
@@ -505,7 +517,7 @@ export default function NewRecipeScreen() {
 
     const formatted = `${String(h).padStart(2, "0")}:${String(m).padStart(
       2,
-      "0"
+      "0",
     )}`;
     setTime(formatted);
     setShowTimePicker(false);
@@ -520,6 +532,7 @@ export default function NewRecipeScreen() {
   "title": "Název receptu",
   "difficulty": "Beginner",
   "time": "00:20",
+  "servings": 2,
   "ingredients": [
     "Popis ingredience 1",
     "Popis ingredience 2"
@@ -535,6 +548,7 @@ POŽADAVKY:
 - ⚠️ Pole "difficulty" NIKDY nepřekládej. Musí být přesně jedno z:
   "Beginner", "Intermediate", "Hard".
 - "time" nech ve formátu HH:MM.
+- Přidej "servings" jako číslo (např. 1 nebo 2).
 - "steps" je pole kroků. Každý krok musí mít "description" a volitelné "timerSeconds".
 - Odpověz POUZE čistým JSONem bez vysvětlení.
 
@@ -545,6 +559,7 @@ Tady je recept:`
   "title": "Recipe title",
   "difficulty": "Beginner",
   "time": "00:20",
+  "servings": 2,
   "ingredients": [
     "Ingredient 1",
     "Ingredient 2"
@@ -560,6 +575,7 @@ REQUIREMENTS:
 - ⚠️ The "difficulty" field must NEVER be translated. It must be exactly one of:
   "Beginner", "Intermediate", "Hard".
 - Leave "time" in HH:MM.
+- Include "servings" as a number (for example 1 or 2).
 - "steps" must be an array. Each step must contain "description" and optional "timerSeconds".
 - Respond ONLY with clean JSON, no explanation.
 
@@ -571,7 +587,7 @@ Here is the recipe:`;
       lang === "cs" ? "Zkopírováno" : "Copied",
       lang === "cs"
         ? "Prompt pro AI byl zkopírován."
-        : "AI prompt has been copied."
+        : "AI prompt has been copied.",
     );
   }, [lang]);
 
@@ -584,7 +600,7 @@ Here is the recipe:`;
         parsed = JSON.parse(raw);
       } catch {
         setAiImportErr(
-          lang === "cs" ? "Text není validní JSON." : "Text is not valid JSON."
+          lang === "cs" ? "Text není validní JSON." : "Text is not valid JSON.",
         );
         return;
       }
@@ -605,8 +621,14 @@ Here is the recipe:`;
 
       setTime(data.time.trim());
 
+      setServings(
+        data.servings != null && Number(data.servings) > 0
+          ? String(Math.floor(Number(data.servings)))
+          : "1",
+      );
+
       setIngredients(
-        data.ingredients.map((i) => String(i || "").trim()).filter(Boolean)
+        data.ingredients.map((i) => String(i || "").trim()).filter(Boolean),
       );
 
       const mappedSteps: LocalStep[] = data.steps.map((s) => ({
@@ -626,24 +648,32 @@ Here is the recipe:`;
                 localUri: null,
                 mediaType: null,
               },
-            ]
+            ],
       );
     },
-    [lang]
+    [lang],
   );
 
   const handleSubmit = useCallback(async () => {
     try {
       setErr(null);
       setSuccessMsg(null);
-
       if (!title.trim() || !difficulty || !time.trim()) {
         setErr(t(lang, "newRecipe", "errorFillMainFields"));
         return;
       }
+      const servingsNumber = parseInt(servings, 10);
+      if (Number.isNaN(servingsNumber) || servingsNumber < 1) {
+        setErr(
+          lang === "cs"
+            ? "Počet porcí musí být alespoň 1."
+            : "Servings must be at least 1.",
+        );
+        return;
+      }
 
       const hasTextStep = steps.some(
-        (s) => (s.description || "").trim().length > 0
+        (s) => (s.description || "").trim().length > 0,
       );
       if (!hasTextStep) {
         setErr(t(lang, "newRecipe", "errorNoStep"));
@@ -662,7 +692,7 @@ Here is the recipe:`;
                 }: Časovač musí být ve formátu "mm:ss", "hh:mm:ss" nebo jako počet sekund.`
               : `Step ${
                   i + 1
-                }: Timer must be in "mm:ss", "hh:mm:ss" or a number of seconds.`
+                }: Timer must be in "mm:ss", "hh:mm:ss" or a number of seconds.`,
           );
           return;
         }
@@ -674,7 +704,7 @@ Here is the recipe:`;
       if (!token) {
         Alert.alert(
           t(lang, "newRecipe", "notLoggedInTitle"),
-          t(lang, "newRecipe", "notLoggedInMsg")
+          t(lang, "newRecipe", "notLoggedInMsg"),
         );
         return;
       }
@@ -696,6 +726,7 @@ Here is the recipe:`;
         title: title.trim(),
         difficulty,
         time: time.trim(),
+        servings: Math.max(1, parseInt(servings, 10) || 1),
         imgSrc: undefined,
         ingredients: ingredients
           .map((ing) => (ing || "").trim())
@@ -729,11 +760,11 @@ Here is the recipe:`;
               recipeId,
               index,
               s.localUri,
-              s.mediaType
+              s.mediaType,
             );
           }
           return { ok: true, data: true } as ActionResult<true>;
-        })
+        }),
       );
 
       const failed = uploads.find((r) => !r.ok) as
@@ -749,19 +780,20 @@ Here is the recipe:`;
       setSuccessMsg(
         isPublic
           ? t(lang, "newRecipe", "recipeCreatedPublic")
-          : t(lang, "newRecipe", "recipeCreated")
+          : t(lang, "newRecipe", "recipeCreated"),
       );
 
       Alert.alert(
         lang === "cs" ? "Recept vytvořen" : "Recipe created",
         lang === "cs"
           ? "Recept byl úspěšně vytvořen."
-          : "The recipe was successfully created."
+          : "The recipe was successfully created.",
       );
 
       setTitle("");
       setDifficulty("Beginner");
       setTime("");
+      setServings("1");
       setIsPublic(false);
       setThumbUri(null);
       setThumbMediaType("image");
@@ -777,7 +809,17 @@ Here is the recipe:`;
     } finally {
       setSaving(false);
     }
-  }, [title, difficulty, time, steps, ingredients, isPublic, thumbUri, lang]);
+  }, [
+    title,
+    difficulty,
+    time,
+    servings,
+    steps,
+    ingredients,
+    isPublic,
+    thumbUri,
+    lang,
+  ]);
 
   /* =========================
      UI
@@ -886,7 +928,24 @@ Here is the recipe:`;
             onChange={(_, date) => handleRecipeTimeChange(date || undefined)}
           />
         )}
-
+        <Text style={[styles.label, { color: colors.text }]}>
+          {lang === "cs" ? "Počet porcí" : "Servings"}
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
+          placeholder={lang === "cs" ? "Např. 2" : "E.g. 2"}
+          placeholderTextColor={colors.muted}
+          keyboardType="number-pad"
+          value={servings}
+          onChangeText={(val) => setServings(val.replace(/\D/g, ""))}
+        />
         <View style={styles.publicRow}>
           <Text style={[styles.label, { color: colors.text }]}>
             {t(lang, "newRecipe", "publicLabel")}
@@ -946,6 +1005,7 @@ Here is the recipe:`;
   "title": "Avocado Toast with Egg",
   "difficulty": "Beginner",
   "time": "00:15",
+  "servings": 2,
   "ingredients": ["..."],
   "steps": [
     { "description": "First step...", "timerSeconds": 180 }
@@ -1035,7 +1095,56 @@ Here is the recipe:`;
           )}
         </Pressable>
       </View>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          {t(lang, "newRecipe", "ingredientsTitle")}
+        </Text>
 
+        {ingredients.map((ing, index) => (
+          <View key={index} style={styles.ingredientRow}>
+            <TextInput
+              style={[
+                styles.input,
+                styles.ingredientInput,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
+              placeholderTextColor={colors.muted}
+              placeholder={t(lang, "newRecipe", "ingredientPlaceholder")}
+              value={ing}
+              onChangeText={(val) => updateIngredient(index, val)}
+            />
+
+            {ingredients.length > 1 && (
+              <Pressable
+                style={[styles.removeBtn, { backgroundColor: colors.card }]}
+                onPress={() => removeIngredient(index)}
+              >
+                <Text style={[styles.removeBtnText, { color: colors.danger }]}>
+                  X
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        ))}
+
+        <Pressable
+          style={[styles.addBtn, { borderColor: colors.border }]}
+          onPress={addIngredient}
+        >
+          <Text style={[styles.addBtnText, { color: colors.text }]}>
+            {t(lang, "newRecipe", "addIngredientBtn")}
+          </Text>
+        </Pressable>
+      </View>
       <View
         style={[
           styles.card,
@@ -1202,57 +1311,6 @@ Here is the recipe:`;
         >
           <Text style={[styles.addBtnText, { color: colors.text }]}>
             {t(lang, "newRecipe", "addStepBtn")}
-          </Text>
-        </Pressable>
-      </View>
-
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
-      >
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {t(lang, "newRecipe", "ingredientsTitle")}
-        </Text>
-
-        {ingredients.map((ing, index) => (
-          <View key={index} style={styles.ingredientRow}>
-            <TextInput
-              style={[
-                styles.input,
-                styles.ingredientInput,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  color: colors.text,
-                },
-              ]}
-              placeholderTextColor={colors.muted}
-              placeholder={t(lang, "newRecipe", "ingredientPlaceholder")}
-              value={ing}
-              onChangeText={(val) => updateIngredient(index, val)}
-            />
-
-            {ingredients.length > 1 && (
-              <Pressable
-                style={[styles.removeBtn, { backgroundColor: colors.card }]}
-                onPress={() => removeIngredient(index)}
-              >
-                <Text style={[styles.removeBtnText, { color: colors.danger }]}>
-                  X
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        ))}
-
-        <Pressable
-          style={[styles.addBtn, { borderColor: colors.border }]}
-          onPress={addIngredient}
-        >
-          <Text style={[styles.addBtnText, { color: colors.text }]}>
-            {t(lang, "newRecipe", "addIngredientBtn")}
           </Text>
         </Pressable>
       </View>

@@ -1041,12 +1041,29 @@ function MyProfileRN({
                 </View>
               </Pressable>
 
-              <Pressable
-                onPress={() => confirmDeleteMy(rid)}
-                style={styles.iconBtn}
-              >
-                <MaterialIcons name="close" size={18} color={colors.text} />
-              </Pressable>
+              <View style={styles.cardActions}>
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: "/NewRecipe",
+                      params: {
+                        mode: "edit",
+                        recipe: JSON.stringify(item),
+                      },
+                    })
+                  }
+                  style={styles.iconBtn}
+                >
+                  <MaterialIcons name="edit" size={18} color={colors.text} />
+                </Pressable>
+
+                <Pressable
+                  onPress={() => confirmDeleteMy(rid)}
+                  style={styles.iconBtn}
+                >
+                  <MaterialIcons name="close" size={18} color={colors.text} />
+                </Pressable>
+              </View>
             </View>
           );
         }}
@@ -1366,9 +1383,9 @@ const styles = StyleSheet.create({
 
   iconBtn: {
     width: 40,
-    height: 100,
+    height: 40,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
   },
 
   modalOverlay: {
@@ -1459,5 +1476,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center",
     fontSize: 12,
+  },
+  cardActions: {
+    display: "flex",
+    flexDirection: "row",
+    marginBottom: 30,
   },
 });

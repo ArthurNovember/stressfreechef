@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Clipboard from "expo-clipboard";
@@ -31,7 +31,8 @@ type LocalMediaType = "image" | "video";
 type LocalStep = {
   description: string;
   timerInput: string;
-  localUri?: string | null;
+  previewUri?: string | null;
+  uploadUri?: string | null;
   mediaType?: LocalMediaType | null;
 };
 
@@ -323,6 +324,29 @@ async function publishRecipeMobile(
   }
 }
 
+async function updateMyRecipeMobile(
+  token: string,
+  recipeId: string,
+  payload: any,
+): Promise<ActionResult<any>> {
+  try {
+    const res = await fetch(`${BASE}/api/my-recipes/${recipeId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) return { ok: false, error: await res.text() };
+
+    const data = await res.json().catch(() => null);
+    return { ok: true, data };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "Update failed." };
+  }
+}
 /* =========================
    AI 
 ========================= */
@@ -396,6 +420,22 @@ function validateAiRecipeInput(
 export default function NewRecipeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const params = useLocalSearchParams<{
+    mode?: string;
+    recipe?: string;
+  }>();
+
+  const isEditMode = params.mode === "edit";
+
+  const editingRecipe = useMemo(() => {
+    if (!isEditMode || !params.recipe) return null;
+
+    try {
+      return JSON.parse(String(params.recipe));
+    } catch {
+      return null;
+    }
+  }, [isEditMode, params.recipe]);
 
   const [title, setTitle] = useState("");
   const [difficulty, setDifficulty] = useState("Beginner");
@@ -403,11 +443,18 @@ export default function NewRecipeScreen() {
   const [servings, setServings] = useState("1");
   const [isPublic, setIsPublic] = useState(false);
 
-  const [thumbUri, setThumbUri] = useState<string | null>(null);
+  const [thumbPreviewUri, setThumbPreviewUri] = useState<string | null>(null);
+  const [thumbUploadUri, setThumbUploadUri] = useState<string | null>(null);
   const [thumbMediaType, setThumbMediaType] = useState<LocalMediaType>("image");
 
   const [steps, setSteps] = useState<LocalStep[]>([
-    { description: "", timerInput: "", localUri: null, mediaType: null },
+    {
+      description: "",
+      timerInput: "",
+      previewUri: null,
+      uploadUri: null,
+      mediaType: null,
+    },
   ]);
   const [ingredients, setIngredients] = useState<string[]>([""]);
 
@@ -425,6 +472,57 @@ export default function NewRecipeScreen() {
     (async () => setLang(await loadLang()))();
   }, []);
 
+  useEffect(() => {
+    if (!editingRecipe) return;
+
+    setTitle(editingRecipe.title || "");
+    setDifficulty(editingRecipe.difficulty || "Beginner");
+    setTime(editingRecipe.time || "00:00");
+    setServings(
+      Number(editingRecipe.servings) > 0 ? String(editingRecipe.servings) : "1",
+    );
+    setIsPublic(Boolean(editingRecipe.isPublic));
+
+    setIngredients(
+      Array.isArray(editingRecipe.ingredients) &&
+        editingRecipe.ingredients.length
+        ? editingRecipe.ingredients
+        : [""],
+    );
+
+    const thumbFromRecipe =
+      editingRecipe?.image?.url || editingRecipe?.imgSrc || null;
+
+    setThumbPreviewUri(thumbFromRecipe);
+    setThumbUploadUri(null);
+
+    const mappedSteps =
+      Array.isArray(editingRecipe.steps) && editingRecipe.steps.length
+        ? editingRecipe.steps.map((s: any) => ({
+            description: s.description || "",
+            timerInput: secondsToHmsInput(s.timerSeconds),
+            previewUri: s.src || null,
+            uploadUri: null,
+            mediaType:
+              s.type === "video"
+                ? "video"
+                : s.type === "image"
+                  ? "image"
+                  : null,
+          }))
+        : [
+            {
+              description: "",
+              timerInput: "",
+              previewUri: null,
+              uploadUri: null,
+              mediaType: null,
+            },
+          ];
+
+    setSteps(mappedSteps);
+  }, [editingRecipe]);
+
   const timePickerDate = useMemo(() => convertRecipeTimeToDate(time), [time]);
 
   /* =========================
@@ -434,7 +532,9 @@ export default function NewRecipeScreen() {
   const handlePickThumb = useCallback(async () => {
     const picked = await pickMediaFromLibrary();
     if (!picked) return;
-    setThumbUri(picked.uri);
+
+    setThumbPreviewUri(picked.uri);
+    setThumbUploadUri(picked.uri);
     setThumbMediaType(picked.mediaType);
   }, []);
 
@@ -445,12 +545,16 @@ export default function NewRecipeScreen() {
     setSteps((prev) =>
       prev.map((s, i) =>
         i === index
-          ? { ...s, localUri: picked.uri, mediaType: picked.mediaType }
+          ? {
+              ...s,
+              previewUri: picked.uri,
+              uploadUri: picked.uri,
+              mediaType: picked.mediaType,
+            }
           : s,
       ),
     );
   }, []);
-
   const updateStepDesc = useCallback((index: number, value: string) => {
     setSteps((prev) =>
       prev.map((s, i) => (i === index ? { ...s, description: value } : s)),
@@ -460,7 +564,13 @@ export default function NewRecipeScreen() {
   const addStep = useCallback(() => {
     setSteps((prev) => [
       ...prev,
-      { description: "", timerInput: "", localUri: null, mediaType: null },
+      {
+        description: "",
+        timerInput: "",
+        previewUri: null,
+        uploadUri: null,
+        mediaType: null,
+      },
     ]);
   }, []);
 
@@ -634,7 +744,8 @@ Here is the recipe:`;
       const mappedSteps: LocalStep[] = data.steps.map((s) => ({
         description: String(s.description || "").trim(),
         timerInput: secondsToHmsInput(s.timerSeconds),
-        localUri: null,
+        previewUri: null,
+        uploadUri: null,
         mediaType: null,
       }));
 
@@ -645,7 +756,8 @@ Here is the recipe:`;
               {
                 description: "",
                 timerInput: "",
-                localUri: null,
+                previewUri: null,
+                uploadUri: null,
                 mediaType: null,
               },
             ],
@@ -712,11 +824,18 @@ Here is the recipe:`;
       const payloadSteps = steps
         .map((s) => {
           const description = (s.description || "").trim();
-          const base: any = { type: "text", description };
+          const base: any = {
+            type: s.mediaType || "text",
+            description,
+          };
 
           const rawTimer = s.timerInput.trim();
           const seconds = rawTimer ? parseTimerInput(rawTimer) : null;
           if (seconds && seconds > 0) base.timerSeconds = seconds;
+
+          if (s.previewUri && !s.uploadUri) {
+            base.src = s.previewUri;
+          }
 
           return base;
         })
@@ -727,39 +846,54 @@ Here is the recipe:`;
         difficulty,
         time: time.trim(),
         servings: Math.max(1, parseInt(servings, 10) || 1),
-        imgSrc: undefined,
         ingredients: ingredients
           .map((ing) => (ing || "").trim())
           .filter(Boolean),
         steps: payloadSteps,
-        isPublic: false,
+        isPublic,
       };
 
-      const created = await fetchJSON<any>(`${BASE}/api/my-recipes`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      let recipeId = "";
 
-      const recipeId = String(created?._id || "");
-      if (!recipeId) throw new Error("Recipe creation failed (missing _id).");
+      if (isEditMode && editingRecipe?._id) {
+        const updated = await updateMyRecipeMobile(
+          token,
+          String(editingRecipe._id),
+          payload,
+        );
 
-      if (thumbUri) {
-        const up = await uploadRecipeMediaMobile(token, recipeId, thumbUri);
-        if (!up.ok) throw new Error(up.error);
+        if (!updated.ok) throw new Error(updated.error);
+        recipeId = String(updated.data?._id || editingRecipe._id);
+      } else {
+        const created = await fetchJSON<any>(`${BASE}/api/my-recipes`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        recipeId = String(created?._id || "");
+        if (!recipeId) throw new Error("Recipe creation failed (missing _id).");
       }
 
+      if (thumbUploadUri) {
+        const up = await uploadRecipeMediaMobile(
+          token,
+          recipeId,
+          thumbUploadUri,
+        );
+        if (!up.ok) throw new Error(up.error);
+      }
       const uploads = await Promise.all(
         steps.map(async (s, index) => {
-          if (s.localUri && s.mediaType) {
+          if (s.uploadUri && s.mediaType) {
             return uploadStepMediaMobile(
               token,
               recipeId,
               index,
-              s.localUri,
+              s.uploadUri,
               s.mediaType,
             );
           }
@@ -772,9 +906,30 @@ Here is the recipe:`;
         | undefined;
       if (failed && !failed.ok) throw new Error(failed.error);
 
-      if (isPublic) {
+      if (!isEditMode && isPublic) {
         const pub = await publishRecipeMobile(token, recipeId);
         if (!pub.ok) throw new Error(pub.error);
+      }
+
+      if (isEditMode) {
+        setSuccessMsg(
+          lang === "cs" ? "Recept byl upraven." : "Recipe was updated.",
+        );
+
+        Alert.alert(
+          lang === "cs" ? "Recept upraven" : "Recipe updated",
+          lang === "cs"
+            ? "Recept byl úspěšně upraven."
+            : "The recipe was successfully updated.",
+          [
+            {
+              text: "OK",
+              onPress: () => router.replace("/profile"),
+            },
+          ],
+        );
+
+        return;
       }
 
       setSuccessMsg(
@@ -795,10 +950,17 @@ Here is the recipe:`;
       setTime("");
       setServings("1");
       setIsPublic(false);
-      setThumbUri(null);
+      setThumbPreviewUri(null);
+      setThumbUploadUri(null);
       setThumbMediaType("image");
       setSteps([
-        { description: "", timerInput: "", localUri: null, mediaType: null },
+        {
+          description: "",
+          timerInput: "",
+          previewUri: null,
+          uploadUri: null,
+          mediaType: null,
+        },
       ]);
       setIngredients([""]);
       setAiText("");
@@ -817,8 +979,11 @@ Here is the recipe:`;
     steps,
     ingredients,
     isPublic,
-    thumbUri,
+    thumbUploadUri,
     lang,
+    isEditMode,
+    editingRecipe,
+    router,
   ]);
 
   /* =========================
@@ -833,6 +998,15 @@ Here is the recipe:`;
         { backgroundColor: colors.background },
       ]}
     >
+      <Text style={[styles.pageTitle, { color: colors.text }]}>
+        {isEditMode
+          ? lang === "cs"
+            ? "Upravit recept"
+            : "Edit Recipe"
+          : lang === "cs"
+            ? "Nový recept"
+            : "New Recipe"}
+      </Text>
       {err && (
         <Text style={[styles.error, { color: colors.danger }]}>{err}</Text>
       )}
@@ -1080,9 +1254,12 @@ Here is the recipe:`;
           ]}
           onPress={handlePickThumb}
         >
-          {thumbUri ? (
+          {thumbPreviewUri ? (
             thumbMediaType === "image" ? (
-              <Image source={{ uri: thumbUri }} style={styles.thumbImage} />
+              <Image
+                source={{ uri: thumbPreviewUri }}
+                style={styles.thumbImage}
+              />
             ) : (
               <Text style={[styles.thumbPlaceholder, { color: colors.muted }]}>
                 {t(lang, "newRecipe", "thumbVideoSelected")}
@@ -1205,10 +1382,10 @@ Here is the recipe:`;
                 ]}
                 onPress={() => handlePickStepMedia(index)}
               >
-                {step.localUri ? (
+                {step.previewUri ? (
                   step.mediaType === "image" ? (
                     <Image
-                      source={{ uri: step.localUri }}
+                      source={{ uri: step.previewUri }}
                       style={styles.stepImage}
                     />
                   ) : (
@@ -1327,7 +1504,11 @@ Here is the recipe:`;
           <ActivityIndicator />
         ) : (
           <Text style={[styles.submitBtnText, { color: colors.text }]}>
-            {t(lang, "newRecipe", "createBtn")}
+            {isEditMode
+              ? lang === "cs"
+                ? "Uložit změny"
+                : "Save changes"
+              : t(lang, "newRecipe", "createBtn")}
           </Text>
         )}
       </Pressable>
@@ -1596,5 +1777,10 @@ const styles = StyleSheet.create({
   aiCopyBtnText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 4,
   },
 });

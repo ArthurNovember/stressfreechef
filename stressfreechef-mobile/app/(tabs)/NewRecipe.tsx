@@ -425,17 +425,20 @@ export default function NewRecipeScreen() {
     recipe?: string;
   }>();
 
-  const isEditMode = params.mode === "edit";
+  const [editingRecipe, setEditingRecipe] = useState<any | null>(null);
 
-  const editingRecipe = useMemo(() => {
-    if (!isEditMode || !params.recipe) return null;
+  const isEditMode = !!editingRecipe;
+
+  useEffect(() => {
+    if (params.mode !== "edit" || !params.recipe) return;
 
     try {
-      return JSON.parse(String(params.recipe));
+      const parsed = JSON.parse(String(params.recipe));
+      setEditingRecipe(parsed);
     } catch {
-      return null;
+      setEditingRecipe(null);
     }
-  }, [isEditMode, params.recipe]);
+  }, [params.mode, params.recipe]);
 
   const [title, setTitle] = useState("");
   const [difficulty, setDifficulty] = useState("Beginner");
@@ -936,6 +939,7 @@ Here is the recipe:`;
         if (!pub.ok) throw new Error(pub.error);
       }
       if (isEditMode) {
+        setEditingRecipe(null);
         resetForm();
 
         Alert.alert(

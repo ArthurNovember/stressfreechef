@@ -19,21 +19,26 @@ type StructuredIngredient = {
 type RecipeWithScaling = {
   servings?: number | string;
   structuredIngredients?: StructuredIngredient[];
+  structuredIngredientsCs?: StructuredIngredient[];
   ingredients?: string[];
+  ingredientsCs?: string[];
 };
 
 export function getScaledIngredients(
   recipe: RecipeWithScaling | null | undefined,
   targetServings: number,
+  lang: "en" | "cs" = "en",
 ) {
   const baseServings =
     Number(recipe?.servings) > 0 ? Number(recipe?.servings) : 1;
 
   const ratio = targetServings / baseServings;
-
-  const structured = Array.isArray(recipe?.structuredIngredients)
-    ? recipe!.structuredIngredients!
-    : [];
+  const structured =
+    lang === "cs" && Array.isArray(recipe?.structuredIngredientsCs)
+      ? recipe!.structuredIngredientsCs!
+      : Array.isArray(recipe?.structuredIngredients)
+        ? recipe!.structuredIngredients!
+        : [];
 
   if (structured.length > 0) {
     return structured.map((item) => {
@@ -48,6 +53,10 @@ export function getScaledIngredients(
 
       return `${qtyText}${unitText}${nameText}`.trim();
     });
+  }
+
+  if (lang === "cs" && Array.isArray(recipe?.ingredientsCs)) {
+    return recipe.ingredientsCs;
   }
 
   return Array.isArray(recipe?.ingredients) ? recipe.ingredients : [];

@@ -66,6 +66,14 @@ type Recipe = {
     original?: string;
     scalable?: boolean;
   }[];
+
+  structuredIngredientsCs?: {
+    quantity?: number | null;
+    unit?: string;
+    name?: string;
+    original?: string;
+    scalable?: boolean;
+  }[];
 };
 
 type ActiveTab = "EASIEST" | "NEWEST" | "FAVORITE" | "RANDOM";
@@ -616,17 +624,10 @@ export default function HomeScreen() {
     Number(selected?.servings) > 0 ? Number(selected?.servings) : 1;
 
   const scaledIngredients = selected
-    ? getScaledIngredients(selected, selectedServings)
+    ? getScaledIngredients(selected, selectedServings, lang)
     : [];
 
-  const selectedIngredients =
-    selected &&
-    Array.isArray(selected.structuredIngredients) &&
-    selected.structuredIngredients.length
-      ? scaledIngredients
-      : selected
-        ? getRecipeIngredients(selected, lang)
-        : [];
+  const selectedIngredients = scaledIngredients;
 
   /* =========================
      HANDLERS

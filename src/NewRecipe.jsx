@@ -30,7 +30,7 @@ const NewRecipe = () => {
   const [thumbIsVideo, setThumbIsVideo] = useState(false);
 
   const [ingredients, setIngredients] = useState([""]);
-
+  const [servings, setServings] = useState("1");
   const [steps, setSteps] = useState([
     {
       description: "",
@@ -59,6 +59,9 @@ const NewRecipe = () => {
     setTitle(editingRecipe.title || "");
     setDifficulty(editingRecipe.difficulty || "Beginner");
     setTime(editingRecipe.time || "00:00");
+    setServings(
+      Number(editingRecipe.servings) > 0 ? String(editingRecipe.servings) : "1",
+    );
     setIsPublic(Boolean(editingRecipe.isPublic));
 
     setIngredients(
@@ -233,6 +236,16 @@ const NewRecipe = () => {
       return { ok: false, error: "Expected a JSON object." };
     }
 
+    if (
+      parsed.servings != null &&
+      (!Number.isFinite(Number(parsed.servings)) || Number(parsed.servings) < 1)
+    ) {
+      return {
+        ok: false,
+        error: '"servings" must be a number greater than or equal to 1.',
+      };
+    }
+
     if (!parsed.title || typeof parsed.title !== "string") {
       return { ok: false, error: "Missing title." };
     }
@@ -267,6 +280,7 @@ const NewRecipe = () => {
   "title": "Recipe title",
   "difficulty": "Beginner",
   "time": "00:20",
+  "servings": 2,
   "ingredients": [
     "Ingredient 1",
     "Ingredient 2"
@@ -282,6 +296,7 @@ REQUIREMENTS:
 - ⚠️ The "difficulty" field must NEVER be translated. It must be exactly one of:
   "Beginner", "Intermediate", "Hard".
 - Leave "time" in HH:MM.
+- Include "servings" as a number (for example 1 or 2).
 - "steps" must be an array. Each step must contain "description" and optional "timerSeconds".
 - Respond ONLY with clean JSON, no explanation.
 
@@ -322,6 +337,12 @@ Here is the recipe:`;
     );
     setTime(String(data.time || "").trim());
 
+    setServings(
+      data.servings != null && Number(data.servings) > 0
+        ? String(Math.floor(Number(data.servings)))
+        : "1",
+    );
+
     setIngredients(
       (data.ingredients || [])
         .map((i) => String(i || "").trim())
@@ -352,6 +373,11 @@ Here is the recipe:`;
   function validate() {
     if (!title.trim() || !difficulty || !time.trim()) {
       return "Fill in Title, Difficulty and Time.";
+    }
+
+    const servingsNumber = parseInt(servings, 10);
+    if (Number.isNaN(servingsNumber) || servingsNumber < 1) {
+      return "Servings must be at least 1.";
     }
 
     const hasTextStep = steps.some(
@@ -402,6 +428,7 @@ Here is the recipe:`;
         title: title.trim(),
         difficulty,
         time: time.trim(),
+        servings: Math.max(1, parseInt(servings, 10) || 1),
         ingredients: ingredients.map((i) => i.trim()).filter(Boolean),
         steps: steps
           .map((s) => {
@@ -414,7 +441,6 @@ Here is the recipe:`;
             return out;
           })
           .filter((s) => s.description),
-
         isPublic,
       };
 
@@ -464,6 +490,7 @@ Here is the recipe:`;
     setTitle("");
     setDifficulty("Beginner");
     setTime("00:00");
+    setServings("1");
     setIsPublic(false);
     setThumbFile(null);
     setThumbPreview(null);
@@ -526,6 +553,17 @@ Here is the recipe:`;
                 type="time"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
+              />
+            </div>
+            <div className="inputAdd">
+              <label>Servings</label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={servings}
+                onChange={(e) => setServings(e.target.value.replace(/\D/g, ""))}
+                placeholder="e.g. 2"
               />
             </div>
             <div className="inputAdd">

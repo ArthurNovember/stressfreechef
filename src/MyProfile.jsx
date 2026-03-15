@@ -5,7 +5,6 @@ import { deleteMyRecipe } from "./api";
 import StarRating from "./StarRating";
 import { MdAddShoppingCart } from "react-icons/md";
 import { getScaledIngredients } from "./recipeScaling";
-
 /* -----------------------------
    API config
 ----------------------------- */

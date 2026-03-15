@@ -7,8 +7,6 @@
   overflow-y: auto;
 }
 
-.new h4 {
-}
 .mainInfo {
   display: flex;
   justify-content: space-around;

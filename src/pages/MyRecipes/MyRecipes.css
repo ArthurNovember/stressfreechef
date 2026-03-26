@@ -1,0 +1,172 @@
+.MyCategory {
+  margin-bottom: 5px;
+}
+
+.My {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+
+  justify-content: center;
+}
+
+.recipeContainer2 {
+  background-color: rgb(19, 19, 19);
+  display: flex;
+  justify-content: center;
+  margin-left: 0px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  border-radius: 8px;
+  border: solid 4px rgb(25, 25, 25);
+}
+
+.recipeCard2 {
+  margin: 10px;
+  background-color: rgb(30, 27, 27);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 760px;
+}
+
+.recipeCard2 img {
+  border-radius: 8px;
+}
+
+.texto {
+  margin-left: 40px;
+  margin-right: 30px;
+}
+
+.MyRecipeNewRecipe {
+  display: flex;
+  border-bottom: 5px rgb(114, 3, 3) solid;
+  padding: bottom 0px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.newRecipe {
+  width: 150px;
+  padding: 0px;
+  height: 50px;
+  background-color: rgb(79, 77, 77);
+  margin-top: 20px;
+}
+
+.myProfile {
+  padding-top: 5px;
+  background: radial-gradient(circle at top, #301e21 0, #090505 55%);
+  min-height: 100vh;
+}
+
+.deleteButton {
+  max-height: 40px;
+  max-width: 40px;
+  position: relative;
+  text-align: center;
+}
+
+.deleteButton:hover {
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.logout {
+  background: rgb(114, 3, 3);
+  box-shadow: 0 0.1px 20px rgba(230, 67, 67, 0.35);
+  width: 150px;
+  margin-left: 20px;
+  border-radius: 5px;
+  margin-top: 20px;
+  font-size: large;
+}
+
+.deleteContainer {
+  display: flex;
+  padding-top: 50px;
+}
+
+.deleteAccount {
+  margin-left: auto;
+  width: 250px;
+  border-top-right-radius: 0px;
+  background: transparent;
+  color: rgb(255, 2, 2);
+  text-decoration: underline;
+}
+
+.deleteAccount:hover {
+  margin-left: auto;
+  width: 250px;
+  border-top-right-radius: 0px;
+  background: transparent;
+  color: rgb(120, 5, 5);
+  text-decoration: underline;
+  border: 0;
+}
+
+.myRecipes,
+.savedRecipes {
+  width: min(820px, 100%);
+  padding: 2vh;
+}
+
+.profileFooter {
+  align-items: baseline;
+  text-align: left;
+  border-top: solid 1px rgb(40, 38, 38);
+  margin-top: 30px;
+}
+
+.obrazek {
+  height: 200px;
+}
+
+.recipeActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.editRecipeBtn {
+  max-height: 40px;
+  max-width: 40px;
+  position: relative;
+  text-align: center;
+}
+
+.editRecipeBtn:hover {
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.deleteRecipeBtn {
+  background: #e33;
+  color: white;
+}
+
+.recipeButtonWrapper {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+  .My {
+    flex-wrap: wrap;
+  }
+
+  .recipeCard2 {
+    flex-direction: column;
+  }
+
+  .obrazek {
+    width: 100%;
+    height: 100%;
+  }
+}

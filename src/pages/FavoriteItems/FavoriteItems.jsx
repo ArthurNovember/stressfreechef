@@ -1,191 +1,122 @@
 import { useState, useEffect, useRef } from "react";
 import "./FavoriteItems.css";
+import { useShopping } from "../../context/ShoppingContext";
+import { useFavorites } from "../../context/FavoritesContext";
 
-/* -----------------------------
-   API config
------------------------------ */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
-  "https://stressfreecheff-backend.onrender.com";
+const FavoriteItems = () => {
+  const {
+    shopOptions,
+    uniqueItemNames,
+    addItem,
+    addShopOption,
+    removeShopOption,
+  } = useShopping();
 
-/* -----------------------------
-   Component
------------------------------ */
-const FavoriteItems = ({
-  FavoriteNewItem,
-  setFavoriteNewItem,
-  FavoriteText,
-  setFavoriteText,
-  handleFavoriteText,
-  FavoriteShop,
-  setFavoriteShop,
-  addFavoriteItem,
-  addItem,
-  deleteFavoriteItem,
-  shopOptions,
-  setShopOptions,
-  uniqueItemNames,
-  updateFavoriteItem,
-}) => {
+  const {
+    items: FavoriteNewItem,
+    addFavorite: addFavoriteItem,
+    updateFavorite: updateFavoriteItem,
+    deleteFavorite: deleteFavoriteItem,
+    removeShopFromItems,
+  } = useFavorites();
+
+  /* =============================
+     Local UI state
+  ============================= */
+  const [FavoriteText, setFavoriteText] = useState("");
+  const [FavoriteShop, setFavoriteShop] = useState([]);
+
+  const [isDropdownOpenTop, setIsDropdownOpenTop] = useState(false);
+  const [rowDropdownOpen, setRowDropdownOpen] = useState({});
+  const [addingShop, setAddingShop] = useState(false);
+  const [newShopName, setNewShopName] = useState("");
+  const [filterShopsFavorite, setFilterShopsFavorite] = useState([]);
+  const [sortModeFavorite] = useState("added");
+
   /* =============================
      Refs – dropdown outside click
   ============================= */
   const topDropdownRef = useRef(null);
   const rowDropdownRefs = useRef({});
 
-  /* =============================
-     States 
-  ============================= */
-  const [isDropdownOpenTop, setIsDropdownOpenTop] = useState(false);
-  const [rowDropdownOpen, setRowDropdownOpen] = useState({});
-  const [addingShop, setAddingShop] = useState(false);
-  const [newShopName, setNewShopName] = useState("");
-
-  const [filterShopsFavorite, setFilterShopsFavorite] = useState([]);
-  const [sortModeFavorite, setSortModeFavorite] = useState("added");
-
-  /* =============================
-     Effects
-  ============================= */
   useEffect(() => {
     const handleClickOutside = (e) => {
       const clickedTop = topDropdownRef.current?.contains(e.target);
-
       const clickedRow = Object.values(rowDropdownRefs.current).some(
         (node) => node && node.contains(e.target),
       );
-
       if (!clickedTop && !clickedRow) {
         setIsDropdownOpenTop(false);
         setRowDropdownOpen({});
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   /* =============================
-     Handlers 
+     Handlers
   ============================= */
   function handleSubmit(e) {
     e.preventDefault();
     if (!FavoriteText.trim()) return;
-
-    const uniqueIds = [...new Set(FavoriteShop)];
-    addFavoriteItem({ text: FavoriteText, shop: uniqueIds });
-
+    addFavoriteItem({ text: FavoriteText, shop: [...new Set(FavoriteShop)] });
     setFavoriteText("");
     setFavoriteShop([]);
   }
 
   function toggleRowDropdown(index) {
-    setRowDropdownOpen((prev) => ({
-      ...prev,
-      [index]: !prev[index],
-    }));
+    setRowDropdownOpen((prev) => ({ ...prev, [index]: !prev[index] }));
   }
 
   async function handleDeleteShop(shopId) {
-    try {
-      await fetch(`${API_BASE}/api/shopping-list/shop-options/${shopId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+    await removeShopOption(shopId);
+    removeShopFromItems(shopId);
+  }
 
-      setShopOptions((prev) =>
-        prev.filter((s) => String(s._id) !== String(shopId)),
-      );
-
-      setFavoriteNewItem((prev) =>
-        prev.map((item) => ({
-          ...item,
-          shop: (item.shop || []).filter(
-            (s) => String(s._id) !== String(shopId),
-          ),
-        })),
-      );
-
-      setFavoriteShop((prev) =>
-        prev.filter((id) => String(id) !== String(shopId)),
-      );
-    } catch (err) {
-      console.error("Failed to delete shop:", err);
+  async function handleAddShop() {
+    const trimmed = newShopName.trim();
+    if (!trimmed) return;
+    const exists = shopOptions.some((s) => s.name === trimmed);
+    if (!exists) {
+      await addShopOption(trimmed);
     }
+    setNewShopName("");
+    setAddingShop(false);
   }
 
   function handleToggleShop(itemId, currentShops, shopId) {
     const currentIds = (currentShops || []).map((s) =>
       typeof s === "string" ? s : s._id,
     );
-
     const exists = currentIds.some((id) => String(id) === String(shopId));
-
     const nextIds = exists
       ? currentIds.filter((id) => String(id) !== String(shopId))
       : [...currentIds, shopId];
-
     updateFavoriteItem(itemId, { shop: nextIds });
   }
 
-  async function handleAddShop() {
-    const trimmed = newShopName.trim();
-    if (!trimmed) return;
-
-    if (shopOptions.some((s) => s.name === trimmed)) {
-      setNewShopName("");
-      setAddingShop(false);
-      return;
-    }
-
-    const res = await fetch(`${API_BASE}/api/shopping-list/shop-options`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({ name: trimmed }),
-    });
-
-    const newShop = await res.json();
-    setShopOptions((prev) => [...prev, newShop]);
-
-    setNewShopName("");
-    setAddingShop(false);
-  }
-
   /* =============================
-    Filtering
+     Filtering + Sorting
   ============================= */
   const filteredItems = FavoriteNewItem.filter((item) => {
     if (filterShopsFavorite.length === 0) return true;
-
     const hasShop = (item.shop || []).some((s) =>
       filterShopsFavorite.includes(s._id),
     );
-
     const noShop =
       (item.shop || []).length === 0 && filterShopsFavorite.includes("No Shop");
-
     return hasShop || noShop;
   });
 
-  /* =============================
-     Sorting
-  ============================= */
   const sortedItems = [...filteredItems];
-
   if (sortModeFavorite === "shop") {
     sortedItems.sort((a, b) => {
       const aHas = (a.shop || []).length > 0;
       const bHas = (b.shop || []).length > 0;
-
       if (!aHas && bHas) return 1;
       if (aHas && !bHas) return -1;
       if (!aHas && !bHas) return 0;
-
       const getName = (item) => {
         const first = item.shop[0];
         if (typeof first === "string") {
@@ -195,7 +126,6 @@ const FavoriteItems = ({
         }
         return first?.name || "";
       };
-
       return getName(a).localeCompare(getName(b));
     });
   }
@@ -211,7 +141,6 @@ const FavoriteItems = ({
         <div className="favoriteSelectAndSort">
           <div className="filterShopsFavorite">
             <p>Shop:</p>
-
             {shopOptions.map(({ _id, name }) => (
               <label key={_id}>
                 <input
@@ -228,7 +157,6 @@ const FavoriteItems = ({
                 {name}
               </label>
             ))}
-
             <label className="noShop">
               <input
                 type="checkbox"
@@ -255,12 +183,11 @@ const FavoriteItems = ({
                   <input
                     type="text"
                     className="writeFavorite"
-                    onChange={handleFavoriteText}
+                    onChange={(e) => setFavoriteText(e.target.value)}
                     value={FavoriteText}
                     list="itemSuggestions"
                     placeholder="Add favorite item…"
                   />
-
                   <datalist id="itemSuggestions">
                     {uniqueItemNames.map((name, i) => (
                       <option key={`${name}-${i}`} value={name} />
@@ -324,7 +251,6 @@ const FavoriteItems = ({
 
             {sortedItems.map((item, index) => {
               const isOpen = rowDropdownOpen[index] || false;
-
               return (
                 <li key={item._id}>
                   <div className="favAndShop">
@@ -360,7 +286,8 @@ const FavoriteItems = ({
                                 <input
                                   type="checkbox"
                                   checked={(item.shop || []).some(
-                                    (s) => String(s._id) === String(shop._id),
+                                    (s) =>
+                                      String(s._id) === String(shop._id),
                                   )}
                                   onChange={() =>
                                     handleToggleShop(
@@ -384,6 +311,7 @@ const FavoriteItems = ({
                       )}
                     </div>
                   </div>
+
                   <div className="addToListAndDelete">
                     <button
                       className="addButton"
@@ -396,7 +324,6 @@ const FavoriteItems = ({
                     >
                       ADD
                     </button>
-
                     <button onClick={() => deleteFavoriteItem(item)}>
                       <i className="fas fa-times"></i>
                     </button>

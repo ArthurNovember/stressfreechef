@@ -30,7 +30,7 @@ export default function StarRating({
       <div role="img" aria-label={`${base.toFixed(1)} out of 5`}>
         {[0, 1, 2, 3, 4].map((i) => {
           const diff = base - i;
-          const fill = Math.max(0, Math.min(1, diff)); // 0..1
+          const fill = Math.max(0, Math.min(1, diff));
           return (
             <span
               key={i}
@@ -51,12 +51,9 @@ export default function StarRating({
               aria-label={`${i + 1} star`}
               title={readOnly ? undefined : `${i + 1} stars`}
             >
-              <span
-                style={{ position: "absolute", inset: 0, color: "#bcbcbc" }}
-              >
+              <span style={{ position: "absolute", inset: 0, color: "#bcbcbc" }}>
                 ★
               </span>
-
               <span
                 style={{
                   position: "absolute",

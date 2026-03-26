@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import "./NewRecipe.css";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -7,9 +7,25 @@ import {
   uploadRecipeMedia,
   uploadStepMedia,
   updateMyRecipe,
-} from "./api";
+} from "../../api/myRecipes";
+import {
+  clampInt,
+  secondsToParts,
+  timerPartsToSeconds,
+  normalizeTimerField,
+} from "../../utils/timerUtils";
 
 const DIFFICULTIES = ["Beginner", "Intermediate", "Hard"];
+
+const EMPTY_STEP = {
+  description: "",
+  file: null,
+  preview: null,
+  type: "text",
+  timerH: "",
+  timerM: "",
+  timerS: "",
+};
 
 const NewRecipe = () => {
   const location = useLocation();
@@ -17,9 +33,8 @@ const NewRecipe = () => {
 
   const editingRecipe = location.state?.recipe || null;
   const isEditMode = Boolean(editingRecipe);
-  /* -----------------------------
-     States
-  ----------------------------- */
+
+  /* -- States -- */
   const [title, setTitle] = useState("");
   const [difficulty, setDifficulty] = useState("Beginner");
   const [time, setTime] = useState("00:00");
@@ -31,17 +46,7 @@ const NewRecipe = () => {
 
   const [ingredients, setIngredients] = useState([""]);
   const [servings, setServings] = useState("1");
-  const [steps, setSteps] = useState([
-    {
-      description: "",
-      file: null,
-      preview: null,
-      type: "text",
-      timerH: "",
-      timerM: "",
-      timerS: "",
-    },
-  ]);
+  const [steps, setSteps] = useState([{ ...EMPTY_STEP }]);
 
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -50,9 +55,7 @@ const NewRecipe = () => {
   const [aiText, setAiText] = useState("");
   const [aiImportErr, setAiImportErr] = useState(null);
 
-  /* =============================
-     Effects
-  ============================= */
+  /* -- Load editing recipe -- */
   useEffect(() => {
     if (!editingRecipe) return;
 
@@ -63,56 +66,23 @@ const NewRecipe = () => {
       Number(editingRecipe.servings) > 0 ? String(editingRecipe.servings) : "1",
     );
     setIsPublic(Boolean(editingRecipe.isPublic));
-
     setIngredients(
       editingRecipe.ingredients?.length ? editingRecipe.ingredients : [""],
     );
-
     setSteps(
       editingRecipe.steps?.length
-        ? editingRecipe.steps.map((s) => {
-            const parts = secondsToParts(s.timerSeconds || 0);
-
-            return {
-              description: s.description || "",
-              file: null,
-              preview: s.src || null,
-              type: s.type || "text",
-              ...parts,
-            };
-          })
-        : [
-            {
-              description: "",
-              file: null,
-              preview: null,
-              type: "text",
-              timerH: "",
-              timerM: "",
-              timerS: "",
-            },
-          ],
+        ? editingRecipe.steps.map((s) => ({
+            description: s.description || "",
+            file: null,
+            preview: s.src || null,
+            type: s.type || "text",
+            ...secondsToParts(s.timerSeconds || 0),
+          }))
+        : [{ ...EMPTY_STEP }],
     );
   }, [editingRecipe]);
 
-  /* =============================
-     Handlers
-  ============================= */
-  function handleThumbnailChange(e) {
-    const file = e.target.files?.[0] || null;
-
-    if (!file) {
-      setThumbFile(null);
-      setThumbPreview(null);
-      setThumbIsVideo(false);
-      return;
-    }
-
-    setThumbFile(file);
-    setThumbPreview(URL.createObjectURL(file));
-    setThumbIsVideo(file.type.startsWith("video/"));
-  }
-
+  /* -- Ingredient handlers -- */
   function updateIngredient(index, value) {
     setIngredients((arr) => arr.map((v, i) => (i === index ? value : v)));
   }
@@ -125,6 +95,7 @@ const NewRecipe = () => {
     setIngredients((arr) => arr.filter((_, i) => i !== index));
   }
 
+  /* -- Step handlers -- */
   function updateStepDescription(index, value) {
     setSteps((arr) =>
       arr.map((s, i) => (i === index ? { ...s, description: value } : s)),
@@ -133,7 +104,6 @@ const NewRecipe = () => {
 
   function handleStepFileChange(index, e) {
     const file = e.target.files?.[0] || null;
-
     setSteps((arr) =>
       arr.map((s, i) =>
         i === index
@@ -152,124 +122,59 @@ const NewRecipe = () => {
     );
   }
 
+  function updateStepTimerPart(index, part, value) {
+    setSteps((arr) =>
+      arr.map((s, i) => {
+        if (i !== index) return s;
+        if (part === "timerH") return { ...s, timerH: normalizeTimerField(value, 99) };
+        if (part === "timerM") return { ...s, timerM: normalizeTimerField(value, 59) };
+        if (part === "timerS") return { ...s, timerS: normalizeTimerField(value, 59) };
+        return s;
+      }),
+    );
+  }
+
   function addStep() {
-    setSteps((arr) => [
-      ...arr,
-      {
-        description: "",
-        file: null,
-        preview: null,
-        type: "text",
-        timerH: "",
-        timerM: "",
-        timerS: "",
-      },
-    ]);
+    setSteps((arr) => [...arr, { ...EMPTY_STEP }]);
   }
 
   function removeStep(index) {
     setSteps((arr) => arr.filter((_, i) => i !== index));
   }
 
-  function clampInt(n, min, max) {
-    if (Number.isNaN(n)) return min;
-    return Math.min(max, Math.max(min, n));
-  }
-
-  function normalizeTimerField(val, max) {
-    if (val === "") return "";
-    const n = clampInt(parseInt(val, 10), 0, max);
-    return String(n).padStart(2, "0");
-  }
-
-  function timerPartsToSeconds(step) {
-    const hRaw = (step.timerH || "").trim();
-    const mRaw = (step.timerM || "").trim();
-    const sRaw = (step.timerS || "").trim();
-
-    if (!hRaw && !mRaw && !sRaw) return 0;
-
-    const h = clampInt(parseInt(hRaw || "0", 10), 0, 99);
-    const m = clampInt(parseInt(mRaw || "0", 10), 0, 59);
-    const s = clampInt(parseInt(sRaw || "0", 10), 0, 59);
-
-    return h * 3600 + m * 60 + s;
-  }
-
-  function secondsToParts(totalSeconds) {
-    const total = clampInt(
-      parseInt(totalSeconds || 0, 10),
-      0,
-      99 * 3600 + 59 * 60 + 59,
-    );
-
-    const h = Math.floor(total / 3600);
-    const m = Math.floor((total % 3600) / 60);
-    const s = total % 60;
-
-    return {
-      timerH: h ? String(h).padStart(2, "0") : "",
-      timerM: m ? String(m).padStart(2, "0") : "",
-      timerS: s ? String(s).padStart(2, "0") : "",
-    };
-  }
-
-  function updateStepTimerPart(index, part, value) {
-    setSteps((arr) =>
-      arr.map((s, i) => {
-        if (i !== index) return s;
-
-        if (part === "timerH")
-          return { ...s, timerH: normalizeTimerField(value, 99) };
-        if (part === "timerM")
-          return { ...s, timerM: normalizeTimerField(value, 59) };
-        if (part === "timerS")
-          return { ...s, timerS: normalizeTimerField(value, 59) };
-
-        return s;
-      }),
-    );
-  }
-
-  function validateAiRecipeInput(parsed) {
-    if (!parsed || typeof parsed !== "object") {
-      return { ok: false, error: "Expected a JSON object." };
+  /* -- Thumbnail -- */
+  function handleThumbnailChange(e) {
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setThumbFile(null);
+      setThumbPreview(null);
+      setThumbIsVideo(false);
+      return;
     }
+    setThumbFile(file);
+    setThumbPreview(URL.createObjectURL(file));
+    setThumbIsVideo(file.type.startsWith("video/"));
+  }
 
+  /* -- AI import -- */
+  function validateAiRecipeInput(parsed) {
+    if (!parsed || typeof parsed !== "object")
+      return { ok: false, error: "Expected a JSON object." };
     if (
       parsed.servings != null &&
       (!Number.isFinite(Number(parsed.servings)) || Number(parsed.servings) < 1)
-    ) {
-      return {
-        ok: false,
-        error: '"servings" must be a number greater than or equal to 1.',
-      };
-    }
-
-    if (!parsed.title || typeof parsed.title !== "string") {
+    )
+      return { ok: false, error: '"servings" must be a number >= 1.' };
+    if (!parsed.title || typeof parsed.title !== "string")
       return { ok: false, error: "Missing title." };
-    }
-
-    if (!parsed.time || typeof parsed.time !== "string") {
+    if (!parsed.time || typeof parsed.time !== "string")
       return { ok: false, error: 'Missing time (format "HH:MM").' };
-    }
-
-    if (!Array.isArray(parsed.ingredients) || parsed.ingredients.length === 0) {
+    if (!Array.isArray(parsed.ingredients) || parsed.ingredients.length === 0)
       return { ok: false, error: "Missing ingredients (at least one item)." };
-    }
-
-    if (!Array.isArray(parsed.steps) || parsed.steps.length === 0) {
+    if (!Array.isArray(parsed.steps) || parsed.steps.length === 0)
       return { ok: false, error: "Missing steps (at least one step)." };
-    }
-
-    // difficulty is optional, but if present must be valid
-    if (parsed.difficulty && !DIFFICULTIES.includes(parsed.difficulty)) {
-      return {
-        ok: false,
-        error: 'difficulty must be "Beginner" | "Intermediate" | "Hard".',
-      };
-    }
-
+    if (parsed.difficulty && !DIFFICULTIES.includes(parsed.difficulty))
+      return { ok: false, error: 'difficulty must be "Beginner" | "Intermediate" | "Hard".' };
     return { ok: true, data: parsed };
   }
 
@@ -292,7 +197,7 @@ const NewRecipe = () => {
 }
 
 REQUIREMENTS:
-- Title, ingredients and steps may be in the user’s language.
+- Title, ingredients and steps may be in the user's language.
 - ⚠️ The "difficulty" field must NEVER be translated. It must be exactly one of:
   "Beginner", "Intermediate", "Hard".
 - Leave "time" in HH:MM.
@@ -312,7 +217,6 @@ Here is the recipe:`;
 
   function importFromAiJson(raw) {
     setAiImportErr(null);
-
     let parsed;
     try {
       parsed = JSON.parse(raw);
@@ -320,15 +224,12 @@ Here is the recipe:`;
       setAiImportErr("Text is not valid JSON.");
       return;
     }
-
     const validated = validateAiRecipeInput(parsed);
     if (!validated.ok) {
       setAiImportErr(validated.error);
       return;
     }
-
     const data = validated.data;
-
     setTitle(String(data.title || "").trim());
     setDifficulty(
       data.difficulty && DIFFICULTIES.includes(data.difficulty)
@@ -336,89 +237,53 @@ Here is the recipe:`;
         : "Beginner",
     );
     setTime(String(data.time || "").trim());
-
     setServings(
       data.servings != null && Number(data.servings) > 0
         ? String(Math.floor(Number(data.servings)))
         : "1",
     );
-
     setIngredients(
-      (data.ingredients || [])
-        .map((i) => String(i || "").trim())
-        .filter(Boolean),
+      (data.ingredients || []).map((i) => String(i || "").trim()).filter(Boolean),
     );
-
     setSteps(
       (data.steps || [])
-        .map((st) => {
-          const description = String(st.description || "").trim();
-          const parts = secondsToParts(st.timerSeconds || 0);
-
-          return {
-            description,
-            file: null,
-            preview: null,
-            type: "text",
-            ...parts,
-          };
-        })
+        .map((st) => ({
+          description: String(st.description || "").trim(),
+          file: null,
+          preview: null,
+          type: "text",
+          ...secondsToParts(st.timerSeconds || 0),
+        }))
         .filter((s) => s.description),
     );
   }
 
-  /* =============================
-     Validation
-  ============================= */
+  /* -- Validation -- */
   function validate() {
-    if (!title.trim() || !difficulty || !time.trim()) {
+    if (!title.trim() || !difficulty || !time.trim())
       return "Fill in Title, Difficulty and Time.";
-    }
-
     const servingsNumber = parseInt(servings, 10);
-    if (Number.isNaN(servingsNumber) || servingsNumber < 1) {
+    if (Number.isNaN(servingsNumber) || servingsNumber < 1)
       return "Servings must be at least 1.";
-    }
-
-    const hasTextStep = steps.some(
-      (s) => (s.description || "").trim().length > 0,
-    );
-
-    if (!hasTextStep) {
-      return "Add at least one step description.";
-    }
-
+    const hasTextStep = steps.some((s) => (s.description || "").trim().length > 0);
+    if (!hasTextStep) return "Add at least one step description.";
     for (const s of steps) {
-      const any =
-        (s.timerH || "").trim() ||
-        (s.timerM || "").trim() ||
-        (s.timerS || "").trim();
+      const any = (s.timerH || "").trim() || (s.timerM || "").trim() || (s.timerS || "").trim();
       if (!any) continue;
-
       const h = parseInt((s.timerH || "0").trim() || "0", 10);
       const m = parseInt((s.timerM || "0").trim() || "0", 10);
       const sec = parseInt((s.timerS || "0").trim() || "0", 10);
-
-      if ([h, m, sec].some((n) => Number.isNaN(n))) {
-        return "Timer must be numeric (HH:MM:SS).";
-      }
-      if (h < 0 || h > 99 || m < 0 || m > 59 || sec < 0 || sec > 59) {
+      if ([h, m, sec].some((n) => Number.isNaN(n))) return "Timer must be numeric (HH:MM:SS).";
+      if (h < 0 || h > 99 || m < 0 || m > 59 || sec < 0 || sec > 59)
         return "Timer out of range (h 0-99, m/s 0-59).";
-      }
     }
-
     return null;
   }
 
-  /* =============================
-     Submit
-  ============================= */
+  /* -- Submit -- */
   async function handleSubmit() {
     const error = validate();
-    if (error) {
-      setMsg({ type: "error", text: error });
-      return;
-    }
+    if (error) { setMsg({ type: "error", text: error }); return; }
 
     try {
       setSaving(true);
@@ -434,10 +299,8 @@ Here is the recipe:`;
           .map((s) => {
             const description = s.description.trim();
             const timerSeconds = timerPartsToSeconds(s);
-
             const out = { type: "text", description };
             if (timerSeconds > 0) out.timerSeconds = timerSeconds;
-
             return out;
           })
           .filter((s) => s.description),
@@ -445,7 +308,6 @@ Here is the recipe:`;
       };
 
       let recipeId;
-
       if (isEditMode) {
         const updated = await updateMyRecipe(editingRecipe._id, payload);
         recipeId = updated._id;
@@ -454,9 +316,7 @@ Here is the recipe:`;
         recipeId = created._id;
       }
 
-      if (thumbFile) {
-        await uploadRecipeMedia(recipeId, thumbFile);
-      }
+      if (thumbFile) await uploadRecipeMedia(recipeId, thumbFile);
 
       await Promise.all(
         steps.map((s, idx) =>
@@ -464,13 +324,11 @@ Here is the recipe:`;
         ),
       );
 
-      if (isPublic) {
-        await publishMyRecipe(recipeId);
-      }
+      if (isPublic) await publishMyRecipe(recipeId);
 
       setMsg({
         type: "success",
-        text: `Recipe created${isPublic ? " and shared publicly" : ""}.`,
+        text: `Recipe ${isEditMode ? "updated" : "created"}${isPublic ? " and shared publicly" : ""}.`,
       });
 
       resetForm();
@@ -480,10 +338,7 @@ Here is the recipe:`;
       setSaving(false);
     }
 
-    if (isEditMode) {
-      navigate("/myprofile");
-      return;
-    }
+    if (isEditMode) { navigate("/myprofile"); return; }
   }
 
   function resetForm() {
@@ -496,32 +351,20 @@ Here is the recipe:`;
     setThumbPreview(null);
     setThumbIsVideo(false);
     setIngredients([""]);
-    setSteps([
-      {
-        description: "",
-        file: null,
-        preview: null,
-        type: "text",
-        timerH: "",
-        timerM: "",
-        timerS: "",
-      },
-    ]);
-
+    setSteps([{ ...EMPTY_STEP }]);
     setAiText("");
     setAiImportErr(null);
     setAiMode(false);
   }
 
-  /* =============================
-     Render
-  ============================= */
+  /* -- Render -- */
   return (
     <div className="new">
       {msg && <p className={msg.type}>{msg.text}</p>}
 
       <div className="creation">
         <h2>{isEditMode ? "Edit Recipe" : "Create Recipe"}</h2>
+
         <div className="mainInfo">
           <div className="nameDifTime">
             <div className="inputAdd">
@@ -532,28 +375,17 @@ Here is the recipe:`;
                 placeholder="Title…"
               />
             </div>
-
             <div className="inputAdd">
               <label>Difficulty</label>
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
-              >
+              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
                 {DIFFICULTIES.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
+                  <option key={d} value={d}>{d}</option>
                 ))}
               </select>
             </div>
-
             <div className="inputAdd">
               <label>Time</label>
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-              />
+              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
             <div className="inputAdd">
               <label>Servings</label>
@@ -592,7 +424,6 @@ Here is the recipe:`;
                 )}
               </div>
             </label>
-
             <input
               id="uploadThumb"
               type="file"
@@ -606,7 +437,6 @@ Here is the recipe:`;
         <div className="AiImportBox">
           <div className="AiImportHeader">
             <h4>Cook with AI</h4>
-
             <label className="AiToggle">
               <span>Enable</span>
               <input
@@ -621,32 +451,17 @@ Here is the recipe:`;
             <>
               <p className="AiHint">1) Copy the prompt</p>
               <p className="AiHint">• 2) paste your recipe into AI</p>
-              <p className="AiHint">• 3) paste returned JSON here </p>
-              <p className="AiHint">
-                • 4) Import
-                <br />
-              </p>
-
+              <p className="AiHint">• 3) paste returned JSON here</p>
+              <p className="AiHint">• 4) Import</p>
               <div className="AiButtonsRow">
-                <button
-                  type="button"
-                  className="AiImportBtn"
-                  onClick={handleCopyAiPrompt}
-                >
+                <button type="button" className="AiImportBtn" onClick={handleCopyAiPrompt}>
                   Copy AI prompt
                 </button>
-
-                <button
-                  type="button"
-                  className="AiImportBtn"
-                  onClick={() => importFromAiJson(aiText)}
-                >
+                <button type="button" className="AiImportBtn" onClick={() => importFromAiJson(aiText)}>
                   Import JSON
                 </button>
               </div>
-
-              {aiImportErr ? <p className="error">{aiImportErr}</p> : null}
-
+              {aiImportErr && <p className="error">{aiImportErr}</p>}
               <textarea
                 className="AiImportTextarea"
                 value={aiText}
@@ -701,7 +516,6 @@ Here is the recipe:`;
                       </div>
                     </div>
                   </label>
-
                   <input
                     id={`step-${index}`}
                     type="file"
@@ -709,65 +523,38 @@ Here is the recipe:`;
                     hidden
                     onChange={(e) => handleStepFileChange(index, e)}
                   />
-
                   <textarea
                     value={step.description}
-                    onChange={(e) =>
-                      updateStepDescription(index, e.target.value)
-                    }
+                    onChange={(e) => updateStepDescription(index, e.target.value)}
                     placeholder="Describe the step…"
                   />
-
                   <div className="StepTimerRow">
                     <label className="StepTimerLabel">
                       Timer (optional, HH:MM:SS)
                     </label>
-
                     <div className="StepTimerFields">
-                      <div className="StepTimerField">
-                        <span className="HMS">h</span>
-                        <input
-                          value={step.timerH}
-                          onChange={(e) =>
-                            updateStepTimerPart(index, "timerH", e.target.value)
-                          }
-                          placeholder="00"
-                          inputMode="numeric"
-                        />
-                      </div>
-
-                      <div className="StepTimerField">
-                        <span className="HMS">m</span>
-                        <input
-                          value={step.timerM}
-                          onChange={(e) =>
-                            updateStepTimerPart(index, "timerM", e.target.value)
-                          }
-                          placeholder="00"
-                          inputMode="numeric"
-                        />
-                      </div>
-
-                      <div className="StepTimerField">
-                        <span className="HMS">s</span>
-                        <input
-                          value={step.timerS}
-                          onChange={(e) =>
-                            updateStepTimerPart(index, "timerS", e.target.value)
-                          }
-                          placeholder="00"
-                          inputMode="numeric"
-                        />
-                      </div>
+                      {[
+                        { part: "timerH", max: 99, label: "h" },
+                        { part: "timerM", max: 59, label: "m" },
+                        { part: "timerS", max: 59, label: "s" },
+                      ].map(({ part, label }) => (
+                        <div key={part} className="StepTimerField">
+                          <span className="HMS">{label}</span>
+                          <input
+                            value={step[part]}
+                            onChange={(e) => updateStepTimerPart(index, part, e.target.value)}
+                            placeholder="00"
+                            inputMode="numeric"
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
-
                   {steps.length > 1 && (
                     <button onClick={() => removeStep(index)}>X</button>
                   )}
                 </li>
               ))}
-
               <li>
                 <button className="AddIngredient" onClick={addStep}>
                   Add Step
@@ -776,6 +563,7 @@ Here is the recipe:`;
             </ol>
           </div>
         </div>
+
         <div className="sendButtonContainer">
           <img
             className="addRecipe"

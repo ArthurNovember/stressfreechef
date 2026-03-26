@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p pages/Home pages/Recipe pages/ShoppingList pages/FavoriteItems pages/ExploreRecipes pages/MyProfile pages/NewRecipe pages/AuthForm)",
+      "Bash(cp Home.css pages/Home/)",
+      "Bash(cp Recipe.css pages/Recipe/)",
+      "Bash(cp ShoppingList.css pages/ShoppingList/)",
+      "Bash(cp FavoriteItems.css pages/FavoriteItems/)"
+    ]
+  }
+}

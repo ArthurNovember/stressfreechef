@@ -1,32 +1,23 @@
 import { useState } from "react";
 import "./AuthForm.css";
 import { useNavigate } from "react-router-dom";
+import { login, register } from "../../api/auth";
+import { useAuth } from "../../context/AuthContext";
+import { useShopping } from "../../context/ShoppingContext";
+import { useFavorites } from "../../context/FavoritesContext";
 
-/* -----------------------------
-   API config
------------------------------ */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
-  "https://stressfreecheff-backend.onrender.com";
-
-/* -----------------------------
-   Component
------------------------------ */
-const AuthForm = ({ onLoginSuccess }) => {
+const AuthForm = () => {
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
+  const { refresh: refreshShopping } = useShopping();
+  const { refresh: refreshFavorites } = useFavorites();
 
-  /* =============================
-     States
-  ============================= */
   const [mode, setMode] = useState("signup");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  /* =============================
-     Helpers 
-  ============================= */
   function validateSignup() {
     if (!username.trim() || !email.trim() || !password.trim()) {
       alert("Please fill in all required fields.");
@@ -47,61 +38,29 @@ const AuthForm = ({ onLoginSuccess }) => {
     return true;
   }
 
-  /* =============================
-     Login/Signup
-  ============================= */
   async function handleSignup() {
     if (!validateSignup()) return;
-
     try {
-      const res = await fetch(`${API_BASE}/api/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || "Registration error.");
-        return;
-      }
-
+      await register(username, email, password);
       alert("Registration successful. You can now log in.");
       setMode("login");
-    } catch {
-      alert("Server communication error.");
+    } catch (err) {
+      alert(err.message || "Server communication error.");
     }
   }
 
   async function handleLogin() {
     if (!validateLogin()) return;
-
     try {
-      const res = await fetch(`${API_BASE}/api/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || "Login error.");
-        return;
-      }
-
+      const data = await login(email, password);
       localStorage.setItem("token", data.token);
-      onLoginSuccess?.();
+      await Promise.all([refreshUser(), refreshShopping(), refreshFavorites()]);
       navigate("/myprofile");
-    } catch {
-      alert("Server communication error.");
+    } catch (err) {
+      alert(err.message || "Server communication error.");
     }
   }
 
-  /* =============================
-     Render
-  ============================= */
   return (
     <div className="authfull">
       <div className="FormContainer">
@@ -138,7 +97,6 @@ const AuthForm = ({ onLoginSuccess }) => {
                   onChange={(e) => setUsername(e.target.value)}
                 />
               </div>
-
               <div className="labelWithInput">
                 <label>Email:</label>
                 <input
@@ -148,7 +106,6 @@ const AuthForm = ({ onLoginSuccess }) => {
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
-
               <div className="labelWithInput">
                 <label>Password:</label>
                 <input
@@ -158,7 +115,6 @@ const AuthForm = ({ onLoginSuccess }) => {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-
               <div className="labelWithInput">
                 <label>Confirm Password:</label>
                 <input
@@ -169,7 +125,6 @@ const AuthForm = ({ onLoginSuccess }) => {
                 />
               </div>
             </div>
-
             <button className="signup" onClick={handleSignup}>
               SIGN UP
             </button>
@@ -188,7 +143,6 @@ const AuthForm = ({ onLoginSuccess }) => {
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
-
               <div className="labelWithInput">
                 <label>Password:</label>
                 <input
@@ -199,7 +153,6 @@ const AuthForm = ({ onLoginSuccess }) => {
                 />
               </div>
             </div>
-
             <button className="signup" onClick={handleLogin}>
               LOG IN
             </button>

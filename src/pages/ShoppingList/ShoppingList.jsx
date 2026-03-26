@@ -1,37 +1,43 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./ShoppingList.css";
 import { Link } from "react-router-dom";
+import { useShopping } from "../../context/ShoppingContext";
+import { useFavorites } from "../../context/FavoritesContext";
 
-/* -----------------------------
-   API config
------------------------------ */
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
-  "https://stressfreecheff-backend.onrender.com";
+const ShoppingList = () => {
+  const {
+    items: newItem,
+    shopOptions,
+    uniqueItemNames,
+    addItem,
+    updateItem: updateShoppingItem,
+    deleteItem: deleteShoppingItem,
+    addShopOption,
+    removeShopOption,
+  } = useShopping();
 
-const API = String(API_BASE || "").replace(/\/+$/, "");
+  const {
+    items: FavoriteNewItem,
+    addFavorite: addFavoriteItem,
+    deleteFavorite: deleteFavoriteItem,
+    removeShopFromItems,
+  } = useFavorites();
 
-/* -----------------------------
-   Component
------------------------------ */
-const ShoppingList = ({
-  text,
-  setText,
-  shop,
-  setShop,
-  newItem,
-  setNewItem,
-  addItem,
-  addFavoriteItem,
-  FavoriteNewItem,
-  deleteFavoriteItem,
-  shopOptions,
-  setShopOptions,
-  uniqueItemNames,
-  updateShoppingItem,
-  deleteShoppingItem,
-}) => {
   const hasToken = !!localStorage.getItem("token");
+
+  /* =============================
+     Local UI state
+  ============================= */
+  const [text, setText] = useState("");
+  const [shop, setShop] = useState([]);
+
+  const [obrazek, setObrazek] = useState("https://i.imgur.com/DmXZvGl.png");
+  const [isDropdownOpen, setIsDropDownOpen] = useState({});
+  const [isDropdownOpenInput, setIsDropdownOpenInput] = useState(false);
+  const [addingShop, setAddingShop] = useState(false);
+  const [newShopName, setNewShopName] = useState("");
+  const [filterShops, setFilterShops] = useState([]);
+  const [sortMode] = useState("added");
 
   /* =============================
      Refs – click outside
@@ -39,38 +45,18 @@ const ShoppingList = ({
   const dropdownRefs = useRef({});
   const inputDropdownRef = useRef(null);
 
-  /* =============================
-     State 
-  ============================= */
-  const [obrazek, setObrazek] = useState("https://i.imgur.com/DmXZvGl.png");
-
-  const [isDropdownOpen, setIsDropDownOpen] = useState({});
-  const [isDropdownOpenInput, setIsDropdownOpenInput] = useState(false);
-
-  const [addingShop, setAddingShop] = useState(false);
-  const [newShopName, setNewShopName] = useState("");
-
-  const [filterShops, setFilterShops] = useState([]);
-  const [sortMode, setSortMode] = useState("added");
-
-  /* =============================
-     Effect – close dropdowns on outside click
-  ============================= */
   useEffect(() => {
     const handleClickOutside = (e) => {
       const clickedInsideInput =
         inputDropdownRef.current && inputDropdownRef.current.contains(e.target);
-
       const clickedInsideAnyRow = Object.values(dropdownRefs.current).some(
         (node) => node && node.contains(e.target),
       );
-
       if (!clickedInsideInput && !clickedInsideAnyRow) {
         setIsDropdownOpenInput(false);
         setIsDropDownOpen({});
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -78,134 +64,73 @@ const ShoppingList = ({
   /* =============================
      Handlers
   ============================= */
-  const handleTextChange = (event) => {
-    setText(event.target.value);
-  };
-
   const handleSubmit = (event) => {
     event.preventDefault();
     if (!text.trim()) return;
-
-    addItem({ text: text, shop: shop });
+    addItem({ text, shop });
     setText("");
-  };
-
-  const deleteItem = async (itemId) => {
-    await deleteShoppingItem(itemId);
+    setShop([]);
   };
 
   const toggleChecked = async (_id, currentChecked) => {
-    const newChecked = !currentChecked;
-    await updateShoppingItem(_id, { checked: newChecked });
+    await updateShoppingItem(_id, { checked: !currentChecked });
   };
 
   const handleToggleShop = async (itemId, shopId) => {
     const item = newItem.find((i) => i._id === itemId);
     if (!item) return;
-
     const shopAlreadySelected = item.shop.some(
       (s) => String(s._id) === String(shopId),
     );
-
     const updatedShops = shopAlreadySelected
-      ? item.shop
-          .filter((s) => String(s._id) !== String(shopId))
-          .map((s) => s._id)
+      ? item.shop.filter((s) => String(s._id) !== String(shopId)).map((s) => s._id)
       : [...item.shop.map((s) => s._id), shopId];
-
     await updateShoppingItem(itemId, { shop: updatedShops });
   };
 
-  const handleDeleteShop = async (shopToDeleteId) => {
-    try {
-      const token = localStorage.getItem("token");
-
-      await fetch(`${API}/api/shopping-list/shop-options/${shopToDeleteId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setShopOptions((prev) => prev.filter((s) => s._id !== shopToDeleteId));
-      setNewItem((prevItems) =>
-        prevItems.map((item) => ({
-          ...item,
-          shop: item.shop.filter((s) => s._id !== shopToDeleteId),
-        })),
-      );
-    } catch (err) {
-      console.error("Chyba při mazání shopu:", err);
-    }
+  const handleDeleteShop = async (shopId) => {
+    await removeShopOption(shopId);
+    removeShopFromItems(shopId);
   };
 
-  async function handleAddShop() {
+  const handleAddShop = async () => {
     const trimmed = newShopName.trim();
     if (!trimmed) return;
-
     const exists = shopOptions.some(
       (s) => s.name.toLowerCase() === trimmed.toLowerCase(),
     );
-
-    if (exists) {
-      setNewShopName("");
-      setAddingShop(false);
-      return;
+    if (!exists) {
+      await addShopOption(trimmed);
     }
-
-    const res = await fetch(`${API}/api/shopping-list/shop-options`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({ name: trimmed }),
-    });
-
-    const newShop = await res.json();
-    setShopOptions((prev) => [...prev, newShop]);
-
     setNewShopName("");
     setAddingShop(false);
-  }
+  };
 
   const ToggleDropDown = (index) => {
     setIsDropDownOpen((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
   /* =============================
-     Filtering
+     Filtering + Sorting
   ============================= */
   const filteredItems = newItem.filter((item) => {
     if (filterShops.length === 0) return true;
-
     const hasShopMatch = item.shop.some((s) => filterShops.includes(s._id));
     const isNoShop = item.shop.length === 0 && filterShops.includes("No Shop");
-
     return hasShopMatch || isNoShop;
   });
 
-  /* =============================
-     Sorting
-  ============================= */
   const sortedItems = [...filteredItems];
-
-  if (sortMode === "added") {
-    sortedItems.reverse();
-  }
-
+  if (sortMode === "added") sortedItems.reverse();
   if (sortMode === "shop") {
     sortedItems.sort((a, b) => {
       const aNoShop = a.shop.length === 0;
       const bNoShop = b.shop.length === 0;
-
       if (aNoShop && !bNoShop) return 1;
       if (!aNoShop && bNoShop) return -1;
-
       if (!aNoShop && !bNoShop) {
-        const aFirstShopName = a.shop[0].name || "";
-        const bFirstShopName = b.shop[0].name || "";
-        return aFirstShopName.localeCompare(bFirstShopName);
+        return (a.shop[0].name || "").localeCompare(b.shop[0].name || "");
       }
-
       return 0;
     });
   }
@@ -225,15 +150,14 @@ const ShoppingList = ({
           />
         </Link>
       </div>
+
       <div className="filterAndShoppingList">
         {hasToken && (
           <div className="filterAndSort">
             <div className="filterShops">
               <div className="filter-buttons">
                 <button
-                  className={`filter-btn ${
-                    filterShops.length === 0 ? "active" : ""
-                  }`}
+                  className={`filter-btn ${filterShops.length === 0 ? "active" : ""}`}
                   onClick={() => setFilterShops([])}
                   type="button"
                 >
@@ -247,13 +171,13 @@ const ShoppingList = ({
                       key={shop._id}
                       className={`filter-btn ${active ? "active" : ""}`}
                       type="button"
-                      onClick={() => {
+                      onClick={() =>
                         setFilterShops((prev) =>
                           active
                             ? prev.filter((id) => id !== shop._id)
                             : [...prev, shop._id],
-                        );
-                      }}
+                        )
+                      }
                     >
                       {shop.name}
                     </button>
@@ -261,17 +185,15 @@ const ShoppingList = ({
                 })}
 
                 <button
-                  className={`filter-btn ${
-                    filterShops.includes("No Shop") ? "active" : ""
-                  }`}
+                  className={`filter-btn ${filterShops.includes("No Shop") ? "active" : ""}`}
                   type="button"
-                  onClick={() => {
+                  onClick={() =>
                     setFilterShops((prev) =>
                       prev.includes("No Shop")
                         ? prev.filter((id) => id !== "No Shop")
                         : [...prev, "No Shop"],
-                    );
-                  }}
+                    )
+                  }
                 >
                   No Shop
                 </button>
@@ -285,10 +207,9 @@ const ShoppingList = ({
             <li>
               <form className="addForm" onSubmit={handleSubmit}>
                 <div className="textAndShopInput">
-                  {" "}
                   <input
                     type="text"
-                    onChange={handleTextChange}
+                    onChange={(e) => setText(e.target.value)}
                     value={text}
                     list="itemSuggestions"
                     className="addInput"
@@ -299,6 +220,7 @@ const ShoppingList = ({
                       <option key={`${itemName}-${index}`} value={itemName} />
                     ))}
                   </datalist>
+
                   <div className="nadpisADropdown">
                     {hasToken && (
                       <div
@@ -323,6 +245,7 @@ const ShoppingList = ({
                                 })
                                 .join(", ")}
                         </button>
+
                         {isDropdownOpenInput && (
                           <ul
                             className="shopCheckboxListInput"
@@ -336,10 +259,11 @@ const ShoppingList = ({
                                     checked={shop.includes(_id)}
                                     onChange={() => {
                                       const hasShop = shop.includes(_id);
-                                      const updated = hasShop
-                                        ? shop.filter((s) => s !== _id)
-                                        : [...shop, _id];
-                                      setShop(updated);
+                                      setShop((prev) =>
+                                        hasShop
+                                          ? prev.filter((s) => s !== _id)
+                                          : [...prev, _id],
+                                      );
                                     }}
                                   />
                                   {name}
@@ -381,7 +305,7 @@ const ShoppingList = ({
                               </li>
                             )}
                           </ul>
-                        )}{" "}
+                        )}
                       </div>
                     )}
                   </div>
@@ -396,10 +320,8 @@ const ShoppingList = ({
                   fav.text?.trim().toLowerCase() ===
                   item.text?.trim().toLowerCase(),
               );
-
               const isFavorite = !!favMatch;
               const favoriteId = favMatch?._id;
-
               const isOpen = isDropdownOpen[index] || false;
 
               return (
@@ -410,7 +332,7 @@ const ShoppingList = ({
                       checked={item.checked}
                       onChange={() => toggleChecked(item._id, item.checked)}
                       id={item._id}
-                    />{" "}
+                    />
                     <div className="NameShop">
                       <div className="nameAndCheck">
                         <label htmlFor={item._id} className="itemTextLabel">
@@ -428,6 +350,7 @@ const ShoppingList = ({
                           </span>
                         </label>
                       </div>
+
                       <div
                         className="buttonAndShops"
                         ref={(el) => (dropdownRefs.current[index] = el)}
@@ -455,7 +378,9 @@ const ShoppingList = ({
                         {isOpen && (
                           <ul
                             className="shopCheckboxList"
-                            style={{ zIndex: 100 + (newItem.length - index) }}
+                            style={{
+                              zIndex: 100 + (newItem.length - index),
+                            }}
                           >
                             {shopOptions.map((shop) => (
                               <li key={shop._id}>
@@ -464,7 +389,8 @@ const ShoppingList = ({
                                   <input
                                     type="checkbox"
                                     checked={item.shop.some(
-                                      (s) => String(s._id) === String(shop._id),
+                                      (s) =>
+                                        String(s._id) === String(shop._id),
                                     )}
                                     onChange={() =>
                                       handleToggleShop(item._id, shop._id)
@@ -512,6 +438,7 @@ const ShoppingList = ({
                       </div>
                     </div>
                   </div>
+
                   <div className="changeButtons">
                     <button
                       className="srdce"
@@ -538,7 +465,7 @@ const ShoppingList = ({
                     <button
                       className="deleteItem"
                       type="button"
-                      onClick={() => deleteItem(item._id)}
+                      onClick={() => deleteShoppingItem(item._id)}
                     >
                       <i className="fas fa-times"></i>
                     </button>
